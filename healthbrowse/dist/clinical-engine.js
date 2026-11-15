@@ -53,6 +53,7 @@ const groups = [
   {id:'symptoms',deck:3,ask:/\b(symptoms?|signs?|manifestations?|clinical presentation)\b/,evidence:/\b(symptoms?|signs?|asymptomatic|manifestations?|wheezing|coughing|fatigue|shortness of breath|rash|pain)\b/},
   {id:'therapy',deck:5,ask:/\b(treatment classes|treat\w*|therap\w*|drug classes|medicines?|medications?|management|manag\w*)\b/,evidence:/\b(treat\w*|therap\w*|manag\w*|drug classes|medicines?|medications?)\b/},
   {id:'classification',deck:2,ask:/\b(types?|subtypes?|classif\w*|taxonomy|nosology)\b/,evidence:/\b(types?|classif\w*|subtypes?|lymphoid|myeloid)\b/},
+  {id:'function',deck:2,ask:/\b(functions?|purpose|roles?|what (?:does|do) .+ do|how (?:does|do) .+ work)\b/,evidence:/\b(function\w*|regulat\w*|control\w*|hormones?|produc\w*|releas\w*|filter\w*|carry|carries|pumps?|protect\w*|digest\w*)\b/},
   {id:'mechanism',deck:2,ask:/\b(pathogenesis|mechanism|molecular biology|pathophysiology|physiology|affect(?:s|ing)?|how does|why does)\b/,evidence:/\b(caus\w*|due to|results? from|mechanism|pathway|cells?|inflamm\w*|protein|molecular|affect\w*)\b/},
   {id:'definition',deck:2,ask:/\b(what (?:is|are)|defin\w*|overview|explain|classif\w*|subtypes?|taxonomy|meaning|mean|tell me about|help me understand)\b/,evidence:/\b(is|are|means|refers to|classified|characterized|occurs when|types)\b/}
 ];

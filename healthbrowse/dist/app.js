@@ -64,8 +64,7 @@ function currentContext(){
     visibleTexts:[...$('card').querySelectorAll('.excerpt')].filter(e=>e.getClientRects().length).map(e=>e.textContent)};
 }
 function scopeChoice(input){
-  if(!lookupIndex)return [];
-  return newSubjects(input,lookupIndex,topic);
+  return lookupIndex?newSubjects(input,lookupIndex,topic,medlineLookup):[];
 }
 function switchPrompt(container,input,target,continueSearch){
   container.replaceChildren();const prompt=el('div',undefined,'scope-prompt');prompt.setAttribute('role','status');
@@ -111,7 +110,7 @@ function render(){
   for(const input of $('readingMode').querySelectorAll('input'))input.checked=input.value===roles[role];
   if(synthesis?.status==='blocked'){const message=el('div',undefined,'overview-note search-answer');message.setAttribute('role','alert');message.append(el('h2',synthesis.answer.title||'A safer way to proceed'));renderAnswer(message,synthesis.answer,renderCheck);$('card').replaceChildren(message);mobile.update({topic:'',role:roles[role],responses:[]});buddy.sync(true,false);return;}
   const general=generalMode(role),count=deckCount(role);
-  const profile=readingProfile(role);document.body.classList.add('buddy-enabled');$('deskTitle').textContent=role===0?'Understand your health':'Clinical research desk';$('deskIntro').textContent='Ask a question, explore six medical decks, and go deeper with your buddy.';$('copilot-heading').textContent='HealthBrowse buddy';$('card').setAttribute('aria-label','Six Medical Decks');
+  const profile=readingProfile(role);document.body.classList.add('buddy-enabled');$('deskTitle').textContent=role===0?'Understand your health':'Clinical research desk';$('deskIntro').textContent='Ask a question, explore six medical decks, and go deeper with your buddy.';$('copilot-heading').textContent='Buddy';$('card').setAttribute('aria-label','Six Medical Decks');
   const deck=$('card'),sameTopic=deck.dataset.faqTopic===topic&&deck.dataset.readingRole===String(role),openedFAQs=new Set([...deck.querySelectorAll('details[open][data-faq]')].map(d=>d.dataset.faq)),responses=[];
   const opened=new Set([...deck.querySelectorAll('details[open][data-section]')].map(d=>d.dataset.section));
   deck.replaceChildren();deck.dataset.faqTopic=topic;deck.dataset.readingRole=String(role);
@@ -119,7 +118,7 @@ function render(){
   if(!unresolved && assignments[topic])header.append(el('span',assignments[topic].map(i=>depts[i]).join(' · '),'badge'));
   if(unresolved){
     const feedback=el('div',undefined,'overview-note search-answer');
-    feedback.append(el('h3','Let’s clarify your question'),el('p',activeQuery||$('query').value,'answer-question'),el('p','I could not confidently match this to one medical topic. Enter a disease name, choose a focus area above, or select a matching topic when options are shown.'));
+    feedback.append(el('h3','Let’s clarify your question'),el('p',activeQuery||$('query').value,'answer-question'),el('p','I could not find a supporting passage for this question in the available medical sources. Try adding the organ, medicine, condition or process you mean. No answer has been generated.'));
     const diagnosis=personalDiagnosisNotice(activeQuery);if(diagnosis)feedback.append(el('p',diagnosis,'query-interpretation'));header.append(feedback);
   }
   if(!unresolved){
@@ -232,7 +231,8 @@ async function performSearch(input,chosenTopic,confirmed=false){
   let {choices,keywords}=resolveSearch(corrected,lookupIndex);choices=inScopeChoices(choices);
   if(chosenTopic && choices.includes(chosenTopic))choices=[chosenTopic];
   if(!choices.length && activeQuery && !unresolved && /\b(it|its|this condition|this disease)\b/i.test(input) && questionDeck(input))choices=[topic];
-  let exact=allowedTopics.get(keywords.toLowerCase()),codeResult=null;
+  const related=!code&&!choices.length?medlineLookup.resolveQuestion(corrected):null;
+  let exact=allowedTopics.get(keywords.toLowerCase())||related?.topic,codeResult=null;
   if(code || (!choices.length && !exact)){
     const phrase=code || extractCondition(corrected);
     if(phrase){
@@ -251,7 +251,7 @@ async function performSearch(input,chosenTopic,confirmed=false){
     }
     if(!exact&&!choices.length){
       unresolved=true;topic='';codes=codeResult;live=null;activeQuery=input;
-      $('notice').textContent=codeResult?.message||(code?.toUpperCase().startsWith('SNOMED')?codeResult?.snomedStatus:null)||'No exact disease or code was verified. Choose a focus area or enter a specific disease name.';
+      $('notice').textContent=codeResult?.message||(code?.toUpperCase().startsWith('SNOMED')?codeResult?.snomedStatus:null)||'No supporting medical source was found for this question. Try a more specific medical topic.';
       $('results').hidden=true;render();$('card').focus({preventScroll:true});$('card').scrollIntoView({block:'start',behavior:'smooth'});return;
     }
   }

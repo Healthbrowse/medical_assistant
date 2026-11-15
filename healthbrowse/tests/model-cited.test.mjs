@@ -100,3 +100,30 @@ test('withheld overview wording can use an independently supported deck claim fr
  assert.deepEqual(result.answer,[supported]);assert.ok(result.answerRecoveredFromDecks);assert.doesNotMatch(result.answer[0].text,/personal diagnosis/);
  assert.equal(result.withheldClaims,1,'The rejected original remains counted as withheld');
 });
+
+test('pituitary search and Buddy complete the authenticated API contract for both audiences',async t=>{
+ const DB=openWorkspace(':memory:');t.after(()=>DB.close());
+ for(const e of JSON.parse(readFileSync(new URL('../drizzle/meta/_journal.json',import.meta.url))).entries)DB.exec(readFileSync(new URL('../drizzle/'+e.tag+'.sql',import.meta.url),'utf8'));
+ const env={DB,SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public',MODEL_PROVIDER:'groq',GROQ_API_KEY:'test-only'};
+ let providerCalls=0;
+ t.mock.method(globalThis,'fetch',async(url,options)=>{
+  if(url==='https://auth.example/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
+  assert.equal(url,GROQ_CHAT_URL);providerCalls++;
+  const body=JSON.parse(options.body),data=JSON.parse(body.messages[1].content);
+  let raw;
+  if(data.claims)raw={checks:data.claims.map(c=>({id:c.id,verdict:'supported',sources:c.sources}))};
+  else{
+   assert.equal(data.topic,'Pituitary gland');assert.match(data.question,/main function|What does it do/);
+   const source=data.evidence.find(s=>s.text.includes('hormones that affect growth'));assert.ok(source);
+   raw={answer:[{text:source.text,sources:[source.id]}],...(data.mode==='search'?{decks:Object.fromEntries([1,2,3,4,5,6].map(i=>[i,[]]))}:{})};
+  }
+  return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify(raw)}}]});
+ });
+ for(const role of ['General','Clinicians'])for(const mode of ['search','chat']){
+  const question=mode==='search'?'What is the main function of the pituitary gland?':'What does it do?';
+  const response=await modelAPI(new Request('https://site.test/api/ai/answer',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer test-session-12345'},body:JSON.stringify({topic:'Pituitary gland',question,searchQuery:'What is the main function of the pituitary gland?',role,mode,deck:2})}),env,assets);
+  assert.equal(response.status,200);const data=await response.json();assert.equal(data.status,'generated');assert.equal(data.decks.length,mode==='search'?6:0);
+  assert.match(data.answer.blocks[0].text,/hormones that affect growth/);assert.equal(data.answer.blocks[0].references[0].url,'https://medlineplus.gov/pituitarydisorders.html');
+ }
+ assert.equal(providerCalls,8,'One generation and one support review per request.');
+});
