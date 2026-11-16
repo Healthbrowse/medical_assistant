@@ -1,15 +1,38 @@
 {
-  "source": "https://medlineplus.gov/xml/mplus_topics_compressed_2026-10-31.zip",
-  "feed_date": "2026-10-31",
-  "checked_on": "2026-11-01",
-  "archive_sha256": "8d95315ae1a71d99dac53a841688b784b740ace015c3d46ca0ee1648eff5f6f1",
-  "index_sha256": "1644d6e2a5405df6edf3f20504ff93aa180e41c9c8248430aa295835909a6174",
+  "source": "https://medlineplus.gov/xml/mplus_topics_compressed_2026-11-13.zip",
+  "feed_date": "2026-11-13",
+  "checked_on": "2026-11-16",
+  "archive_sha256": "0b1ec6d1df215b56e6fe5b78df22cc9f5ee591c0dd6592b9f938b2f40af1bd25",
+  "index_sha256": "e8b755e47dffc75bac86ca95c5908fde9167babf1e000058d445c89727787d4f",
   "rights_url": "https://medlineplus.gov/about/using/usingcontent/",
   "rights_sha256": "d3027733c49d01a317e22bec8fb47462559752701e663a2f2c7771a035933075",
   "topic_count": 1017,
   "changed_topic_urls": {
     "added": [],
     "removed": [],
-    "updated": []
+    "updated": [
+      "https://medlineplus.gov/amyotrophiclateralsclerosis.html",
+      "https://medlineplus.gov/antibiotics.html",
+      "https://medlineplus.gov/aphasia.html",
+      "https://medlineplus.gov/botox.html",
+      "https://medlineplus.gov/breastcancer.html",
+      "https://medlineplus.gov/breathingproblems.html",
+      "https://medlineplus.gov/bruises.html",
+      "https://medlineplus.gov/colonicpolyps.html",
+      "https://medlineplus.gov/diabetestype2.html",
+      "https://medlineplus.gov/dietaryfats.html",
+      "https://medlineplus.gov/drugsandyoungpeople.html",
+      "https://medlineplus.gov/druguseandaddiction.html",
+      "https://medlineplus.gov/gallbladdercancer.html",
+      "https://medlineplus.gov/hpv.html",
+      "https://medlineplus.gov/intestinalobstruction.html",
+      "https://medlineplus.gov/maculardegeneration.html",
+      "https://medlineplus.gov/osteoarthritis.html",
+      "https://medlineplus.gov/pheochromocytoma.html",
+      "https://medlineplus.gov/rheumatoidarthritis.html",
+      "https://medlineplus.gov/tineainfections.html",
+      "https://medlineplus.gov/toxoplasmosis.html",
+      "https://medlineplus.gov/waterpollution.html"
+    ]
   }
 }
