@@ -1,0 +1,17 @@
+{
+  "title": "OpenStax Anatomy and Physiology 2e",
+  "revision": "b0058a743bdd2cc08196abaaa7d5469970c0d80c",
+  "snapshotDate": "2026-03-11",
+  "collectedAt": "2026-11-17T08:05:31.823088+00:00",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "purpose": "Frozen retrieval baseline, not supervised training targets or clinical guidelines",
+  "attribution": "Adapted from OpenStax, Anatomy and Physiology 2e, CC BY 4.0, source snapshot 11 March 2026. Text extracted and reorganized by HealthBrowse; figures and exercises omitted.",
+  "source_export_sha256": "11c427009b19fb765a32e4590b7f7055c2da94fa614db0b575ea4c9630a83437",
+  "corpus_sha256": "168a5fc8ba024f452a79ef8c17588fc73cc20068006ed39b3b46990daba3d446",
+  "passages": 4021,
+  "modules": 198,
+  "transformation": "Paragraphs 20\u20136000 characters retained with source IDs; no medical text rewritten.",
+  "uncompressed_sha256": "11fa36ae45aaeb949155610cf0c6999bae702f9e648bbcca5368815f71f4e47a",
+  "compression": "gzip; mtime=0"
+}

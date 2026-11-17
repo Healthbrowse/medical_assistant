@@ -1,0 +1,23 @@
+{
+  "project": "healthbrowse-medical-research",
+  "version": "0.1.0",
+  "base_model": "meta-llama/Meta-Llama-3-8B-Instruct",
+  "revision": "8afb486c1db24fe5011ec46dfbe5b5dccdb575c2",
+  "method": "qlora",
+  "roles": [
+    "general",
+    "clinician"
+  ],
+  "max_length": 4096,
+  "max_new_tokens": 3072,
+  "lora_rank": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.05,
+  "learning_rate": 0.0001,
+  "epochs": 2,
+  "batch_size": 1,
+  "gradient_accumulation_steps": 8,
+  "seed": 42,
+  "production_routing": false,
+  "inference_context_length": 8192
+}
