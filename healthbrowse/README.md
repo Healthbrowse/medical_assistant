@@ -1,6 +1,8 @@
 # HealthBrowse public research platform
 
-HealthBrowse uses Groq-hosted `openai/gpt-oss-120b` for cited answers and six medical decks, with a separate `openai/gpt-oss-120b` request checking claim support and citation assignments. General and Clinicians share this hosted service but use different audience instructions. The click-to-open Buddy uses the active question, answer and selected deck. [Configuration and verification](docs/model-integration.md).
+**17 November 2026 architecture decision:** React JS frontend and FastAPI backend are the selected migration target. The running browser still uses the JavaScript/Worker implementation below. See the [AAI-590 capstone plan](docs/capstone/README.md), [migration architecture](docs/capstone/ARCHITECTURE.md) and [setup guide](../setup.md). This documentation update does not complete the migration or a new training run.
+
+HealthBrowse uses Groq-hosted `openai/gpt-oss-120b` for cited answers and six medical decks, with a separate `openai/gpt-oss-120b` request checking claim support and citation assignments. General, Medical education and Clinicians share this hosted service but use different audience instructions. The click-to-open Buddy uses the active question, answer and selected deck. [Configuration and verification](docs/model-integration.md).
 
 The local QLoRA training and evaluation files remain research experiments; they are not required to run this hosted integration. No model weights or credentials belong in this repository. Automated citation/support checks reduce some errors but do not establish clinical certification.
 
@@ -16,9 +18,10 @@ The browser and buddy use the same question-answering and audience profiles:
 | Reading mode | Answer behavior |
 | --- | --- |
 | General | Plain-language answers, explanations of unfamiliar terms and source-supported safety information |
+| Medical education | Source-supported anatomy, physiology, mechanisms and educational explanations |
 | Clinicians | Clinical terminology, diagnostic and management context, subtype distinctions and evidence limitations |
 
-Only these two modes are selectable. Both use the floating Buddy, which stays closed until clicked. A reading-mode selection changes presentation, not identity verification or access to patient records. Research papers, datasets and care resources remain separately available. The specialty selector is removed.
+These three reading modes use the floating Buddy, which stays closed until clicked. A reading-mode selection changes presentation, not identity verification or access to patient records. Research papers, datasets and care resources remain separately available. The specialty selector is removed.
 
 Conversational phrasing, known synonyms and spelling corrections are normalized before intent matching. Explicit multipart questions are answered clause by clause, with unsupported parts identified. Answers do not exclude material merely because it is visible in a deck. Each clinical passage retains its citation and exact stored-source check; role-specific study prompts and safety reminders are separately labeled. Source coverage limits still apply: the application has no unrestricted evidence coverage or clinically validated diagnostic capability.
 
@@ -57,3 +60,4 @@ Repository-level workflows run from the parent repository's .github/workflows di
 
 ## Public access, domain and mobile
 Use the supplied hosting URL for a pilot. A custom domain requires registration, DNS control and a verified mapping. A corporate mailbox requires an email provider and MX records. For mobile, install the HTTPS web app through the browser's Add to Home Screen or Install command. Its service worker caches only a generic offline page. An App Store or Play Store release is a later, independently reviewed distribution channel.
+
