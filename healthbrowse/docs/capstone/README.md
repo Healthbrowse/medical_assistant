@@ -21,6 +21,16 @@ Read the [architecture and migration plan](ARCHITECTURE.md), [experiment protoco
 
 The final repository must contain completed working code rather than scratch/nonworking code. Failed experiments can be reported as research findings with reproducible evaluation code; do not label an unusable model as a production component. Preserve historical work in Git history and a clearly identified baseline reference. Prepare a clean submission branch/tag and a per-file inventory; this plan's folder map is not a complete final inventory.
 
+## Confirmed team and deadline
+
+- Team size: **three members**, confirmed by the user on 17 November 2026.
+- Deadline: **7 December 2026, 12:00 AM PST**, America/Los_Angeles (UTC−08:00).
+- India equivalent: **7 December 2026, 1:30 PM IST** (UTC+05:30).
+- Midnight is the start of 7 December in San Diego, not the end of that date.
+- Applicable limits: **20 report pages**, **at least eight presentation visualizations**, and **at least two minutes of speaking per member**. Each member submits the group peer-evaluation form.
+
+The corrected December deadline supersedes the initially supplied November date. The [dated schedule](PROJECT_PLAN.md) uses the remaining time; the seven-week course milestones remain a requirements reference.
+
 ## Submission limits
 
 | Team size | Report maximum | Minimum presentation visualizations | Detailed presentation duration |
@@ -29,7 +39,7 @@ The final repository must contain completed working code rather than scratch/non
 | 2 | 15 pages | 5 | 5–10 minutes |
 | 3 or more | 20 pages | 8 | 8–12 minutes |
 
-Report limits include figures, references and illustrations, but exclude appendices. Each presenter must speak for at least two minutes. The guidelines conflict: p. 3 says **less than 10 minutes**, while p. 4 permits up to 12 minutes for teams of three or more. Confirm with the instructor; provisionally target 8–9.5 minutes for a three- or four-person team. Submit one video URL per team through Canvas. Final code and presentation are due Day 7 of Module 7; the calendar date has not been supplied.
+Report limits include figures, references and illustrations, but exclude appendices. Each presenter must speak for at least two minutes. The guidelines conflict: p. 3 says **less than 10 minutes**, while p. 4 permits up to 12 minutes for teams of three or more. Confirm with the instructor; provisionally target 8–9.5 minutes for this three-person team. Submit one video URL per team through Canvas. The guidelines place final code and presentation on Day 7 of Module 7; the user-confirmed calendar deadline is 7 December 2026 at 12:00 AM PST.
 
 ## README alignment
 
@@ -39,8 +49,8 @@ Do not invent a project license: the audited root has no LICENSE file. The maint
 
 ## Decisions to finalize
 
-1. Confirm the capstone team roster and team size; the existing README lists Abhay Srivastav, Chandra Mouli Mudumba and Rahul Pawar as earlier contributors.
-2. Supply the course Report Template and calendar deadline/current module.
+1. Team size is confirmed as three. Confirm the final member names and responsibilities; the existing README lists Abhay Srivastav, Chandra Mouli Mudumba and Rahul Pawar as earlier contributors.
+2. Supply the separate course Report Template and confirm the current module; the calendar deadline is now recorded above.
 3. Discuss the proposed extension of AAI-540 work with the instructor and document the new AAI-590 contribution. This is an academic scope recommendation, not an approval requirement invented from the guidelines.
 4. Assign dataset annotation and clinical-review capacity. If qualified clinical review is unavailable, report that limitation and keep claims limited to source support and retrieval performance.
 

@@ -1,8 +1,31 @@
-# Seven-week capstone project plan
+# Capstone delivery schedule
 
-Status: Proposed schedule, not completed work. Calendar dates and individual owners await the confirmed team and course dates. The supplied guidelines budget 15 hours per person per week for seven weeks: 105 hours each, or 315 hours if the earlier three-person team continues.
+Status: Proposed schedule, not completed work. **Three group members** and a deadline of **7 December 2026 at 12:00 AM San Diego time (PST, UTC−08:00)** are confirmed. This is **7 December 2026 at 1:30 PM IST**, midnight at the start of 7 December in San Diego. Individual owners and the current course module remain to be assigned/confirmed.
 
-## Milestones
+As of 17 November, roughly 20 days remain. The original seven-week course budget is 105 hours per member, 315 total; it is not the time still available. At the guideline's 15 hours per member per week, the remaining period represents approximately 129 team-hours. Actual availability and completed work must be reviewed before committing scope.
+
+## Dated remaining-work schedule
+
+Dates below are San Diego calendar dates. These are proposed checkpoints, not completed milestones or guarantees.
+
+| Dates | Priority | Completion evidence |
+|---|---|---|
+| 17–20 November | Inventory completed work; assign three owners; obtain report template; finalize dataset rights, training question and narrow React/FastAPI scope | Task ownership, baseline commit, reproducible prior results and locked evaluation protocol |
+| 21–25 November | Complete one working React/FastAPI search flow and Buddy; clean/label data; freeze grouped splits and run baselines | Runnable flow, source manifest, EDA, leakage checks and baseline outputs |
+| 26–29 November | Train compact reranker and tune on validation only; integrate the selected checkpoint if evaluation supports it | Training logs, checkpoint hashes, reproducible configuration and comparison results |
+| 30 November–3 December | Run the locked test set, source-support/error review and staging/mobile/authentication tests; draft results | Metrics, plots, limitations, working deployment and draft report |
+| 4–5 December | Freeze submission code and results; export notebook PDFs; finalize report, slides and recorded demo | Reproducible submission tag, complete code/PDF bundle, report and video |
+| 6 December | Check access, links, file completeness and video; submit with a buffer | Canvas submission receipts and individual peer evaluations |
+
+Suggested internal submission target: **6 December at 12:00 PM PST**, equivalent to **7 December at 1:30 AM IST**, twelve hours before the deadline. This is a proposed buffer, not a changed official deadline.
+
+If work slips, reduce optional UI and commercial features before reducing data integrity, the required model-training evidence or held-out evaluation. Reassess the provisional 600-question annotation target after the pilot; record any scope change before freezing the benchmark. Preserve completed prior experiments as prior work rather than relabeling them as new capstone results.
+
+## Three-member responsibilities
+
+Assign one primary owner each for (1) data and labeling, (2) training and evaluation, and (3) React/FastAPI integration and deployment. All three contribute to source review, the report and the presentation; cross-review each other's work. Names are not assigned automatically from the earlier roster.
+
+## Original seven-week course milestones
 
 | Week | Course milestone | HealthBrowse work | Reviewable output |
 |---|---|---|---|
@@ -18,7 +41,7 @@ Schedule an instructor discussion during weeks 3–5 as recommended by the guide
 
 ## Effort allocation
 
-Planning allocation per person: 25 hours data/annotation, 20 model training and evaluation, 20 application integration, 10 deployment and testing, 25 writing/presentation and 5 contingency. Assign shared responsibilities explicitly after confirming the roster; this allocation is not a record of hours worked. Reduce optional features if annotation or training exceeds the budget.
+Planning allocation per person: 25 hours data/annotation, 20 model training and evaluation, 20 application integration, 10 deployment and testing, 25 writing/presentation and 5 contingency. This is the full-course reference allocation, not a remaining-work estimate. Assign shared responsibilities after confirming the names; this allocation is not a record of hours worked. Reduce optional features if annotation or training exceeds the budget.
 
 The capstone minimum is one working React/FastAPI medical question workflow, six source-supported sections, Buddy follow-ups, existing authentication integration, one trained neural reranker and an honest controlled evaluation. Advanced imaging, automatic diagnosis, specialty licensing, native app-store releases, subscriptions and Kubernetes operations remain outside this seven-week minimum.
 
@@ -36,8 +59,8 @@ For the capstone, deploy a staged educational research prototype on Cloud Run. F
 - Include documented working code for cleaning, EDA, pipeline construction, training, optimization and analysis; describe each submitted file and how to reproduce results.
 - Include the actual trained-model configuration and artifact access instructions without credentials.
 - Include PDF exports of every submitted notebook and the raw Python source files.
-- Apply the separate course Report Template once supplied; respect the team-size page cap including references and figures.
-- Prepare the required minimum visualizations: pipeline, corpus composition, split/coverage, retrieval comparison, training curves, support/error analysis, latency and example outputs are candidates for a three-person team. Use actual measured data rather than invented charts.
+- Apply the separate course Report Template once supplied; keep the three-member report within **20 pages including references and figures**, excluding appendices.
+- Prepare **at least eight presentation visualizations**: pipeline, corpus composition, split/coverage, retrieval comparison, training curves, support/error analysis, latency and example outputs are candidates for a three-person team. Use actual measured data rather than invented charts.
 - Record each member speaking at least two minutes; resolve the under-10 versus up-to-12-minute conflict with the instructor.
 - Submit the repository/report/presentation through the course process and complete individual peer evaluations for group work.
-- Preserve attribution for prior AAI-540 work and make the new contribution explicit. Confirm the roster, dates and code license before final publication.
+- Preserve attribution for prior AAI-540 work and make the new contribution explicit. Confirm the member names and code license before final publication; team size and deadline are recorded above.

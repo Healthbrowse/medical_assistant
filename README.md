@@ -29,7 +29,9 @@ Open http://localhost:8080. Supabase identity/email delivery and the model provi
 
 ## Contributors
 
-The earlier repository credits **Abhay Srivastav, Chandra Mouli Mudumba and Rahul Pawar**. Confirm the AAI-590 roster and individual responsibilities before the final submission. No institutional or clinical partner is claimed.
+The earlier repository credits **Abhay Srivastav, Chandra Mouli Mudumba and Rahul Pawar**. The capstone group has **three members**, confirmed on 17 November 2026; confirm that these earlier names remain the final roster and assign individual responsibilities. No institutional or clinical partner is claimed.
+
+**Submission deadline:** 7 December 2026 at **12:00 AM PST** (America/Los_Angeles), equivalent to **7 December 2026 at 1:30 PM IST**. This means midnight at the start of 7 December in San Diego. For this three-member group, the report limit is 20 pages, the presentation needs at least eight visualizations and each member speaks for at least two minutes. See the [dated delivery schedule](healthbrowse/docs/capstone/PROJECT_PLAN.md).
 
 ## Methods and technologies
 
