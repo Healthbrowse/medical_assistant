@@ -13,7 +13,7 @@ export function faqMarkdown({topic,clinical,role,answer,decks}){
   if(response.blocks?.length)return response.blocks.map(b=>safeText(b.text)+' '+answerSources({blocks:[b]}).map(r=>'['+number(r)+']').join(' ')).join('\n> ');
   return safeText(response.text||insufficientClinicalContext);
  }
- const out=['# 🩺 '+safeText(topic),'*View: '+(clinical?'Clinical Professional':'General Public')+'*','','> **Browser Summary:**','> '+body(answer),'','---','','## ❓ Six Medical Decks',''];
+ const out=['# 🩺 '+safeText(topic),'*View: '+(clinical?'Clinical Professional':['Medical student','Student','Medical education'].includes(role)?'Medical Education':'General Public')+'*','','> **Browser Summary:**','> '+body(answer),'','---','','## ❓ Six Medical Decks',''];
  for(let i=0;i<6;i++){
   const response=decks.find(d=>d.id===i+1)||{};
   out.push('**Q: '+faqQuestions[i]+'**','> **Buddy says:** '+body(response));

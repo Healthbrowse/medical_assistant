@@ -1,3 +1,4 @@
+import {clarifyQuery,renderClarification,retrievalTerms} from './query-understanding.js';
 import {setupMobileWorkspace} from './mobile-workspace.js';
 import {notifySafety} from './safety-notification.js';
 import {personalDiagnosisNotice} from './safety-policy.js';
@@ -50,13 +51,13 @@ function refreshSynthesis(context){
  synthesisController?.abort();const controller=new AbortController();synthesisController=controller;synthesis={key,status:'loading'};
  void requestSynthesis(context,context.query||context.topic,{signal:controller.signal}).then(result=>{
   if(controller!==synthesisController||key!==synthesisKey(currentContext()))return;
-  synthesis={key,...result};if(result.status==='blocked')notifySafety({status:'blocked',safety:result.answer?.safety});render();
+  synthesis={key,...result};$('notice').textContent=result.status==='generated'?'Your answer and six medical decks are ready.':result.status==='sourced'?'Retrieved sources are ready. The AI explanation could not finish.':result.message||'Choose an option to continue.';if(result.status==='blocked')notifySafety({status:'blocked',safety:result.answer?.safety});render();
  }).catch(()=>{});
 }
 function currentContext(){
   if(!topic||!catalog||unresolved)return null;
   const resources=catalog[topic]||[];
-  const currentAnswer=synthesis?.status==='generated'&&synthesis.key===synthesisKey({topic,role:roles[role],query:activeQuery});
+  const currentAnswer=['generated','sourced'].includes(synthesis?.status)&&synthesis.key===synthesisKey({topic,role:roles[role],query:activeQuery});
   return {topic,frameworkVersion,role:roles[role],query:activeQuery,aliases:[...(medicalRecord(topic)?.aliases||[]),...(taxonomy?.entities.find(e=>e.name===topic)?.aliases||[])],
     answerSummary:currentAnswer?synthesis.answer.text:'',deckSummaries:currentAnswer?synthesis.decks.map(d=>d.text):[],
     passages:textRecords(),records:[...resources,...(live?.records||[]),...(codes?.rows||[]).map(r=>({...r,kind:'terminology',title:r.label}))],
@@ -108,13 +109,14 @@ function renderCodes(body){
 }
 function render(){
   for(const input of $('readingMode').querySelectorAll('input'))input.checked=input.value===roles[role];
+  if(synthesis?.status==='clarification'){renderClarification($('card'),synthesis.clarification,q=>search(q,null,true),draft=>{if(draft!==undefined)$('query').value=draft;$('query').focus()});$('notice').textContent='Choose a meaning or add the missing subject.';return;}
   if(synthesis?.status==='blocked'){const message=el('div',undefined,'overview-note search-answer');message.setAttribute('role','alert');message.append(el('h2',synthesis.answer.title||'A safer way to proceed'));renderAnswer(message,synthesis.answer,renderCheck);$('card').replaceChildren(message);mobile.update({topic:'',role:roles[role],responses:[]});buddy.sync(true,false);return;}
   const general=generalMode(role),count=deckCount(role);
-  const profile=readingProfile(role);document.body.classList.add('buddy-enabled');$('deskTitle').textContent=role===0?'Understand your health':'Clinical research desk';$('deskIntro').textContent='Ask a question, explore six medical decks, and go deeper with your buddy.';$('copilot-heading').textContent='Buddy';$('card').setAttribute('aria-label','Six Medical Decks');
+  const profile=readingProfile(role);document.body.classList.add('buddy-enabled');$('deskTitle').textContent=role===0?'Understand your health':role===2?'Explore medical knowledge':'Clinical research desk';$('deskIntro').textContent='Ask a question, explore six medical decks, and go deeper with your buddy.';$('copilot-heading').textContent='Buddy';$('card').setAttribute('aria-label','Six Medical Decks');
   const deck=$('card'),sameTopic=deck.dataset.faqTopic===topic&&deck.dataset.readingRole===String(role),openedFAQs=new Set([...deck.querySelectorAll('details[open][data-faq]')].map(d=>d.dataset.faq)),responses=[];
   const opened=new Set([...deck.querySelectorAll('details[open][data-section]')].map(d=>d.dataset.section));
   deck.replaceChildren();deck.dataset.faqTopic=topic;deck.dataset.readingRole=String(role);
-  const header=el('div',undefined,'cardhead');header.append(el('span','HEALTHBROWSE / MEDCARD','eyebrow'),el('h2',unresolved?'Topic not resolved':topic),el('p','View: '+(professionalRole(role)?'Clinical Professional':'General Public'),'deck-subtitle'));
+  const header=el('div',undefined,'cardhead');header.append(el('span','HEALTHBROWSE / MEDCARD','eyebrow'),el('h2',unresolved?'Topic not resolved':topic),el('p','View: '+(professionalRole(role)?'Clinical Professional':role===2?'Medical Education':'General Public'),'deck-subtitle'));
   if(!unresolved && assignments[topic])header.append(el('span',assignments[topic].map(i=>depts[i]).join(' · '),'badge'));
   if(unresolved){
     const feedback=el('div',undefined,'overview-note search-answer');
@@ -125,8 +127,9 @@ function render(){
     const sources=textRecords(),context={...currentContext(),topic,role:roles[role],aliases:[...(medicalRecord(topic)?.aliases||[]),...(taxonomy.entities.find(e=>e.name===topic)?.aliases||[])],passages:sources,records:currentContext()?.records||[]};
     const overview=el('div',undefined,'overview-note search-answer');overview.append(el('h3','Browser Summary'),el('p',activeQuery||topic,'answer-question'));
     refreshSynthesis(context);
-    const direct=synthesis?.key===synthesisKey(context)&&synthesis.status==='generated'?synthesis.answer:searchAnswer(context,activeQuery||topic);
-    direct.modelNotice=synthesis?.key===synthesisKey(context)?(synthesis.status==='loading'?'Preparing an answer and six medical decks from cited sources… Source excerpts are available while you wait.':synthesis.message||''):'';
+    let direct=synthesis?.key===synthesisKey(context)&&['generated','sourced'].includes(synthesis.status)?synthesis.answer:searchAnswer(context,activeQuery||topic);
+    if(synthesis?.status==='loading'&&!direct.supported)direct={text:'Looking up supporting medical sources for your question…',blocks:[],citations:[],checks:[],supported:false};
+    direct.modelNotice=synthesis?.key===synthesisKey(context)?(synthesis.status==='loading'?'Preparing an answer and six medical decks from cited sources… Source excerpts are available while you wait.':synthesis.message||direct.modelNotice||''):'';
     const state=synthesis?.key===synthesisKey(context)?synthesis:null;
     responses.push({id:0,...direct});
     renderAnswer(overview,{...direct,code:state?.code,retryAt:state?.retryAt},renderCheck,()=>{if(synthesis?.key!==synthesisKey(context))return;synthesis=null;render()});
@@ -150,7 +153,7 @@ function render(){
     if(unresolved){if(!extra){box.append(el('p','Search for a medical topic to explore this area.'));if(number===1&&codes)renderCodes(box);grid.append(box)}return}
     const preferred=rows.find(r=>checkedPassage(topic,texts,r));
     const claim=checkedPassage(topic,texts,preferred);
-    if(number<7){const generated=synthesis?.key===synthesisKey(currentContext())&&synthesis.status==='generated'?synthesis.decks.find(d=>d.id===number):null;const response=generated||domainAnswer(currentContext(),number,{detail:true});responses.push({id:number,...response});renderAnswer(box,{...response,list:number===3},renderCheck)}else if(claim){box.append(el('p',claim.text,'excerpt'));renderCheck(box,claim)}
+    if(number<7){const generated=synthesis?.key===synthesisKey(currentContext())&&['generated','sourced'].includes(synthesis.status)?synthesis.decks.find(d=>d.id===number):null;let response=generated||domainAnswer(currentContext(),number,{detail:true});if(synthesis?.status==='loading'&&!response.supported)response={text:'Retrieving evidence for this area…',blocks:[],citations:[],checks:[],supported:false};responses.push({id:number,...response});renderAnswer(box,{...response,list:number===3},renderCheck)}else if(claim){box.append(el('p',claim.text,'excerpt'));renderCheck(box,claim)}
     const drawer=el('details',undefined,'research-drawer');drawer.dataset.section=String(number);drawer.open=opened.has(String(number));drawer.append(el('summary','Sources and further reading'));
     const cardBox=box;
     for(const officialLink of officialLinks){const row=el('p');reference(row,officialLink.title+' · '+officialLink.publisher,officialLink.url);drawer.append(row)}
@@ -226,6 +229,8 @@ async function performSearch(input,chosenTopic,confirmed=false){
     return;
   }
   input=prepared.query;queryNotice=prepared.notice||'';
+  const clarification=clarifyQuery(input,{topic,context:!!activeQuery&&!unresolved});
+  if(clarification){$('card').hidden=false;$('results').hidden=true;renderClarification($('card'),clarification,q=>search(q,null,true),draft=>{if(draft!==undefined)$('query').value=draft;$('query').focus()});$('notice').textContent='Choose a meaning or add the missing subject.';return;}
   $('card').hidden=false;$('copilot').hidden=false;
   const corrected=correctSpelling(input),code=codeQuery(input);
   let {choices,keywords}=resolveSearch(corrected,lookupIndex);choices=inScopeChoices(choices);
@@ -233,7 +238,7 @@ async function performSearch(input,chosenTopic,confirmed=false){
   if(!choices.length && activeQuery && !unresolved && /\b(it|its|this condition|this disease)\b/i.test(input) && questionDeck(input))choices=[topic];
   const related=!code&&!choices.length?medlineLookup.resolveQuestion(corrected):null;
   let exact=allowedTopics.get(keywords.toLowerCase())||related?.topic,codeResult=null;
-  if(code || (!choices.length && !exact)){
+  if(code){
     const phrase=code || extractCondition(corrected);
     if(phrase){
       $('notice').textContent='Checking official terminology…';
@@ -255,6 +260,9 @@ async function performSearch(input,chosenTopic,confirmed=false){
       $('results').hidden=true;render();$('card').focus({preventScroll:true});$('card').scrollIntoView({block:'start',behavior:'smooth'});return;
     }
   }
+  // A clear question is eligible even when it has no local disease-title match.
+  // Multiple named subjects are preserved as one question for server retrieval.
+  if(!code&&(!choices.length&&!exact||choices.length>1)){exact=retrievalTerms(corrected)||corrected.slice(0,160);exact=exact[0].toUpperCase()+exact.slice(1);choices=[];}
   unresolved=false;
   const results=$('results');results.hidden=false;$('resultsBody').replaceChildren();
   $('query').value=choices.join(' / ')||exact;$('resultTitle').textContent='Research sources for '+$('query').value;
@@ -279,7 +287,7 @@ async function performSearch(input,chosenTopic,confirmed=false){
     const local=resultGroup('Medical sources · '+match);
     const sources=filtered('core','guideline').slice(0,3);
     sources.forEach(r=>local.append(linkRecord(r)));local.append(button('Open full MedCard',()=>$('card').scrollIntoView()));
-  }else panel($('resultsBody'),'Searching published research beyond the 20-topic MedCard catalog.');
+  }else panel($('resultsBody'),'Searching medical education and published evidence beyond the local topic catalog.');
   const papers=resultGroup('Additional indexed publications'),figures=resultGroup('Published figures');
   $('searchSubmit').textContent='Search ↗';$('find').setAttribute('aria-busy','false');
   const timeout=setTimeout(()=>request.abort(),12000);

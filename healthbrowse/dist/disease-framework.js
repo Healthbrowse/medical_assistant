@@ -18,7 +18,7 @@ export const frameworkReferences=[
 ];
 export const professionalRole=role=>roleIndex(role)===1;
 export const roleLabel=readingLabel;
-export const domainTitle=(number,role)=>roleIndex(role)===1?domains[number-1].title:domains[number-1].plain;
+export const domainTitle=(number,role)=>roleIndex(role)>0?domains[number-1].title:domains[number-1].plain;
 
 // Route intact excerpts, never synthesize disease facts from a domain label.
 // A progression passage does not establish that its subjects were untreated.

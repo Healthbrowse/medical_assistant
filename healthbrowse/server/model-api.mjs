@@ -1,3 +1,6 @@
+import {educationEvidence,addEducation} from './education-evidence.mjs';
+import {clarifyQuery} from '../dist/query-understanding.js';
+import {retrieveEvidence} from './live-evidence.mjs';
 import {outsideMedicalScope,scopeAnswer,insufficientClinicalContext,medicalPersona} from '../dist/medical-contract.js';
 import {assessSafety,safetyAnswer,safetyPolicyVersion,securityFlagFor} from '../dist/safety-policy.js';
 import {securityVariants,assessBuddySafety,buddySafetyAnswer,buddyHelpAnswer,buddyPolicyVersion} from '../dist/buddy-policy.js';
@@ -48,7 +51,7 @@ async function complete(config,messages,signal,maxTokens=6000,schema){
  if(!res.ok){
   if(res.status===401||res.status===403)fail(503,'provider_access','The AI provider rejected access. The site owner must check the token and model access.');
   if(res.status===402)fail(503,'provider_credits','AI provider credits are unavailable. Showing source excerpts instead.');
-  if(res.status===429)fail(503,'provider_busy','The AI service has reached a usage limit. '+(config.protocol==='groq-cited-v1'?'General and Clinicians modes share this provider quota. ':'')+'Cited source excerpts remain available.',retryDelay(res.headers.get('retry-after')));
+  if(res.status===429)fail(503,'provider_busy','The AI service has reached a usage limit. '+(config.protocol==='groq-cited-v1'?'The reading modes share this provider quota. ':'')+'Cited source excerpts remain available.',retryDelay(res.headers.get('retry-after')));
   if(res.status===400||res.status===404||res.status===422)fail(503,'provider_configuration','The AI provider could not accept this model request. Showing source excerpts instead.');
   fail(503,'provider_unavailable','The AI provider is temporarily unavailable. Showing source excerpts instead.');
  }
@@ -61,7 +64,7 @@ export async function modelAPI(request,env,assets){
  if(url.pathname==='/api/ai/status'&&request.method==='GET')return reply(modelStatus(env));
  if(url.pathname!=='/api/ai/answer')return reply({error:'Unknown AI route.'},404);
  if(request.method!=='POST')return reply({error:'Use POST.'},405);
- let phase='input';
+ let phase='input',fallbackEvidence=null,fallbackInput=null;
  try{
   if(request.headers.get('origin')&&request.headers.get('origin')!==url.origin)fail(403,'origin','Cross-origin requests are not supported.');
   if(!request.headers.get('content-type')?.startsWith('application/json'))fail(415,'body','Use JSON.');
@@ -89,20 +92,24 @@ export async function modelAPI(request,env,assets){
   if(category!=='educational'){
    return reply({status:'blocked',code:'unsafe_request',answer:clinicalDecision?safetyAnswer(clinicalDecision.category):buddySafetyAnswer(buddyDecision?.category),decks:[]},422);
   }
+  const clarification=clarifyQuery(b.question,{topic:b.topic,context:!!b.topic});
+  if(clarification)return reply({status:'clarification',clarification,decks:[]});
   b.persona=medicalPersona(b.role);b.role=normalizeReadingRole(b.role);
   const help=b.mode==='chat'?buddyHelpAnswer(b.question):null;
   if(help){phase='authentication';await identity(request,env);return reply({status:'platform',answer:help,decks:[]})}
   const route=b.role==='Medical professional'?'professional':'general',config=endpoint(env,route);
-  if(!config)fail(503,'model_not_configured','AI synthesis is not connected yet. Showing source excerpts instead.');
   const reviewer=modelReviewEndpoint(env,route);
-  if(!reviewer)fail(503,'reviewer_not_configured','The support reviewer is not configured. Showing source excerpts instead.');
   phase='authentication';
-  const user=await identity(request,env),grounded=config.protocol==='grounded-v2';
-  phase='evidence';
-  const evidence=config.protocol==='groq-cited-v1'?citedEvidence(assets,b):grounded?groundedEvidence(assets,b):evidenceFor(assets,b.topic,b.role,b.question);
-  if(!evidence?.sources.length)fail(422,'no_evidence',insufficientClinicalContext);
+  const user=await identity(request,env),grounded=config?.protocol==='grounded-v2';
   phase='quota';
   await reserve(env,user);
+  phase='evidence';
+  const local=config?.protocol==='groq-cited-v1'||!config?citedEvidence(assets,b):grounded?groundedEvidence(assets,b):evidenceFor(assets,b.topic,b.role,b.question);
+  const evidence=grounded?local:addEducation(await retrieveEvidence(b,local,env,request.signal),educationEvidence(assets,b),b);
+  if(!evidence?.sources.length)return reply({status:'unavailable',code:'no_evidence',error:evidence?.retrieval?.providers.some(p=>p.status==='unavailable')?'The medical source service could not complete this search. Please retry. This does not mean your question is unclear.':'No sufficiently relevant passage was retrieved for this question. Try a more specific medical term; no answer has been invented.',retrieval:evidence?.retrieval},422);
+  if(!grounded){fallbackEvidence=evidence;fallbackInput=b;}
+  if(!config)fail(503,'model_not_configured','The AI service is not configured. Retrieved source passages are shown below.');
+  if(!reviewer)fail(503,'reviewer_not_configured','The support reviewer is not configured. Showing source excerpts instead.');
   // The deadline includes both generation, review and one possible repair.
   const started=Date.now(),deadline=AbortSignal.timeout(120000);
   // Incoming Request.signal is absent on older Workers compatibility dates.
@@ -115,7 +122,7 @@ export async function modelAPI(request,env,assets){
    phase='support_review';
    const review=check.claims.length?await complete(config,check.messages,signal,check.maxTokens,check.schema):{checks:[]};
    phase='presentation';
-   return reply(presentCited(applyCitedReview(review,check,prepared,b),prepared,b,config.model));
+   return reply({...presentCited(applyCitedReview(review,check,prepared,b),prepared,b,config.model),retrieval:evidence.retrieval});
   }
   let reason='';
   for(let attempt=0;attempt<2;attempt++){
@@ -161,5 +168,10 @@ export async function modelAPI(request,env,assets){
   // Never log questions, tokens, provider bodies, identities or error messages.
   if(error.code==='provider_busy')console.warn(JSON.stringify({event:'ai_provider_limited',phase,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})}));
   if(!(error instanceof Failure))console.error(JSON.stringify({event:'ai_request_failed',phase,kind:['TypeError','SyntaxError','TimeoutError','AbortError'].includes(error?.name)?error.name:'Error'}));
+  if(fallbackEvidence?.sources.length&&fallbackInput&&env.RETRIEVAL_LIVE!=='off'){
+   const prepared=prepareCited(fallbackInput,fallbackEvidence);const result=presentCited({answer:[],decks:{}},prepared,fallbackInput,'');
+   const message=error instanceof Failure?error.message:'AI synthesis could not finish. Retrieved source excerpts remain available.';
+   return reply({...result,status:'sourced',code:error.code||'model_unavailable',message,retrieval:fallbackEvidence.retrieval,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})});
+  }
   return reply({status:'unavailable',code:error.code||'model_unavailable',error:error instanceof Failure?error.message:'AI synthesis is temporarily unavailable. Showing source excerpts instead.',...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})},error.status||503)}
 }

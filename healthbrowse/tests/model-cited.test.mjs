@@ -27,7 +27,7 @@ test('six decks have source coverage for leukemia and sore throat, including sco
   const p=prepareCited({...input,topic},citedEvidence(assets,{...input,topic}));
   for(const deck of (topic==='Cold Sores'?[1,2,3,5,6]:[1,2,3,4,5,6]))assert.ok(p.evidence.sources.some(s=>s.deck===deck&&!s.overview),topic+' deck '+deck);
   assert.ok(JSON.stringify(p.messages).length<18000);assert.ok(p.evidence.sources.every(s=>!s.historical));
-  assert.equal(p.maxTokens,2400);assert.equal(prepareCitedReview(rawFor(p),p,input).maxTokens,1400);
+  assert.equal(p.maxTokens,3600);assert.equal(prepareCitedReview(rawFor(p),p,input).maxTokens,2000);
   assert.doesNotMatch(JSON.stringify(p.schema),/maxLength/,'Schema must not truncate sentences');
  }
 });
@@ -67,7 +67,7 @@ test('Buddy schema avoids unsupported empty-object shapes; reviews must cover ev
 test('both modes and Buddy generate once and review support once through the API contract',async t=>{
  const DB=openWorkspace(':memory:');t.after(()=>DB.close());
  for(const e of JSON.parse(readFileSync(new URL('../drizzle/meta/_journal.json',import.meta.url))).entries)DB.exec(readFileSync(new URL('../drizzle/'+e.tag+'.sql',import.meta.url),'utf8'));
- const env={DB,SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public',MODEL_PROVIDER:'groq',GROQ_API_KEY:'test-only'};
+ const env={RETRIEVAL_LIVE:'off',DB,SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public',MODEL_PROVIDER:'groq',GROQ_API_KEY:'test-only'};
  const calls=[];let providerStatus=200;
  t.mock.method(globalThis,'fetch',async(url,opts)=>{
   if(url==='https://auth.example/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
@@ -104,7 +104,7 @@ test('withheld overview wording can use an independently supported deck claim fr
 test('pituitary search and Buddy complete the authenticated API contract for both audiences',async t=>{
  const DB=openWorkspace(':memory:');t.after(()=>DB.close());
  for(const e of JSON.parse(readFileSync(new URL('../drizzle/meta/_journal.json',import.meta.url))).entries)DB.exec(readFileSync(new URL('../drizzle/'+e.tag+'.sql',import.meta.url),'utf8'));
- const env={DB,SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public',MODEL_PROVIDER:'groq',GROQ_API_KEY:'test-only'};
+ const env={RETRIEVAL_LIVE:'off',DB,SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public',MODEL_PROVIDER:'groq',GROQ_API_KEY:'test-only'};
  let providerCalls=0;
  t.mock.method(globalThis,'fetch',async(url,options)=>{
   if(url==='https://auth.example/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});

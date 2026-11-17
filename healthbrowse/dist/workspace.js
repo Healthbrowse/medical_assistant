@@ -1,3 +1,4 @@
+import {clarifyQuery,renderClarification,retrievalTerms,usesActiveTopic} from './query-understanding.js';
 import {shouldSendBuddyKey} from './buddy-layout.js';
 import {withAudienceDisclaimer} from './medical-contract.js';
 import {notifySafety} from './safety-notification.js';
@@ -17,18 +18,18 @@ export function guardMessage(status){return status==='unsafe'?safetyAnswer().tex
 function save(key,value){try{sessionStorage.setItem(key,JSON.stringify(value))}catch{}}
 export function readSession(key,fallback){try{return JSON.parse(sessionStorage.getItem(key))??fallback}catch{return fallback}}
 export function setupCopilot(getContext,actions={}){
- let sequence=0,active=1,history=[],identity='',publicTurns=[],busy=false,modelRequest=null,privateConversation=false;
+ let sequence=0,active=1,history=[],identity='',publicTurns=[],busy=false,modelRequest=null,privateConversation=false,conversationTopic='';
  const controls=[$('deckSelect'),$('question'),$('ask').querySelector('button[type=submit]')];
  controls.forEach(control=>control.disabled=true);
  function sync(){
   const c=getContext();if(!c)return;
   const profile=readingProfile(c.role),scope=frameworkVersion+'|audience-v2|'+c.topic+'|'+c.role;
-  if(identity!==scope){modelRequest?.abort();history=[];publicTurns=[];privateConversation=false;busy=false;++sequence;$('scopeQuestion').replaceChildren();const last=readSession('hb-context',{});active=last.scope===scope&&Number.isInteger(last.deck)?Math.max(1,Math.min(last.deck,6)):1;if(last.scope===scope)history=publicTurns=readSession('hb-transcript',[]);identity=scope}
+  if(identity!==scope){conversationTopic=c.topic;modelRequest?.abort();history=[];publicTurns=[];privateConversation=false;busy=false;++sequence;$('scopeQuestion').replaceChildren();const last=readSession('hb-context',{});active=last.scope===scope&&Number.isInteger(last.deck)?Math.max(1,Math.min(last.deck,6)):1;if(last.scope===scope)history=publicTurns=readSession('hb-transcript',[]);identity=scope}
   controls.forEach(control=>control.disabled=busy);
   $('buddyStop').hidden=!busy;
   save('hb-context',{topic:c.topic,role:c.role,scope,deck:active});save('hb-transcript',publicTurns);
   [...$('deckSelect').options].forEach((option,i)=>{option.textContent=(i+1)+' · '+domainTitle(i+1,c.role);option.hidden=i>=deckCount(c.role)});
-  $('deckSelect').value=String(active);$('copilotScope').textContent=c.topic+' · '+roleLabel(c.role);
+  $('deckSelect').value=String(active);$('copilotScope').textContent=(conversationTopic||c.topic)+' · '+roleLabel(c.role);
   $('copilotHint').textContent=busy?'Checking sources…':'';
   $('buddyWelcome').hidden=false;$('buddyQuestions').hidden=false;
   $('buddyWelcome').replaceChildren(node('p','I’m Buddy, your AI research companion. Let’s explore '+c.topic+'.'),node('small',profile.style+'. Choose an area below or ask me a question.'));
@@ -45,14 +46,20 @@ export function setupCopilot(getContext,actions={}){
   document.dispatchEvent(new CustomEvent('healthbrowse-chat-updated',{detail:{count:history.length,busy}}));
  }
  async function respond(q,fromSuggestion=false,guidedDeck=0){
-  const c=getContext();if(!c||!q.trim())return;
+  const browser=getContext();if(!browser||!q.trim())return;
+  let c=conversationTopic&&conversationTopic!==browser.topic?{...browser,topic:conversationTopic,query:conversationTopic,passages:[],answerSummary:'',deckSummaries:[]}:browser;
   const prepared=prepareQuery(q,[c.topic,c.query,history.at(-1)?.question].filter(Boolean).join(' ')),status=prepared.status;q=prepared.query;$('question').value='';$('scopeQuestion').replaceChildren();
   if(status!=='ok')notifySafety({status,safety:prepared.safety?.safety});
   if(status==='ok'&&(prepared.ephemeral||!canSaveResearchQuestion(q,c.query)))privateConversation=true;
   const saveable=status==='ok'&&!privateConversation;
   const run=++sequence,scope=identity;
+  const clarification=status==='ok'&&!guidedDeck?clarifyQuery(q,{topic:c.topic,context:true}):null;
+  if(clarification){renderClarification($('scopeQuestion'),clarification,query=>void ask(query),draft=>{if(draft!==undefined)$('question').value=draft;$('question').focus()});return;}
   const choices=status==='ok'&&!guidedDeck?actions.scopeChoice?.(q)||[]:[];
-  if(choices.length){actions.confirm(q,choices.join(' / '));return}
+  if(status==='ok'&&!guidedDeck&&!usesActiveTopic(q)&&(choices.length||/^(?:what (?:is|are)|what about|explain|describe|tell me about|how does|what (?:is|are) (?:the )?(?:main )?functions?)\b/i.test(q))){
+   const next=choices.length===1?choices[0]:retrievalTerms(q);
+   if(next&&next.toLowerCase()!==c.topic.toLowerCase()){conversationTopic=next[0].toUpperCase()+next.slice(1);c={...browser,topic:conversationTopic,query:q,passages:[],answerSummary:'',deckSummaries:[]};active=1;}
+  }
   const help=status==='ok'?buddyHelpAnswer(q):null;
   let answer=status!=='ok'?{...(prepared.safety||{text:guardMessage(status),citations:[],checks:[]}),deck:active}:help?{...help,deck:active}:guidedDeck?domainAnswer(c,guidedDeck):searchAnswer(c,q,{detail:true,activeDeck:active});
   if(!answer)return;
@@ -71,7 +78,8 @@ export function setupCopilot(getContext,actions={}){
    const result=await requestSynthesis(c,q,{mode:'chat',deck:guidedDeck||active,history:history.slice(0,-1),signal:modelRequest.signal});
    if(run!==sequence||identity!==scope)return;
    if(result.status==='blocked')notifySafety({status:'blocked',safety:result.answer?.safety});
-   if(['generated','blocked','platform'].includes(result.status))answer=result.answer;else answer={...answer,modelNotice:result.message,code:result.code,retryAt:result.retryAt};
+   if(result.status==='clarification'){renderClarification($('scopeQuestion'),result.clarification,query=>void ask(query),draft=>{if(draft!==undefined)$('question').value=draft;$('question').focus()});answer={text:result.clarification.text,blocks:[],citations:[],checks:[],supported:false};}
+   else if(['generated','sourced','blocked','platform'].includes(result.status))answer=result.answer;else answer={...answer,modelNotice:result.message,code:result.code,retryAt:result.retryAt};
   }
   if(run!==sequence||identity!==scope)return;
   if(status==='ok'){active=answer.deck||active;if(!help)answer=withAudienceDisclaimer(answer,c.role);}
@@ -94,5 +102,5 @@ export function setupCopilot(getContext,actions={}){
  $('ask').onsubmit=e=>{e.preventDefault();ask($('question').value)};
   $('buddyStop').onclick=()=>{sequence++;modelRequest?.abort();busy=false;if(history.at(-1))history.at(-1).modelNotice='Additional lookup stopped. The available cited response is shown below.';sync()};
   $('clearChat').onclick=()=>{sequence++;modelRequest?.abort();busy=false;$('scopeQuestion').replaceChildren();history=[];publicTurns=[];privateConversation=false;sync()};
- return {sync,askDomain(n){const choice=roleQuestions(getContext()?.role)[n-1];if(choice)void ask(choice.prompt,true,n)},clear(){sequence++;modelRequest?.abort();busy=false;history=[];publicTurns=[];privateConversation=false;$('scopeQuestion').replaceChildren();save('hb-transcript',[]);sync()},restore(turns){sequence++;modelRequest?.abort();busy=false;history=turns;publicTurns=[];privateConversation=turns.some(t=>!canSaveResearchQuestion(t.question));active=turns.at(-1)?.frameworkVersion===frameworkVersion?turns.at(-1).deck:1;sync()},activate(deck,focus=false){active=deck;sync();if(focus)$('question').focus({preventScroll:true})}};
+ return {sync,askDomain(n){const choice=roleQuestions(getContext()?.role)[n-1];if(choice)void ask(choice.prompt,true,n)},clear(){sequence++;modelRequest?.abort();busy=false;history=[];publicTurns=[];privateConversation=false;conversationTopic=getContext()?.topic||'';$('scopeQuestion').replaceChildren();save('hb-transcript',[]);sync()},restore(turns){sequence++;modelRequest?.abort();busy=false;history=turns;publicTurns=[];privateConversation=turns.some(t=>!canSaveResearchQuestion(t.question));active=turns.at(-1)?.frameworkVersion===frameworkVersion?turns.at(-1).deck:1;sync()},activate(deck,focus=false){active=deck;sync();if(focus)$('question').focus({preventScroll:true})}};
 }

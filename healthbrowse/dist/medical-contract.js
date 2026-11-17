@@ -2,9 +2,9 @@
 export const insufficientClinicalContext='Insufficient clinical context available to verify this claim.';
 export const patientDisclaimer='I am an AI, not a doctor. Please consult a healthcare provider before making medical decisions.';
 export const domainRestriction='As a medical AI browser, my operations are restricted to health and medical data.';
-export function medicalPersona(role){return ['Medical professional','Advanced professional','Clinicians'].includes(role)?'clinician':'patient';}
+export function medicalPersona(role){return ['Medical professional','Advanced professional','Clinicians'].includes(role)?'clinician':['Medical student','Student','Medical education'].includes(role)?'student':'patient';}
 export function withAudienceDisclaimer(answer,role){
- if(!answer||medicalPersona(role)!=='patient'||answer.safety||answer.kind==='platform')return answer;
+ if(!answer||medicalPersona(role)==='clinician'||answer.safety||answer.kind==='platform')return answer;
  return {...answer,audienceDisclaimer:patientDisclaimer,text:(answer.text||insufficientClinicalContext)+(answer.text?.includes(patientDisclaimer)?'':'\n\n'+patientDisclaimer)};
 }
 // Recognize explicit unrelated tasks without making an allowlist of disease names.

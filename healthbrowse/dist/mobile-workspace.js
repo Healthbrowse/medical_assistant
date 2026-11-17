@@ -28,7 +28,7 @@ export function setupMobileWorkspace({buddy}){
  const reader=createLocalReader({synthesis:window.speechSynthesis,Utterance:window.SpeechSynthesisUtterance,onStatus:text=>{voiceStatus.textContent=text;sourceAudioStatus.textContent=text}});
  document.addEventListener('pointerdown',()=>reader.stop(),true);document.addEventListener('keydown',e=>{if(e.key==='Escape')reader.stop()});
  function showSource(ref){
-  source.heading.textContent=ref.title||'Supporting source';source.body.replaceChildren(n('p',ref.date||'Publication date not supplied','meta'));
+  source.heading.textContent=ref.title||'Supporting source';source.body.replaceChildren(n('p',ref.date||'Publication date not supplied','meta'));if(ref.sourceType)source.body.append(n('p',ref.sourceType,'meta'));if(ref.attribution)source.body.append(n('p',ref.attribution,'meta'));
   if(ref.quote||ref.text){source.body.append(n('p','Supporting passage','label'),n('blockquote',ref.quote||ref.text,'source-passage'));}
   else source.body.append(n('p','Open the publisher page to read the original material.'));
   const link=safeLink(ref,'Open original source ↗');if(link)source.body.append(link);
@@ -63,14 +63,15 @@ export function setupMobileWorkspace({buddy}){
  function viewport(){const v=window.visualViewport;if(v&&v.scale!==1)return;document.documentElement.style.setProperty('--mobile-vh',(v?.height||window.innerHeight)+'px');document.documentElement.style.setProperty('--visual-top',(v?.offsetTop||0)+'px');document.body.classList.toggle('keyboard-open',!!v&&window.innerHeight-v.height>130&&/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName||''))}
  window.visualViewport?.addEventListener('resize',viewport);window.visualViewport?.addEventListener('scroll',viewport);window.addEventListener('resize',viewport);document.addEventListener('focusin',viewport);document.addEventListener('focusout',()=>setTimeout(viewport,100));viewport();
  return {update(next){
-  state={...next,role:normalizeReadingRole(next.role)};document.body.dataset.reader=state.role==='Medical professional'?'clinical':'general';
+  state={...next,role:normalizeReadingRole(next.role)};document.body.dataset.reader=state.role==='Medical professional'?'clinical':state.role==='Medical student'?'student':'general';
   const key=state.topic+'|'+state.role;if(key!==identity){identity=key;dictation.stop();reader.stop();if(source.dialog.open)source.dialog.close();}
   nav.replaceChildren();for(const [name,label] of mobileDestinations(state.role)){const item=b('',()=>run(name));item.append(icon(name),n('span',label));nav.append(item)}
-  tools.replaceChildren();const intro=n('div','','mobile-tools-heading');intro.append(n('small',state.role==='Medical professional'?'QUICK REFERENCE':'YOUR RESEARCH COMPANION'),n('h2',state.role==='Medical professional'?'Go straight to the evidence':'A little clarity, one question at a time'));tools.append(intro);
+  tools.replaceChildren();const intro=n('div','','mobile-tools-heading');intro.append(n('small',state.role==='Medical professional'?'QUICK REFERENCE':state.role==='Medical student'?'MEDICAL EDUCATION':'YOUR RESEARCH COMPANION'),n('h2',state.role==='Medical professional'?'Go straight to the evidence':state.role==='Medical student'?'Understand the mechanisms':'A little clarity, one question at a time'));tools.append(intro);
   const shortcuts=n('div','','mobile-shortcuts');
   if(state.role==='Medical professional'){for(const [id,label] of [[1,'Risk'],[3,'Symptoms'],[4,'Tests'],[5,'Treatment'],[6,'Outlook']])shortcuts.append(b(label,()=>jump(id)))}
+  else if(state.role==='Medical student'){shortcuts.append(b('Ask Buddy',()=>{buddy.show();$('question').focus()}),b('Explain the mechanism',()=>{if(!buddy.show())return;$('question').value='Explain the physiology and mechanism of '+state.topic+'.';$('question').focus()}),b('Review the evidence',()=>jump(4)))}
   else {shortcuts.append(b('Ask Buddy',()=>{buddy.show();$('question').focus()}),b('Explain symptoms',()=>{if(!buddy.show())return;$('question').value='Explain the symptoms of '+state.topic+' in simple language.';$('question').focus()}),b('Questions for my doctor',()=>{if(!buddy.show())return;$('question').value='What questions could I discuss with a clinician about '+state.topic+'?';$('question').focus()}))}
-  for(const control of shortcuts.children)control.disabled=!state.topic||!state.responses.length;tools.append(shortcuts,live);safety.textContent=state.role==='General reader'?patientDisclaimer:'Clinical research reference. Apply professional judgment, current guidelines and local protocols.';
+  for(const control of shortcuts.children)control.disabled=!state.topic||!state.responses.length;tools.append(shortcuts,live);safety.textContent=state.role==='General reader'?patientDisclaimer:state.role==='Medical student'?'Educational reference for supervised learning, not independent clinical decisions.':'Clinical research reference. Apply professional judgment, current guidelines and local protocols.';
   greeting.textContent='Ask a follow-up about '+(state.topic||'your topic')+', or explore one area at a time. I’ll use the sources from your research.';
   for(const r of state.responses.filter(r=>r.id>0)){const summary=$('card').querySelector('details[data-faq="'+r.id+'"]>summary');if(summary&&!summary.querySelector('.evidence-status'))summary.append(n('small',r.generation?'Cited AI summary':r.blocks?.length?'Source excerpt':'Evidence gap','evidence-status'+(!r.blocks?.length?' evidence-gap':'')));}
   annotateMedicalTerms($('card'));

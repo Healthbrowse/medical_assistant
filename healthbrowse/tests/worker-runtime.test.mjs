@@ -12,7 +12,7 @@ test('Workers runtime supports authenticated accounts, both six-deck modes and B
  const built=await build({stdin:{contents:`import {respond} from './worker/routes.mjs';const assets=${JSON.stringify(assets)};export default {fetch(r,e){return respond(r,e,assets)}}`,resolveDir:process.cwd()},bundle:true,format:'esm',platform:'browser',write:false});
  let authMode='ok',providerMode='ok';const calls=[];
  const mf=new Miniflare({modules:true,script:built.outputFiles[0].text,compatibilityDate:'2024-11-01',cf:false,d1Databases:['DB'],
-  bindings:{SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public-fixture',MODEL_PROVIDER:'groq',GROQ_API_KEY:'fixture-only'},
+  bindings:{RETRIEVAL_LIVE:'off',SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public-fixture',MODEL_PROVIDER:'groq',GROQ_API_KEY:'fixture-only'},
   outboundService:async request=>{
    const url=new URL(request.url);calls.push(url.origin);
    if(url.origin==='https://auth.example'){

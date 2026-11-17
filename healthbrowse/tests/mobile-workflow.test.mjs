@@ -6,8 +6,8 @@ import {faqMarkdown} from '../dist/faq-export.js';
 import {roleIndex} from '../dist/reading-profiles.js';
 const memory=()=>{const map=new Map();return {getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v),removeItem:k=>map.delete(k)}};
 const ref={url:'https://medlineplus.gov/leukemia.html',title:'MedlinePlus',quote:'Full original evidence.'};
-test('two role workspaces keep clinical identity stable and four reachable destinations',()=>{
- assert.equal(roleIndex('Medical professional'),1);assert.equal(roleIndex('Medical student'),0);
+test('three role workspaces keep clinical identity stable and four reachable destinations',()=>{
+ assert.equal(roleIndex('Medical professional'),1);assert.equal(roleIndex('Medical student'),2);
  assert.deepEqual(mobileDestinations('Patient').map(d=>d[0]),['search','saved','history','account']);
  assert.deepEqual(mobileDestinations('Clinicians').map(d=>d[0]),['search','evidence','sources','history']);
  assert.deepEqual(mobileDestinations('Student').map(d=>d[0]),['search','saved','history','account']);
@@ -29,8 +29,8 @@ test('study notes are bounded, topic-scoped and refuse identifying data without 
  assert.equal(saveStudyNote(storage,'Public topic Y',''),true);assert.equal(readStudyNote(storage,'Public topic Y'),'');
  const unavailable={getItem(){throw new Error('Storage blocked')}};assert.equal(readStudyNote(unavailable,'Leukemia'),'');assert.equal(saveStudyNote(unavailable,'Leukemia','Notes'),false);
 });
-test('legacy student deck export uses the General audience',()=>{
- const text=faqMarkdown({topic:'Leukemia',role:'Medical student',clinical:false,answer:{},decks:[]});assert.match(text,/View: General Public/);assert.doesNotMatch(text,/View: Medical Student/);
+test('student deck export preserves its educational audience',()=>{
+ const text=faqMarkdown({topic:'Leukemia',role:'Medical student',clinical:false,answer:{},decks:[]});assert.match(text,/View: Medical Education/);assert.doesNotMatch(text,/View: General Public/);
 });
 function speechFixture(){
  const records=[],texts=[],statuses=[],timers=new Map();let count=0;

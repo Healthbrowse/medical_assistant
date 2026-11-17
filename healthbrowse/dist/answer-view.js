@@ -18,7 +18,7 @@ export function renderAnswer(parent,answer={},renderCheck,onRetry){
    box.append(text);
    if(valid.length){
     const detail=element('details','', 'source-evidence');detail.append(element('summary','Sources & verification'));
-    for(const {ref} of valid){const a=sourceLink(ref,ref.title||'Supporting source');if(a)detail.append(a);if(ref.date)detail.append(element('small',ref.date,'meta'));if(ref.quote)detail.append(element('blockquote',ref.quote));}
+    for(const {ref} of valid){const a=sourceLink(ref,ref.title||'Supporting source');if(a)detail.append(a);if(ref.date)detail.append(element('small',ref.date,'meta'));if(ref.sourceType)detail.append(element('small',ref.sourceType,'meta'));if(ref.attribution)detail.append(element('small',ref.attribution,'meta'));if(ref.quote)detail.append(element('blockquote',ref.quote));}
     if(block.verification)detail.append(element('small',block.verification,'meta'));
     renderCheck?.(detail,block.check);box.append(detail);
    }

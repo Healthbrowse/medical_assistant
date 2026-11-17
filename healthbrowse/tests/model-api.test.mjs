@@ -17,7 +17,7 @@ function draftFor(e=evidence,mode='search'){
 function fixture(t,provider){
  const DB=openWorkspace(':memory:');const journal=JSON.parse(readFileSync(new URL('../drizzle/meta/_journal.json',import.meta.url)));
  for(const e of journal.entries)DB.exec(readFileSync(new URL('../drizzle/'+e.tag+'.sql',import.meta.url),'utf8'));t.after(()=>DB.close());
- const env={DB,SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public',MODEL_GENERAL_URL:'https://llama.example/v1/chat/completions',MODEL_GENERAL_KEY:'server-secret',MODEL_GENERAL_ID:'llama-adapter',MODEL_PROFESSIONAL_URL:'https://medgemma.example/v1/chat/completions',MODEL_PROFESSIONAL_KEY:'other-server-secret',MODEL_PROFESSIONAL_ID:'medgemma'};
+ const env={RETRIEVAL_LIVE:'off',DB,SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public',MODEL_GENERAL_URL:'https://llama.example/v1/chat/completions',MODEL_GENERAL_KEY:'server-secret',MODEL_GENERAL_ID:'llama-adapter',MODEL_PROFESSIONAL_URL:'https://medgemma.example/v1/chat/completions',MODEL_PROFESSIONAL_KEY:'other-server-secret',MODEL_PROFESSIONAL_ID:'medgemma'};
  const calls=[];
  t.mock.method(globalThis,'fetch',async(url,opts)=>{
   if(url==='https://auth.example/auth/v1/user')return opts.headers.Authorization.endsWith('invalid-token')?Response.json({}, {status:401}):Response.json({id:'11111111-1111-4111-8111-111111111111'});
@@ -100,14 +100,22 @@ test('client exposes rate-limit metadata for manual retries in both reading mode
   if(seconds===undefined)assert.equal(result.retryAt,null);else assert.ok(result.retryAt>=before+19000&&result.retryAt<=Date.now()+19000);
  }
 });
+test('source-only responses retain the provider retry deadline in all reading modes',async()=>{
+ for(const role of ['General','Medical education','Clinicians']){
+  let calls=0;const before=Date.now();
+  const result=await requestSynthesis({...input,role},input.question,{tokenProvider:async()=>'test-token',fetcher:async()=>++calls===1?Response.json({}):Response.json({status:'sourced',code:'provider_busy',retryAfterSeconds:23,answer:{text:'Retrieved excerpt.'},decks:[]})});
+  assert.equal(result.status,'sourced');assert.equal(calls,2);
+  assert.ok(result.retryAt>=before+23000&&result.retryAt<=Date.now()+23000);
+ }
+});
 test('buddy sends its own question, search context and active deck; returns no repeated deck array',async t=>{
  const {call,calls}=fixture(t);const r=await (await call({...input,mode:'chat',question:'Explain that further',searchQuery:'What is leukemia?',deck:4,history:['How is it treated?']})).json();
  assert.equal(r.status,'generated');assert.deepEqual(r.decks,[]);assert.equal(r.answer.deck,4);const p=JSON.parse(calls[0].body.messages[1].content);assert.equal(p.browserQuestion,'What is leukemia?');assert.equal(p.priorQuestions[0],'How is it treated?');
 });
-test('browser gracefully labels unconfigured models and cancels superseded authentication',async()=>{
+test('browser can retrieve sources without a configured model and cancels superseded authentication',async()=>{
  let tokens=0;const context={...input,query:input.question};
- const r=await requestSynthesis(context,input.question,{fetcher:async()=>Response.json({general:{configured:false}}),tokenProvider:async()=>{tokens++;return 'token'}});
- assert.equal(tokens,0);assert.match(r.message,/not a model-generated/);
+ const r=await requestSynthesis(context,input.question,{fetcher:async url=>Response.json(url.endsWith('/status')?{general:{configured:false}}:{status:'sourced',answer:{text:'Source excerpt.',blocks:[]},decks:[]}),tokenProvider:async()=>{tokens++;return 'token'}});
+ assert.equal(tokens,1);assert.equal(r.status,'sourced');
  const controller=new AbortController();const pending=requestSynthesis(context,input.question,{signal:controller.signal,fetcher:async()=>Response.json({general:{configured:true}}),tokenProvider:()=>new Promise(()=>{})});controller.abort();await assert.rejects(pending);
  assert.notEqual(synthesisKey(context),synthesisKey({...context,role:'Patient'}));assert.notEqual(synthesisKey(context),synthesisKey({...context,query:'How is it treated?'}));
 });
@@ -213,7 +221,6 @@ test('large claim reviews are batched without losing any claims or question cont
  }
  assert.equal(seen.size,7);
 });
-
 test('dedicated base reviewer receives review prompts while adapter receives generation prompts',async t=>{
  const {call,env,calls}=fixture(t);env.MODEL_GENERAL_REVIEW_ID='base-review';
  const r=await call();assert.equal(r.status,200);
