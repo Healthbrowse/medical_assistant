@@ -1,3 +1,4 @@
+import {createMedicalRetrieval} from './medical-retrieval.js';
 // The publisher gives these three focus areas broader topic titles.
 const focusTitles = new Map([
   ['high blood cholesterol','Cholesterol'],
@@ -8,6 +9,8 @@ const norm = name => String(name || '').toLowerCase().normalize('NFKD')
   .replace(/['’]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
 
 export function medlineIndex(data) {
+  let retrieval;
+  const related=()=>retrieval??=createMedicalRetrieval(data);
   const names = new Map(), aliases = new Map();
   for (const record of data.topics || []) {
     names.set(norm(record.title),record);
@@ -22,7 +25,7 @@ export function medlineIndex(data) {
     const record=names.get(norm(title));
     if (record) names.set(focus,record);
   }
-  return {find(name){const key=norm(name);return names.get(key)||aliases.get(key)||null;}};
+  return {resolveQuestion:query=>related().resolve(query),find(name){const key=norm(name);if(names.has(key))return names.get(key);if(aliases.has(key))return aliases.get(key);return related().resolve(name)?.record||null;}};
 }
 
 export async function loadMedline() {
