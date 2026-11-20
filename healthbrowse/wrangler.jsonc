@@ -5,5 +5,13 @@
   "main": "dist/server/index.js",
   "compatibility_date": "2026-11-19",
   "workers_dev": true,
-  "keep_vars": true
+  "keep_vars": true,
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "healthbrowse-db",
+      "database_id": "7a93c3e9-2b79-4009-80b1-418e0350bcf1"
+    }
+  ]
 }
