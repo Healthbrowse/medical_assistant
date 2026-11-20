@@ -1,0 +1,9 @@
+
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "healthbrowse-ai",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2026-11-19",
+  "workers_dev": true,
+  "keep_vars": true
+}
