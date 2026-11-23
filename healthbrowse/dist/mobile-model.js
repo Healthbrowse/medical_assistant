@@ -3,8 +3,8 @@ import {normalizeReadingRole} from './reading-profiles.js';
 import {inspectInput} from './clinical-engine.js';
 export function mobileDestinations(role){
  const r=normalizeReadingRole(role);
- if(r==='Medical professional')return [['search','Search'],['evidence','Evidence'],['sources','Sources'],['history','History']];
- return [['search','Search'],['saved','Saved'],['history','History'],['account','Account']];
+ if(r==='Medical professional')return [['home','Home'],['evidence','Evidence'],['sources','Sources'],['history','History']];
+ return [['home','Home'],['sources','Sources'],['history','History'],['account','Account']];
 }
 export function citationURL(value){try{const u=new URL(value);return ['https:','http:'].includes(u.protocol)&&!u.username&&!u.password?u.href:null}catch{return null}}
 export function studyCards(responses=[]){

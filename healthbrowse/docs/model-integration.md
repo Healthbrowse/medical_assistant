@@ -1,58 +1,66 @@
-# HealthBrowse hosted model integration
+# Models and biomedical evidence in HealthBrowse
 
-## Current path: Groq
+The DeepSeek deployment profile uses three Hugging Face checkpoints. General and Clinicians are the two user roles. Selecting Clinicians also enables medical education content.
 
-Both reading modes use `openai/gpt-oss-120b` through Groq. General requests plain English; Clinicians requests clinical terminology and evidence limitations. A second request to the same `openai/gpt-oss-120b` model checks each claim and can correct incomplete citation assignments. This is automated support review, not independent clinical validation. The QLoRA experiment is preserved separately and is not needed to run the website.
+| Workload | Default checkpoint | Responsibility |
+| --- | --- | --- |
+| General search and Buddy | `deepseek-ai/DeepSeek-R1-Distill-Llama-8B` | Plain-language synthesis and support review |
+| Clinician search and Buddy | `deepseek-ai/DeepSeek-R1-Distill-Qwen-32B` | Clinical synthesis, evidence breakdown, limitations and support review |
+| Biomedical literature retrieval | `deepseek-ai/DeepSeek-V3.2` | Select targeted searches from public terms, indexed MeSH headings and relevant clinical modifiers |
 
-Set these values in the **server runtime**, then redeploy:
+## Activate the server profile
 
-```dotenv
-MODEL_PROVIDER=groq
-GROQ_MODEL=openai/gpt-oss-120b
-GROQ_API_KEY=<supply through the server secret manager>
-SUPABASE_URL=<your Supabase project URL>
-SUPABASE_ANON_KEY=<your Supabase publishable key>
+Set `MODEL_PROVIDER=deepseek` in the server runtime. Supply `HF_TOKEN` through the runtime secret manager using a fine-grained Hugging Face token with **Make calls to Inference Providers** permission. All three routes use the same token at `https://router.huggingface.co/v1/chat/completions`. Keep real credentials out of Git, browser bundles and logs. [Hugging Face authentication and provider routing](https://huggingface.co/docs/inference-providers/en/index)
+
+| Optional server setting | Accepted alternative to the default |
+| --- | --- |
+| `DEEPSEEK_GENERAL_MODEL` | `deepseek-ai/DeepSeek-R1-0528-Qwen3-8B` |
+| `DEEPSEEK_CLINICIAN_MODEL` | `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B` or `deepseek-ai/DeepSeek-R1-0528-Qwen3-8B` |
+
+Overrides select a checkpoint explicitly. The server always requests the configured model ID. A deployment can have all three routes configured and still encounter a provider access, capacity or credit error. See the project’s [environment example](../.env.example) and the [Hugging Face pricing and billing guide](https://huggingface.co/docs/inference-providers/en/pricing).
+
+Use the existing `SUPABASE_URL` and `SUPABASE_ANON_KEY` for authentication. The hosted Site uses its D1 `DB` binding and `hb_model_limits` migration. Standalone deployments should apply the repository’s migrations and configure credentials in the runtime environment. Model inference runs remotely.
+
+## How a medical question becomes a cited answer
+
+1. Search and Buddy screen the question and supplied context for safety and privacy. The server verifies the session and rate limit before retrieval. The planner receives public search terms and matching local MeSH headings. For an eligible personal narrative, the literature search uses a recognized public topic.
+2. V3.2 selects up to two additional searches alongside the original public terms. The server builds queries and selects retrieval destinations. If planning is unavailable, it uses deterministic public-keyword searches and records the fallback in the packet.
+3. The literature service queries Europe PMC for MED-indexed records, prioritizing guidelines, systematic reviews and trials. It can inspect reference lists, follow cited primary publications and verify the selected publication identities on PubMed. It also checks matching institutional pages from the local source catalog. The budget allows up to four initial index queries, two cited publications to follow, five indexed publication landing pages and two direct institutional pages, subject to an overall network limit and deadline.
+4. The audience model receives eligible retrieved passages and applicable local material. A second call to that same model reviews source support. The server checks citation IDs and resolves the reader-facing citations against its own records. Buddy uses the active question and deck as context. Document questions use the user's selected attachment passages and page, slide or section citations.
+5. Successful browser synthesis returns the cited answer to the question. General readers see a plain-language explanation. Clinicians see Clinical Synthesis, Evidence Breakdown, and Limitations & Contraindications. A provider failure can return linked source excerpts labeled `source-excerpts-v1`. The report identifies insufficient or conflicting evidence when it affects the question.
+
+## Inspect or export a literature packet
+
+In the browser and Buddy, expand **Literature evidence (JSON)** on a medical search to see the packet and download JSON. A synthesis response from `POST /api/ai/answer` can also include the packet at `retrieval.evidencePacket`.
+
+For retrieval alone, send a same-origin, authenticated `POST /api/ai/evidence` with a Supabase bearer access token, `Content-Type: application/json`, and a body such as the following.
+
+```json
+{
+  "topic": "Hypertension",
+  "question": "Which studies evaluated exercise for hypertension?",
+  "role": "Clinicians"
+}
 ```
 
-Do not put the Groq key in browser JavaScript, public build variables, Docker layers, Git, or logs. The endpoint is fixed to `https://api.groq.com/openai/v1/chat/completions`. Hugging Face and DR7 keys are never forwarded to Groq. Legacy provider settings are ignored while `MODEL_PROVIDER=groq`.
+| Response field | Contents |
+| --- | --- |
+| `query_decomposition` | Executed search expressions and attempted follow-up or institutional lookups |
+| `retrieved_sources` | Records containing `source_id`, `title`, verified `url`, `publication_year` (nullable), `evidence_tier` and `extracted_findings`. Each finding carries text and a field or section. |
+| `evidence_gaps` | Unverified references, missing findings, unavailable sources or planning limitations encountered during this search |
 
-The hosted Site uses its existing D1 `DB` binding and `hb_model_limits` migration. Standalone deployments must apply the repository's migrations through the normal workspace setup. Docker, Kubernetes and Cloud Run can supply the same runtime environment through their secret managers; no GPU is needed.
+The source tier identifies where the record comes from. Study design, eligibility, reported outcomes and abstract-only coverage determine how a study can be interpreted. The lookup extracts reported findings and preserves their numbers. It also verifies up to two eligible open-access PMC full texts. Body findings retain their original section, license and attribution. A publication date, endpoint or recommendation grade may be absent. Set `RETRIEVAL_LIVE=off` to disable live retrieval in a local test.
 
-## Request behavior
+## Verify the deployment
 
-1. The signed-in visitor submits a question. Ordinary symptom descriptions such as “I have a sore throat” are allowed; identifying details and urgent first-person danger trigger existing privacy/emergency handling.
-2. The server verifies the Supabase bearer session, same-origin request, bounded payload and per-account limit. A reading-mode dropdown does not grant access to patient records.
-3. Server retrieval uses attributed MedlinePlus passages and targeted CDC/NCI excerpts. Groq's path excludes historical MedQuAD passages. It ranks question overlap, reserves coverage across six domains and sends whole passages within a bounded request. This is lexical retrieval, not neural search. Source publication dates and feed snapshot dates remain visible; it is not a live literature search.
-4. Groq generates a direct answer and six structured decks. Buddy answers only the follow-up using the active query, selected deck, browser answer/deck summary and prior conversation. Browser summaries are untrusted context and cannot supply factual evidence.
-5. The server rejects unknown or misfiled citations, incomplete sentences, omitted subtype restrictions and detected prescriptions/doses. A separate support check can fix citation IDs or withhold unsupported claims. URLs and quotations resolve from server-owned source records.
-6. Supported sections remain when another section is missing. A section without usable generated claims displays a labeled excerpt or evidence gap. Authentication, rate-limit and connectivity failures show notices alongside existing source content. No repeated full generation/repair loop is used on this path.
+Run `npm test` and `npm run build` with Node 24. The automated model-routing and literature-agent tests use controlled provider and source responses. To confirm a deployed credential can perform inference, complete these checks with a signed-in test account.
 
-The six domains are Etiology & Pathogenesis; Natural History & Progression; Clinical Presentation & Diagnosis; Therapeutics & Management; Prognosis & Complications; Epidemiology & Public Health. Research discovery remains separately expandable. Both roles retain the click-to-open Buddy.
+1. Open `GET /api/ai/status` to check the selected provider, configured routes and model IDs. This endpoint reads configuration.
+2. Submit one public educational question in each role. Check the actual answer response for the requested checkpoint, `deepseek-cited-v1` and supported citations. A `source-excerpts-v1` response indicates source fallback.
+3. Inspect a packet and open a cited publication. Compare the finding with the source and look for any planner fallback in `evidence_gaps`. Ask a Buddy follow-up and check that the displayed evidence belongs to the current question.
 
-## Verify and operate
+## Research lab and legacy deployments
 
-```sh
-npm test
-npm run build
-node scripts/smoke-groq.mjs Leukemia General search 'What is leukemia?'
-node scripts/smoke-groq.mjs Leukemia Clinicians search 'What is leukemia and how is it diagnosed?'
-node scripts/smoke-groq.mjs 'Sore Throat' General chat 'Do antibiotics help a sore throat?'
-```
+The independent HealthBrowse Medical Model Lab uses Llama/QLoRA for training, adapter comparisons and blind evaluation. Activating this hosted DeepSeek profile sends inference requests only. The lab notebook and its saved adapters follow a separate release process. [Independent model lab notebook](https://github.com/abby2395/medical_chatbot/blob/research/healthbrowse-medical-model/healthbrowse_model_lab/notebooks/HealthBrowse_Medical_Model_Lab.ipynb)
 
-The smoke command accepts `GROQ_API_KEY` from the environment or prompts without echo. It calls the real provider through the application gateway with public example questions and a local authentication fixture. It does **not** verify real Supabase sign-in or a deployed browser session. An optional final argument writes a JSON report containing the public test question, output, status and timing. Do not use patient records for smoke tests.
-
-`GET /api/ai/status` reports configuration, not live provider health. User acceptance testing should cover Google/email login, search, role switching and Buddy in the published browser. Provider allowances apply across visitors; per-user limits do not guarantee provider capacity. Groq's free tier has model-specific token/request limits and is not unlimited production hosting. Set provider-wide usage limits and monitor failures before broader rollout.
-
-Real-provider smoke tests establish inference connectivity and application response handling, not clinical accuracy. Automated reviewers can miss errors. This remains an educational/research reference; professional use requires appropriate human review and governance. No fine-tuning, adapter, medical-board certification or hallucination-free guarantee is implied.
-
-## Research and legacy routes
-
-When `MODEL_PROVIDER` is not `groq`, existing `MODEL_GENERAL_*` and `MODEL_PROFESSIONAL_*` settings remain available. The dedicated inference service and LoRA/QLoRA files in `inference/` remain separate research work. Previously failed adapter evaluations are not superseded by hosted-model smoke tests. Do not activate a research adapter solely because training completed.
-
-## Primary references
-
-- [Groq models](https://console.groq.com/docs/models)
-- [Structured outputs](https://console.groq.com/docs/structured-outputs)
-- [Reasoning controls](https://console.groq.com/docs/reasoning)
-- [Rate limits](https://console.groq.com/docs/rate-limits)
-- [Supabase authentication](https://supabase.com/docs/guides/auth)
+Operators can select the legacy Groq route explicitly with `MODEL_PROVIDER=groq`, `GROQ_API_KEY` and `GROQ_MODEL`. Existing dedicated endpoints use the `MODEL_GENERAL_*` and `MODEL_PROFESSIONAL_*` settings under the custom profile. The historical `scripts/smoke-groq.mjs` script exercises Groq only.

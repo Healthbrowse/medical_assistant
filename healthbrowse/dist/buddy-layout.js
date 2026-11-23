@@ -39,6 +39,7 @@ export function setupBuddyLayout(){
  dialog.addEventListener('cancel',event=>{if(active){event.preventDefault();showChat()}});
  dialog.addEventListener('close',()=>{showChat({focus:false});notice.open=false});
  dialog.addEventListener('buddy-opened',()=>resizeBuddyInput(input));
+ dialog.addEventListener('buddy-verification',()=>showChat({focus:false}));
  input.addEventListener('input',()=>resizeBuddyInput(input));window.addEventListener('resize',()=>resizeBuddyInput(input));
  document.addEventListener('healthbrowse-chat-updated',event=>{greeting.hidden=event.detail.count>0;resizeBuddyInput(input)});
  return {composer,voiceTools,consent,safety,greeting:greetingText,more:panes.more,showChat};

@@ -1,11 +1,48 @@
 import {frameworkVersion} from './disease-framework.js';
 import {accountRequest} from './account-client.js';
+import {clinicalSections} from './clinical-sections.js';
+import {isDocumentReference} from './document-policy.js';
 import {canSaveResearchQuestion} from './query-input.js';
 // getRandomValues also supports local HTTP development previews.
 function newId(){const bytes=crypto.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const hex=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');return [hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-')}
 const $=id=>document.getElementById(id);
 const node=(tag,text)=>Object.assign(document.createElement(tag),{textContent:text});
 const message=text=>{$('chatSaveStatus').textContent=text};
+// The wire format stores each cited passage once, even when several claims cite it.
+export function savedAnswerFields(turn){
+ if(!turn.buddyDecks&&!turn.clinicalSynthesis)return {citations:turn.citations||[]};
+ const citations=[],byPassage=new Map();
+ function indexReference(ref){
+  if(isDocumentReference(ref))throw new Error('Document conversations stay in this tab.');
+  const passage={title:ref.title||'Supporting source',url:ref.url};
+  if(ref.id)passage.id=String(ref.id);
+  for(const key of ['quote','date','sourceType','studyDesign','attribution'])
+   if(typeof ref[key]==='string'&&ref[key])passage[key]=ref[key];
+  const key=JSON.stringify(passage);
+  if(!byPassage.has(key)){
+   byPassage.set(key,citations.length);
+   citations.push({...passage,id:passage.id||'R'+(citations.length+1)});
+  }
+  return byPassage.get(key);
+ }
+ if(turn.buddyDecks){
+  const compact=block=>({
+   text:block.text,
+   references:(block.references?.length?block.references:block.citation?[block.citation]:[]).map(indexReference),
+   ...(block.title?{title:block.title}:{})
+  });
+  const direct=turn.blocks?.length?turn.blocks:turn.text&&turn.citations?.length?[{text:turn.text,references:turn.citations}]:[];
+  const blocks=direct.map(compact);
+  const buddyDecks=turn.buddyDecks.map(({deck,title,blocks})=>({deck,title,blocks:blocks.map(compact)}));
+  return {buddyDecks,blocks,citations,...(turn.gaps?.length?{gaps:turn.gaps}:{})};
+ }
+ const blocks=[],groups=clinicalSections(turn);
+ for(const {key,blocks:group} of groups){
+  for(const block of group)blocks.push({text:block.text,section:key,references:block.references.map(indexReference)});
+ }
+ const text=groups.map(group=>[group.title,...group.blocks.map(b=>b.text+' '+b.references.map(r=>'['+r.id+']').join(' ')),...group.notes].join('\n')).join('\n\n');
+ return {clinicalSynthesis:true,citations,blocks,text,...(turn.gaps?.length?{gaps:turn.gaps}:{})};
+}
 export function createChatHistory(getContext){
  let current=null,epoch=null,saving=true,queue=Promise.resolve(),generation=0,available=false;
  let onRestore=()=>{},onNew=()=>{};
@@ -31,19 +68,22 @@ export function createChatHistory(getContext){
   }catch(error){if(run===generation)message(error.message)}
  }
  function saveTurn(turn){
-  const context=getContext();if(!context)return;const run=generation,turnId=newId();
+  const context=getContext();if(!context)return;const topic=turn.topic||context.topic;const run=generation,turnId=newId();
+  if(context.attachments?.length||turn.documentMode||(turn.citations||[]).some(isDocumentReference)){
+   message('Document conversations stay in this tab.');return Promise.resolve()
+  }
   if(!canSaveResearchQuestion(turn.question,context.query)){message('Personal questions stay in this tab and are not saved to your account.');return Promise.resolve()}
   queue=queue.catch(()=>{}).then(async()=>{
    if(run!==generation)return;
    if(!available)await refresh();if(run!==generation)return;
    if(!saving){message('Saving is off. This conversation stays in this tab.');return}
    message('Saving chat…');
-   if(!current||current.topic!==context.topic||current.readingMode!==context.role){
-    const created=await accountRequest('/api/me/chats',{method:'POST',body:{id:newId(),topic:context.topic,readingMode:context.role,historyEpoch:epoch}});
+   if(!current||current.topic!==topic||current.readingMode!==context.role){
+    const created=await accountRequest('/api/me/chats',{method:'POST',body:{id:newId(),topic,readingMode:context.role,historyEpoch:epoch}});
     if(run!==generation)return;setCurrent(created.chat);
    }
    const id=current.id;
-   await accountRequest('/api/me/chats/'+encodeURIComponent(id)+'/turns',{method:'POST',body:{id:turnId,frameworkVersion,question:turn.question,text:turn.text,deck:turn.deck,citations:turn.citations||[],overview:!!turn.overview,historyEpoch:epoch}});
+   await accountRequest('/api/me/chats/'+encodeURIComponent(id)+'/turns',{method:'POST',body:{id:turnId,frameworkVersion,question:turn.question,text:turn.text,deck:turn.deck,...savedAnswerFields(turn),overview:!!turn.overview,historyEpoch:epoch}});
    if(run===generation){message('Saved to your account.');await refresh()}
   }).catch(error=>{if(run===generation)message('Not saved: '+error.message+' Your answer remains visible.');});
   return queue;

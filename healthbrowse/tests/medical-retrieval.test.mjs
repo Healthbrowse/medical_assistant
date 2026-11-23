@@ -50,3 +50,14 @@ test('Buddy offers a topic switch for a new organ but keeps pronoun follow-ups i
  assert.deepEqual(newSubjects('What is the function of the pituitary gland?',terms,'Pituitary gland',index),[]);
  assert.deepEqual(newSubjects('What does it do?',terms,'Pituitary gland',index),[]);
 });
+
+test('conversational pharyngitis wording keeps relevant cached sources and the exact question',()=>{
+ const question='Doctor said viral pharyngitis all throat hurting pretty bad';
+ assert.equal(index.resolveQuestion(question).record.title,'Sore Throat');
+ assert.equal(index.find('viral pharyngitis').title,'Sore Throat');
+ for(const role of ['General reader','Medical professional'])for(const mode of ['search','chat']){
+  const input={topic:question,question,role,mode,deck:0};const evidence=citedEvidence(assets,input);
+  assert.ok(evidence.sources.length);assert.ok(evidence.sources.every(s=>s.url==='https://medlineplus.gov/sorethroat.html'));
+  assert.equal(JSON.parse(prepareCited(input,evidence).messages[1].content).question,question);
+ }
+});

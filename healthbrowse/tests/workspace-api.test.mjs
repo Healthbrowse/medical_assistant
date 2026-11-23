@@ -74,7 +74,7 @@ test('saved chat versions preserve old deck meaning and validate the current fra
 
 test('legacy settings and saved chats normalize into the three available reading modes',async t=>{
  const {call,DB}=fixture(t);await call('profile');
- for(const [old,expected] of [['Patient','General reader'],['Medical student','Medical student'],['Advanced professional','Medical professional']]){
+ for(const [old,expected] of [['Patient','General reader'],['Medical student','Medical professional'],['Advanced professional','Medical professional']]){
   await DB.prepare('UPDATE hb_accounts SET reading_mode=?').bind(old).run();
   assert.equal((await (await call('settings')).json()).settings.readingMode,expected);
   const c={...chat(),readingMode:expected};await call('chats','POST',c);
@@ -123,4 +123,63 @@ test('Buddy welcome is atomically claimed once per verified login session, acros
  for(const token of ['missing','mismatch'])assert.equal((await call('buddy-intro','POST',{},token)).status,503);
  assert.equal((await call('buddy-intro','POST',{session_id:sessions.a2})).status,400);
  assert.equal((await call('buddy-intro')).status,405);
+});
+test('clinical claims, source identifiers and quoted passages survive history and export',async t=>{
+ const {savedAnswerFields}=await import('../dist/chat-history.js');
+ const {call}=fixture(t),c={...chat(),readingMode:'Clinicians'};
+ const ref={id:'PMID: 12345678',title:'Fixture study',url:'https://example.test/study',quote:'Only the measured endpoint was reported.',studyDesign:'Cohort study'};
+ const report={clinicalSynthesis:true,blocks:[
+  {section:'synthesis',text:'The measured endpoint was reported.',references:[ref]},
+  {section:'limitations',text:'A different endpoint was outside the study scope.',references:[{...ref,quote:'Other endpoints were outside the study scope.'}]}
+ ]};
+ const fields=savedAnswerFields(report),m={...turn(),...fields};
+ assert.equal(fields.citations.length,2);
+ assert.deepEqual(fields.blocks.map(b=>b.references),[[0],[1]]);
+ await call('chats','POST',c);
+ const path='chats/'+c.id+'/turns';
+ assert.equal((await call(path,'POST',m)).status,201);
+ assert.equal((await call(path,'POST',m)).status,200);
+ const {turns:[saved]}=await (await call('chats/'+c.id)).json();
+ assert.deepEqual(saved.blocks,report.blocks);
+ assert.equal(saved.clinicalSynthesis,true);
+ assert.match(saved.text,/\[PMID: 12345678\]/);
+ const exported=await (await call('export')).json();
+ assert.deepEqual(exported.messages[0].blocks,report.blocks);
+ assert.equal((await call(path,'POST',{...m,id:crypto.randomUUID(),blocks:[{...fields.blocks[0],references:[9]}]})).status,400);
+ assert.equal((await call(path,'POST',{...m,id:crypto.randomUUID(),citations:[{...fields.citations[0],quote:'Email someone@example.test'}]})).status,400);
+});
+
+test('six-deck Buddy reports keep the direct answer, cited deck text and empty decks through reload and export',async t=>{
+ const {savedAnswerFields}=await import('../dist/chat-history.js');
+ const {call}=fixture(t);
+ const citation={id:'S1',title:'Reviewed research',url:'https://example.test/excerpt',quote:'The source supports this detail.'};
+ const block={text:citation.quote,references:[citation]};
+ const report={
+  text:'Direct research answer.',
+  blocks:[{text:'Direct research answer.',references:[citation]}],
+  buddyDecks:Array.from({length:6},(_,i)=>({deck:i+1,title:'Section '+(i+1),blocks:i===3?[]:[block]}))
+ };
+ const fields=savedAnswerFields(report);
+ assert.deepEqual(fields.citations,[citation]);
+ const messages=[];
+ for(const readingMode of ['General','Clinicians']){
+  const c={...chat(),readingMode},message={...turn(),text:report.text,...fields};
+  assert.equal((await call('chats','POST',c)).status,201);
+  const path='chats/'+c.id+'/turns';
+  assert.equal((await call(path,'POST',message)).status,201);
+  assert.equal((await call(path,'POST',message)).status,200);
+  const {turns:[loaded]}=await (await call('chats/'+c.id)).json();
+  assert.deepEqual(loaded.buddyDecks,report.buddyDecks);
+  assert.deepEqual(loaded.blocks,report.blocks);
+  assert.equal(loaded.text,report.text);
+  assert.equal(Boolean(loaded.audienceDisclaimer),readingMode==='General');
+  messages.push(loaded.id);
+  const invalid=[{buddyDecks:fields.buddyDecks.slice(1)},{buddyDecks:[fields.buddyDecks[1],...fields.buddyDecks.slice(1)]},
+   {blocks:[{text:'Unverified claim',references:[2]}]},
+   {citations:[{...citation,url:'javascript:bad'}]},
+   {buddyDecks:fields.buddyDecks.map(d=>({...d,title:'Patient name: Example'}))}];
+  for(const patch of invalid)assert.equal((await call(path,'POST',{...message,id:crypto.randomUUID(),...patch})).status,400);
+ }
+ const data=await (await call('export')).json();
+ for(const id of messages)assert.deepEqual(data.messages.find(m=>m.id===id).buddyDecks,report.buddyDecks);
 });

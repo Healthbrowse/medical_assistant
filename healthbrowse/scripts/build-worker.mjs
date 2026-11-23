@@ -1,12 +1,13 @@
 import {readFile,readdir,writeFile,mkdir,copyFile} from 'node:fs/promises';
 import {build} from 'esbuild';
-const mimes={html:'text/html',js:'text/javascript',css:'text/css',json:'application/json',svg:'image/svg+xml',webmanifest:'application/manifest+json',png:'image/png'};
+const mimes={html:'text/html',js:'text/javascript',css:'text/css',json:'application/json',svg:'image/svg+xml',webmanifest:'application/manifest+json',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',ico:'image/x-icon'};
 const assets={};
 for(const entry of await readdir('dist',{withFileTypes:true})){
   const ext=entry.name.split('.').pop(),type=mimes[ext];
   if(entry.isFile()&&type){
     const file=await readFile('dist/'+entry.name);
-    assets['/'+entry.name]={text:ext==='png'?file.toString('base64'):file.toString('utf8'),base64:ext==='png',type};
+    const base64=type.startsWith('image/') && ext!=='svg';
+    assets['/'+entry.name]={text:file.toString(base64?'base64':'utf8'),base64,type};
   }
 }
 await mkdir('dist/server',{recursive:true});

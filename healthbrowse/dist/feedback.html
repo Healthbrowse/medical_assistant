@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <title>Feedback · HealthBrowse AI</title>
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png?v=atlas-2">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=atlas-2">
+  <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=atlas-2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=atlas-2">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/navigation.css">
+  <link rel="stylesheet" href="/support.css">
+  <script src="/theme.js"></script>
+  <script type="module" src="/support.js"></script>
+</head>
+<body>
+  <a class="skip" href="#supportMain">Skip to feedback</a>
+  <header class="site-header support-header">
+    <a class="nav-brand" href="/" aria-label="HealthBrowse AI home">
+      <img src="/brand-mark.svg?v=atlas-2" alt="" width="40" height="40">
+      <span>Health<b>Browse</b></span><small>AI</small>
+    </a>
+    <div class="theme-controls" role="group" aria-label="Color theme">
+      <button type="button" data-mode="light">Light</button>
+      <button type="button" data-mode="dark">Dark</button>
+    </div>
+  </header>
+  <main id="supportMain" tabindex="-1">
+    <a class="support-back" href="/">Back to research desk</a>
+    <h1 id="feedbackTitle">Feedback</h1>
+    <p class="support-lead">Report a problem, suggest an improvement, or flag an answer or citation that needs a correction.</p>
+    <form class="support-card" id="feedbackForm" aria-labelledby="feedbackTitle">
+      <div class="support-field">
+        <label for="feedbackCategory">What is your feedback about?</label>
+        <select id="feedbackCategory">
+          <option value="general">General feedback</option>
+          <option value="source-correction">Answer or citation correction</option>
+          <option value="bug">Something isn’t working</option>
+          <option value="usability">Design or ease of use</option>
+          <option value="feature">An idea or feature request</option>
+        </select>
+      </div>
+      <div class="support-field">
+        <label for="feedbackMessage">Your feedback</label>
+        <textarea id="feedbackMessage" rows="5" maxlength="2000" required aria-describedby="feedbackHelp feedbackCount"></textarea>
+        <div class="support-field-note">
+          <small id="feedbackHelp">For a correction, include a link to the source if you have one.</small>
+          <small id="feedbackCount">0 / 2,000</small>
+        </div>
+      </div>
+      <p class="support-privacy">Please leave out patient details and other sensitive information.</p>
+      <p id="supportAuth" role="status">Checking your account…</p>
+      <button class="primary" type="submit" disabled>Submit feedback</button>
+    </form>
+    <p id="feedbackStatus" class="support-status" role="status" aria-live="polite"></p>
+    <p class="support-alternative">Have a question for the team? <a href="/contact.html">Contact us</a></p>
+  </main>
+</body>
+</html>

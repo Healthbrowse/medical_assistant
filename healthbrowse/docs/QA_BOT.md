@@ -1,6 +1,6 @@
 # HealthBrowse dual-persona QA bot
 
-The bot behaves as both **General** and **Clinicians** against the same application response contract. It tests direct answers, the six decks, Buddy follow-ups, citation integrity, complete sentences, emergency/privacy interception, response timing and differences between the two audiences. It produces a JSON record of every test and a Markdown report with specific proposed changes.
+The bot behaves as both **General** and **Clinicians** against the same application response contract. It checks direct answers, the three-section clinician presentation, Buddy follow-ups, source integrity, complete sentences, emergency and privacy handling, response timing, and differences between the two audiences. New search responses with a nonempty deck collection fail the report check. It produces a JSON record of every test and a Markdown report with specific proposed changes.
 
 It does not create a real account, impersonate a licensed clinician, train models, or make automatic production changes. “Clinicians” is a reading mode. Clinical accuracy still needs expert review; keyword coverage and source-link checks cannot establish that every medical interpretation is correct.
 
@@ -10,7 +10,7 @@ It does not create a real account, impersonate a licensed clinician, train model
 npm run qa:bot -- --limit=4
 ```
 
-The bot prompts for the Groq key without echo, or reads `GROQ_API_KEY` from the server environment. No key is written to reports. The first four tests exercise leukemia search and Buddy in both modes. Omit `--limit` for all 18 cases. Default spacing is 45 seconds to respect provider allowances. This run uses real Groq inference, a real in-memory SQL quota database and a local authentication fixture. It does not prove deployed login works.
+Local tests use the selected provider. For the production model profile, set `MODEL_PROVIDER=deepseek` and supply `HF_TOKEN` with inference permission through the server environment. For a Groq evaluation, select `MODEL_PROVIDER=groq` and supply `GROQ_API_KEY`. No key is written to reports. The first four tests exercise leukemia search and Buddy in both modes. Omit `--limit` for all 18 cases. Default spacing is 45 seconds to respect provider allowances. This run uses real provider inference, an in-memory SQL quota database and a local authentication fixture. It does not prove deployed login works.
 
 Reports are written to ignored `qa-results/report.md` and `report.json`. Change the output directory with `--out=/absolute/path`. Cases are maintained in [qa/cases.json](../qa/cases.json); adding public questions there extends coverage without changing the runner. Use synthetic/public educational questions only.
 
@@ -22,12 +22,12 @@ Provide `HEALTHBROWSE_QA_ACCESS_TOKEN` from a dedicated Supabase test-account se
 npm run qa:bot -- --target=https://YOUR-PUBLISHED-SITE --limit=4
 ```
 
-The same test user exercises both presentation modes. The server still enforces real authentication, request limits and privacy rules. Only the test token is sent to the selected HTTPS origin; the Groq key remains on the server. This is an API test, not a simulation of clicking Google sign-in or email verification. Tokens expire; do not commit them or use a real patient's account.
+The same test user exercises both presentation modes. The server still enforces real authentication, request limits and privacy rules. Only the test token is sent to the selected HTTPS origin; the inference credential stays on the server. This is an API test, not a simulation of clicking Google sign-in or email verification. Tokens expire; do not commit them or use a real patient's account.
 
 ## Interpret the report
 
-- **Error:** unavailable response, broken deck structure, missing citations, corrupted passages or failed safety interception. The command exits nonzero.
-- **Review:** possible missed question facet, unexplained terminology, insufficient clinical detail, source gaps, repetition or slow response. Each finding includes an actionable suggestion. Review flags can be false positives and need judgment.
+- **Error:** unavailable response, an unexpected deck collection or missing clinical report, missing citations, corrupted passages or failed safety interception. The command exits nonzero.
+- **Review:** possible missed question facet, unexplained terminology, insufficient clinical detail, source gaps or slow response. Each finding includes an actionable suggestion. Review flags can be false positives and need judgment.
 - **Pass:** software checks passed for that case. It is not a medical endorsement.
 
 All generated website responses also go through the normal automatic citation/support checks. The QA bot adds repeatable tests and a comparison report; it cannot exhaustively test every possible human disease query.

@@ -9,8 +9,24 @@ const status=(id,value)=>{$(id).textContent=value};
 const show=(id,visible)=>{$(id).hidden=!visible};
 const failure=(error,fallback)=>error instanceof Error?error.message:fallback;
 const accountURL=new URL('/account.html',location.origin).href;
+const supportPages = new Set(['/feedback.html', '/contact.html']);
+const supportReturnKey = 'hb-support-return';
+let returnTo = null;
+
+function forwardLegacySupportLink() {
+  const page = {'#feedback': '/feedback.html', '#contact': '/contact.html'}[location.hash];
+  if (!page || location.search) return false;
+  location.replace(page);
+  return true;
+}
+
+function accountViewUrl(href) {
+  const url = new URL(href, location.origin);
+  if (returnTo) url.searchParams.set('returnTo', returnTo);
+  return url.pathname + url.search;
+}
 let client,session,mode='login',challenge=null,recovering=false,authBusy=false,userGeneration=0;
-let contactAttempt=null,hasSettings=false;
+let hasSettings=false;
 const settingsUI=setupAccountSettings({getClient:()=>client,getSession:()=>session});
 
 const modes={
@@ -50,7 +66,7 @@ function updateForm(){
 }
 function switchMode(value){
   mode=value;challenge=null;$('code').value='';$('password').value='';$('showPassword').checked=false;
-  history.replaceState(null,'',value==='login'?'/account.html':'/account.html?view='+value);
+  history.replaceState(null,'',accountViewUrl(value==='login'?'/account.html':'/account.html?view='+value));
   $('password').type='password';status('authStatus','');updateForm();
 }
 function checked(result){if(result?.error)throw result.error;return result?.data}
@@ -58,8 +74,9 @@ async function loadAccount(){
   const generation=++userGeneration;
   const active=Boolean(session)&&!recovering&&mode!=='forgot';
   if(recovering&&session?.user.email)$('email').value=session.user.email;
-  if(active && !['#workspace','#help','#contact','#feedback','#saved','#settings','#history','#profile','#chats','#security','#notifications','#privacy'].includes(location.hash)){
-    location.replace('/');
+  if(active && !['#workspace','#help','#saved','#settings','#history','#profile','#chats','#security','#notifications','#privacy'].includes(location.hash)){
+    sessionStorage.removeItem(supportReturnKey);
+    location.replace(returnTo || '/');
     return;
   }
   document.body.classList.toggle('auth-entry',!active);
@@ -70,14 +87,11 @@ async function loadAccount(){
   hasSettings=false;
   settingsUI.activate(active);
   show('authPanel',!active);show('authForm',Boolean(client));
-  $('feedbackForm').querySelector('button').disabled=!active;$('contactForm').querySelector('button').disabled=!active;
-  for(const id of ['feedbackStatus','contactStatus'])status(id,active?'':'Sign in to submit.');
   for(const id of ['settingsStatus','historyStatus','savedStatus'])status(id,'');
   $('settingsForm').querySelector('button').disabled=true;
   $('privacyForm').querySelector('button').disabled=true;
   $('savedItems').replaceChildren();$('historyItems').replaceChildren();
   if(!active)return;
-  $('contactEmail').value=session.user.email||'';
   const loaders=[
     ['settingsStatus','/api/me/settings',data=>{
       const s=data.settings;$('saveChats').checked=s.saveChats??true;$('readingMode').value=normalizeReadingRole(s.readingMode);$('savedTheme').value=s.theme;$('saveHistory').checked=s.saveHistory;
@@ -123,8 +137,8 @@ function renderHistory(items){
 }
 function clearTabData(){
   clearResearchSession();
-  for(const id of ['feedbackForm','contactForm','authForm'])$(id).reset();
-  contactAttempt=null;recovering=false;challenge=null;
+  $('authForm').reset();
+  recovering=false;challenge=null;
 }
 async function finishRecovery(){
   checked(await client.auth.signOut({scope:'local'}));session=null;
@@ -197,27 +211,22 @@ $('clearHistory').onclick=async()=>{
   try{await accountRequest('/api/me/history',{method:'DELETE'});renderHistory([]);status('historyStatus','History cleared.')}
   catch(error){$('clearHistory').disabled=false;status('historyStatus',failure(error,'Could not clear history.'))}
 };
-$('feedbackForm').onsubmit=async e=>{
-  e.preventDefault();const submit=e.target.querySelector('button');submit.disabled=true;
-  try{const {feedback}=await accountRequest('/api/feedback',{method:'POST',body:{message:$('feedbackMessage').value.trim()}});
-    $('feedbackMessage').value='';status('feedbackStatus','Received. Category: '+feedback.type+'. Sentiment: '+feedback.sentiment+'. Review: '+feedback.reviewStatus+'.')}
-  catch(error){status('feedbackStatus',failure(error,'Feedback could not be submitted.'))}
-  finally{submit.disabled=!session}
-};
-$('contactForm').onsubmit=async e=>{
-  e.preventDefault();const submit=e.target.querySelector('button');submit.disabled=true;
-  const data={name:$('contactName').value.trim(),email:$('contactEmail').value.trim(),message:$('contactMessage').value.trim()};
-  const signature=JSON.stringify(data);
-  if(contactAttempt?.signature!==signature)contactAttempt={signature,id:crypto.randomUUID()};
-  try{
-    const result=await accountRequest('/api/contact',{method:'POST',body:{...data,requestId:contactAttempt.id}});
-    if(result.status==='sent'){status('contactStatus','Your message was sent to the product team.');contactAttempt=null;$('contactMessage').value=''}
-    else status('contactStatus','Delivery pending. You may retry this same message without creating a second request.');
-  }catch(error){status('contactStatus',failure(error,'Delivery has not been confirmed. You may retry.'))}
-  finally{submit.disabled=!session}
-};
 
 async function init(){
+  if (forwardLegacySupportLink()) return;
+  window.addEventListener('hashchange', forwardLegacySupportLink);
+  const entry = new URL(location.href);
+  let requested = entry.searchParams.get('returnTo');
+  if (!requested && entry.searchParams.has('code')) requested = sessionStorage.getItem(supportReturnKey);
+  if (supportPages.has(requested)) {
+    returnTo = requested;
+    sessionStorage.setItem(supportReturnKey, returnTo);
+    for (const id of ['signupLink', 'loginLink', 'otpLink', 'forgotLink']) {
+      $(id).href = accountViewUrl($(id).href);
+    }
+  } else {
+    sessionStorage.removeItem(supportReturnKey);
+  }
   readingModes.forEach(r=>$('readingMode').append(new Option(readingLabel(r),r)));
   const view=new URLSearchParams(location.search).get('view');
   if(Object.hasOwn(modes,view))mode=view;

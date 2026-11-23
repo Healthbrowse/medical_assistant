@@ -1,25 +1,30 @@
-import {clarifyQuery,renderClarification,retrievalTerms} from './query-understanding.js';
+import {enrichResult} from './result-enrichment.js';
+import {classifyResponseMode,screenGeneralQuery} from './response-mode.js';
+import {educationalSubject,clarifyQuery,renderClarification,retrievalTerms,studyFollowUp} from './query-understanding.js';
+import {setupAttachments,clearAttachments} from './attachments.js';
+import {researchResources} from './research-resources.js';
 import {setupMobileWorkspace} from './mobile-workspace.js';
 import {notifySafety} from './safety-notification.js';
 import {personalDiagnosisNotice} from './safety-policy.js';
-import {faqQuestions} from './faq-spec.js';
-import {faqReferences,faqMarkdown} from './faq-export.js';
+import {answerReferences,answerMarkdown} from './answer-export.js';
 import {createQuerySuggestions,attachQueryCompletion} from './query-completion.js';
 import {readingProfile,readingRoles,normalizeReadingRole} from './reading-profiles.js';
 import {searchUI} from './search-startup.js';
-import {requestSynthesis,synthesisKey} from './model-client.js';
-import {renderAnswer} from './answer-view.js';
-import {generalMode,deckCount,searchAnswer,domainAnswer,fetchJSON} from './search-experience.js';
+import {createPacketReader,evidencePacket,packetDisclosure} from './evidence-packet.js';
+import {requestSynthesis,requestLiteratureEvidence,synthesisKey} from './model-client.js';
+import {renderAnswer,renderClinicalSynthesis} from './answer-view.js';
+import {generalMode,searchAnswer,fetchJSON} from './search-experience.js';
+import {buddyLearningQuestions} from './learning-questions.js';
 import {setupBuddy} from './buddy.js';
-import {domains,frameworkVersion,frameworkReferences,professionalRole,roleLabel,domainTitle,medlinePassages,orderedPassages,sectionLinks} from './disease-framework.js';
+import {frameworkVersion,professionalRole,medlinePassages,orderedPassages,sectionLinks} from './disease-framework.js';
 import {createChatHistory} from './chat-history.js';
 import {saveControls,recordTopic} from './personal.js';
 import {questionDeck} from './clinical-engine.js';
-import {prepareQuery} from './query-input.js';
+import {prepareQuery,publicQuestionTopic,missingSymptomTopic,canSaveResearchQuestion} from './query-input.js';
 import {setupCopilot,readSession,guardMessage} from './workspace.js';
 import {resolveSearch,findFigures,topicIndex} from './discovery.js';
 import {newSubjects,inScopeChoices} from './topic-scope.js';
-import {createResearchDesk,checkedPassage,renderCheck} from './research-session.js';
+import {createResearchDesk,renderCheck} from './research-session.js';
 import {authorities} from './authorities.js';
 import {sectionNames,remapPassages,sectionSources,correctSpelling,codeQuery} from './medcard.js';
 import {medlineIndex} from './medline.js';
@@ -39,27 +44,57 @@ let passages={},allowedTopics=new Map(),activeQuery='',lookupIndex,queryNotice='
 let medlineLookup=medlineIndex({topics:[]}),codes=null,carePanel=null,careTopic=null,unresolved=false;
 let feed={topics:[]};
 function medicalRecord(name){return medlineLookup.find(name)}
-function textRecords(){
-  if(unresolved)return [];
-  const record=medicalRecord(topic);
-  return orderedPassages([...medlinePassages(record,topic,feed),...(Object.hasOwn(passages,topic)?passages[topic]:[])],role,topic);
+function textRecords(name=topic){
+  if(!name||(name===topic&&unresolved))return [];
+  const record=medicalRecord(name);
+  return orderedPassages([...medlinePassages(record,name,feed),...(Object.hasOwn(passages,name)?passages[name]:[])],role,name);
 }
 let activeResearchReady=false;
+let responseMode='medical',generalResult=null,displayedEvidence=null;
 let synthesis=null,synthesisController=null,aiRequested=false;
+let browserPacket=null;
+function resetBrowserPacket(){
+ browserPacket?.reader.dispose();browserPacket?.view.remove();browserPacket=null;
+}
+function medicalPacketControl(){
+ const target={topic,role:roles[role],query:activeQuery,responseMode};
+ const key=synthesisKey(target);
+ if(key!==browserPacket?.key){
+  resetBrowserPacket();
+  const reader=createPacketReader(async signal=>{
+   const state=synthesis?.key===key?synthesis:null;
+   const result=state?.pending?await state.pending:state;
+   signal.throwIfAborted();
+   if(['blocked','clarification','platform'].includes(result?.status))
+    throw new Error('Literature evidence is unavailable for this request.');
+   return evidencePacket(result?.retrieval?.evidencePacket)||requestLiteratureEvidence(target,{signal});
+  });
+  browserPacket={key,reader,view:packetDisclosure(reader)};
+ }
+ return browserPacket;
+}
 function refreshSynthesis(context){
  const key=synthesisKey(context);if(!context||!aiRequested||synthesis?.key===key)return;
  synthesisController?.abort();const controller=new AbortController();synthesisController=controller;synthesis={key,status:'loading'};
- void requestSynthesis(context,context.query||context.topic,{signal:controller.signal}).then(result=>{
+ const pending=requestSynthesis(context,context.query||context.topic,{signal:controller.signal});synthesis.pending=pending;
+ void pending.then(result=>{
   if(controller!==synthesisController||key!==synthesisKey(currentContext()))return;
-  synthesis={key,...result};$('notice').textContent=result.status==='generated'?'Your answer and six medical decks are ready.':result.status==='sourced'?'Retrieved sources are ready. The AI explanation could not finish.':result.message||'Choose an option to continue.';if(result.status==='blocked')notifySafety({status:'blocked',safety:result.answer?.safety});render();
+  synthesis={key,...result};$('notice').textContent=result.status==='generated'?'Your answer is ready.':result.status==='sourced'?'Retrieved sources are ready. The AI explanation could not finish.':result.message||'Choose an option to continue.';if(result.status==='blocked')notifySafety({status:'blocked',safety:result.answer?.safety});render();
  }).catch(()=>{});
 }
 function currentContext(){
-  if(!topic||!catalog||unresolved)return null;
+  const selection={topic:topic||'',role:roles[role],query:activeQuery,responseMode,frameworkVersion,
+    passages:[],records:[],sections:[],visibleTexts:[],answerSummary:'',browserSources:[],directAnswer:null,deckSummaries:[]};
+  if(unresolved)return {...selection,topic:'',query:''};
+  if(responseMode==='general')return {...selection,...displayedEvidence};
+  if(!topic||!catalog)return {...selection,topic:'',query:''};
   const resources=catalog[topic]||[];
   const currentAnswer=['generated','sourced'].includes(synthesis?.status)&&synthesis.key===synthesisKey({topic,role:roles[role],query:activeQuery});
-  return {topic,frameworkVersion,role:roles[role],query:activeQuery,aliases:[...(medicalRecord(topic)?.aliases||[]),...(taxonomy?.entities.find(e=>e.name===topic)?.aliases||[])],
-    answerSummary:currentAnswer?synthesis.answer.text:'',deckSummaries:currentAnswer?synthesis.decks.map(d=>d.text):[],
+  const learningMode=currentAnswer&&!!synthesis.learningMode;
+  return {...selection,aliases:[...(medicalRecord(topic)?.aliases||[]),...(taxonomy?.entities.find(e=>e.name===topic)?.aliases||[])],
+    packetReader:browserPacket?.key===synthesisKey(selection)?browserPacket.reader:null,
+    learningMode,deckQuestions:learningMode?buddyLearningQuestions(roles[role]):null,
+    ...displayedEvidence,
     passages:textRecords(),records:[...resources,...(live?.records||[]),...(codes?.rows||[]).map(r=>({...r,kind:'terminology',title:r.label}))],
     sections:sectionNames.map((_,i)=>sectionSources(i+1,resources,activeQuery,role).map(x=>x.r)),
     visibleTexts:[...$('card').querySelectorAll('.excerpt')].filter(e=>e.getClientRects().length).map(e=>e.textContent)};
@@ -73,16 +108,32 @@ function switchPrompt(container,input,target,continueSearch){
   prompt.append(button('Switch topic',()=>{container.replaceChildren();continueSearch()}),button('Stay on '+topic,()=>{container.replaceChildren();$('notice').textContent='Continuing with '+topic+'.'}));container.append(prompt);prompt.scrollIntoView({block:'nearest'});
 }
 const buddy=setupBuddy(currentContext);
-const mobile=setupMobileWorkspace({buddy});
+const mobile=setupMobileWorkspace({buddy,verify:openVerification});
+setupAttachments();
+const resourceGuide=el('details',undefined,'source-directory research-resource-guide');resourceGuide.append(el('summary','Research sources & dataset guide'),el('p','Live evidence, research datasets and model candidates have different purposes. Reviewed 17 November 2026.'));
+for(const r of researchResources){const row=el('section');row.append(el('strong',r.status));reference(row,r.name,r.url);row.append(el('p',r.use));resourceGuide.append(row)}
+$('clinicalNotice').after(resourceGuide);
+document.addEventListener('healthbrowse-session-cleared',()=>{
+ resetBrowserPacket();synthesisController?.abort();synthesisController=null;synthesis=null;aiRequested=false;
+});
+window.addEventListener('pagehide',resetBrowserPacket);
+window.addEventListener('pageshow',event=>{if(event.persisted&&catalog)render()});
 const chats=createChatHistory(currentContext);
 const copilot=setupCopilot(currentContext,{
+  classify:(q,c)=>classifyResponseMode(q,{index:lookupIndex,topic:c.topic,previousMode:c.responseMode}),
+  passagesForTopic:name=>{
+    const exact=allowedTopics.get(name.toLowerCase());
+    return exact?textRecords(exact):[];
+  },
+  personalTopic:(q,current)=>publicQuestionTopic(correctSpelling(q),lookupIndex,current),
   onChat:(c,section)=>recordTopic(c.topic,'chat',section),onTurn:turn=>chats.saveTurn(turn),scopeChoice,confirm:(q,name)=>switchPrompt($('scopeQuestion'),q,name,()=>search(q,name,true)),
   research:q=>{if(!/\b(papers?|publications?|studies|trials?|grants?|funding|institutions?|literature|systematic reviews?)\b/i.test(q))return null;research.sync();return research.answer(q)},expand:n=>openDomain(n),
   show:()=>{$('researchBrief').scrollIntoView({block:'start'})}
 });
 const research=createResearchDesk(currentContext,(n,focus)=>copilot.activate(n,focus));
 chats.setHandlers({newChat:()=>copilot.clear(),restore:async data=>{
-  queryNotice='';
+  clearAttachments();resetBrowserPacket();
+  displayedEvidence=null;generalResult=null;responseMode='medical';queryNotice='';
   role=Math.max(0,roles.indexOf(normalizeReadingRole(data.chat.readingMode)));
   if(Object.hasOwn(catalog,data.chat.topic)||allowedTopics.has(data.chat.topic.toLowerCase())){
     topic=data.chat.topic;activeQuery=topic;unresolved=false;live=null;codes=null;$('query').value=topic;render();
@@ -90,7 +141,42 @@ chats.setHandlers({newChat:()=>copilot.clear(),restore:async data=>{
   copilot.restore(data.turns);
 }});
 document.addEventListener('research-ready',()=>{activeResearchReady=true});
-$('buddyResearch').addEventListener('toggle',()=>{if($('buddyResearch').open&&currentContext())research.sync()});
+$('buddyResearch').addEventListener('toggle',()=>{if($('buddyResearch').open&&responseMode==='medical'&&currentContext().topic)research.sync()});
+function openVerification(from){
+  if(buddy.show(from)){copilot.sync();copilot.verify();}
+}
+function verificationCallout(){
+  const section=el('section',undefined,'verification-callout');
+  const heading=el('h3','More Detailed Analysis — Check the Information with Buddy');
+  const open=button('Check with Buddy',()=>openVerification(open),'act verification-button');
+  section.append(heading,el('p','Inspect the cited passages, review a study’s methods, or attach SOX decks and audit trails in Buddy.'),open);
+  return section;
+}
+function answerHandoff(direct,sources){
+  return {directAnswer:direct,answerSummary:direct?.text||direct?.blocks?.map(block=>block.text).join('\n')||'',browserSources:sources};
+}
+function responseBadge(mode){
+  return el('span',mode==='medical'?'Medical Response':'General Response','response-mode-badge');
+}
+function renderGeneral(){
+  const card=$('card');card.hidden=false;card.setAttribute('aria-label','General response');
+  card.replaceChildren(responseBadge('general'),el('h2',generalResult?.topic||activeQuery));
+  $('results').hidden=true;$('clinicalNotice').hidden=true;$('buddyResearch').hidden=true;
+  const data=generalResult;
+  const sources=data?.articles||[];
+  const direct=data?{text:data.answer,blocks:(data.blocks||[]).map(block=>({text:block.text,references:sources.filter(ref=>block.sourceIds?.includes(ref.id))})),citations:sources}:null;
+  const body=el('section',undefined,'overview-note search-answer');
+  if(direct)renderAnswer(body,direct);else body.append(el('p','Looking up supporting sources…','meta'));
+  card.append(body);
+  displayedEvidence=direct?answerHandoff(direct,answerReferences(direct)):null;
+  if(data?.status==='answered'){
+    enrichResult(body,{readingParent:card,mode:'general',topic,query:activeQuery,answer:direct,articles:sources,visual:data.visual,illustrationPageId:data.illustrationPageId,allowLookup:canSaveResearchQuestion(activeQuery),signal:imageView?.signal});
+    card.append(verificationCallout());
+  }
+  if(data?.status==='unavailable')card.append(button('Retry search',()=>search(activeQuery)));
+  mobile.update({responseMode,topic,role:roles[role],responses:direct?[direct]:[]});
+  research.reset();buddy.sync(true,Boolean(direct));copilot.sync();
+}
 function openDomain(n){buddy.show(document.activeElement);copilot.activate(n);copilot.askDomain(n)}
 function reference(parent,title,url){
   if(!url||!/^https?:\/\//.test(url))return;
@@ -109,83 +195,97 @@ function renderCodes(body){
 }
 function render(){
   for(const input of $('readingMode').querySelectorAll('input'))input.checked=input.value===roles[role];
-  if(synthesis?.status==='clarification'){renderClarification($('card'),synthesis.clarification,q=>search(q,null,true),draft=>{if(draft!==undefined)$('query').value=draft;$('query').focus()});$('notice').textContent='Choose a meaning or add the missing subject.';return;}
-  if(synthesis?.status==='blocked'){const message=el('div',undefined,'overview-note search-answer');message.setAttribute('role','alert');message.append(el('h2',synthesis.answer.title||'A safer way to proceed'));renderAnswer(message,synthesis.answer,renderCheck);$('card').replaceChildren(message);mobile.update({topic:'',role:roles[role],responses:[]});buddy.sync(true,false);return;}
-  const general=generalMode(role),count=deckCount(role);
-  const profile=readingProfile(role);document.body.classList.add('buddy-enabled');$('deskTitle').textContent=role===0?'Understand your health':role===2?'Explore medical knowledge':'Clinical research desk';$('deskIntro').textContent='Ask a question, explore six medical decks, and go deeper with your buddy.';$('copilot-heading').textContent='Buddy';$('card').setAttribute('aria-label','Six Medical Decks');
-  const deck=$('card'),sameTopic=deck.dataset.faqTopic===topic&&deck.dataset.readingRole===String(role),openedFAQs=new Set([...deck.querySelectorAll('details[open][data-faq]')].map(d=>d.dataset.faq)),responses=[];
-  const opened=new Set([...deck.querySelectorAll('details[open][data-section]')].map(d=>d.dataset.section));
-  deck.replaceChildren();deck.dataset.faqTopic=topic;deck.dataset.readingRole=String(role);
-  const header=el('div',undefined,'cardhead');header.append(el('span','HEALTHBROWSE / MEDCARD','eyebrow'),el('h2',unresolved?'Topic not resolved':topic),el('p','View: '+(professionalRole(role)?'Clinical Professional':role===2?'Medical Education':'General Public'),'deck-subtitle'));
+  $('deskTitle').textContent='HealthBrowse research desk';$('deskIntro').textContent='Search medical topics, research, and enterprise documentation.';
+  $('roleHint').textContent=readingProfile(role).guide;
+  if(responseMode==='general'){renderGeneral();return;}
+  $('clinicalNotice').hidden=false;$('buddyResearch').hidden=false;
+  if(synthesis?.status==='clarification'){resetBrowserPacket();renderClarification($('card'),synthesis.clarification,q=>search(q,null,true),draft=>{if(draft!==undefined)$('query').value=draft;$('query').focus()});$('notice').textContent='Choose a meaning or add the missing subject.';return;}
+  if(synthesis?.status==='blocked'){resetBrowserPacket();const message=el('div',undefined,'overview-note search-answer');message.setAttribute('role','alert');message.append(el('h2',synthesis.answer.title||'A safer way to proceed'));renderAnswer(message,synthesis.answer,renderCheck);$('card').replaceChildren(message);mobile.update({topic:'',role:roles[role],responses:[]});buddy.sync(true,false);return;}
+  const general=generalMode(role),card=$('card');
+  document.body.classList.add('buddy-enabled');$('copilot-heading').textContent='Buddy';
+  card.setAttribute('aria-label',general?'Medical answer':'Clinical report');
+  const sameResult=card.dataset.query===activeQuery&&card.dataset.role===roles[role];
+  const openResources=sameResult&&!!card.querySelector('.resource-shelf')?.open;
+  card.replaceChildren();card.dataset.query=activeQuery;card.dataset.role=roles[role];
+  let direct=null;
+  const header=el('div',undefined,'cardhead');header.append(responseBadge('medical'),el('h2',unresolved?'Topic not resolved':topic),el('p','View: '+(professionalRole(role)?'Clinical Professional':'General Public'),'deck-subtitle'));
   if(!unresolved && assignments[topic])header.append(el('span',assignments[topic].map(i=>depts[i]).join(' · '),'badge'));
   if(unresolved){
     const feedback=el('div',undefined,'overview-note search-answer');
     feedback.append(el('h3','Let’s clarify your question'),el('p',activeQuery||$('query').value,'answer-question'),el('p','I could not find a supporting passage for this question in the available medical sources. Try adding the organ, medicine, condition or process you mean. No answer has been generated.'));
-    const diagnosis=personalDiagnosisNotice(activeQuery);if(diagnosis)feedback.append(el('p',diagnosis,'query-interpretation'));header.append(feedback);
+    const diagnosis=personalDiagnosisNotice(activeQuery,topic);if(diagnosis)feedback.append(el('p',diagnosis,'query-interpretation'));header.append(feedback);
   }
   if(!unresolved){
     const sources=textRecords(),context={...currentContext(),topic,role:roles[role],aliases:[...(medicalRecord(topic)?.aliases||[]),...(taxonomy.entities.find(e=>e.name===topic)?.aliases||[])],passages:sources,records:currentContext()?.records||[]};
-    const overview=el('div',undefined,'overview-note search-answer');overview.append(el('h3','Browser Summary'),el('p',activeQuery||topic,'answer-question'));
+    const overview=el('div',undefined,'overview-note search-answer');
+    if(general)overview.append(el('h3','Browser Summary'));
+    overview.append(el('p',activeQuery||topic,'answer-question'));
     refreshSynthesis(context);
-    let direct=synthesis?.key===synthesisKey(context)&&['generated','sourced'].includes(synthesis.status)?synthesis.answer:searchAnswer(context,activeQuery||topic);
-    if(synthesis?.status==='loading'&&!direct.supported)direct={text:'Looking up supporting medical sources for your question…',blocks:[],citations:[],checks:[],supported:false};
-    direct.modelNotice=synthesis?.key===synthesisKey(context)?(synthesis.status==='loading'?'Preparing an answer and six medical decks from cited sources… Source excerpts are available while you wait.':synthesis.message||direct.modelNotice||''):'';
+    direct=synthesis?.key===synthesisKey(context)&&['generated','sourced'].includes(synthesis.status)?synthesis.answer:searchAnswer(context,activeQuery||topic);
+    if(synthesis?.status==='loading'&&!direct.supported&&!direct.diagnosisNotice)direct={text:'Looking up supporting medical sources for your question…',blocks:[],citations:[],checks:[],supported:false};
+    direct.modelNotice=synthesis?.key===synthesisKey(context)?(synthesis.status==='loading'?'Preparing your answer from the cited sources…':synthesis.message||direct.modelNotice||''):'';
     const state=synthesis?.key===synthesisKey(context)?synthesis:null;
-    responses.push({id:0,...direct});
-    renderAnswer(overview,{...direct,code:state?.code,retryAt:state?.retryAt},renderCheck,()=>{if(synthesis?.key!==synthesisKey(context))return;synthesis=null;render()});
+    const clinicalReport=!general && !direct.safety && direct.kind!=='platform' && !(state?.status==='loading'&&!direct.blocks?.length);
+    if(clinicalReport)direct={...direct,clinicalSynthesis:true};
+    const renderDirect=clinicalReport?renderClinicalSynthesis:renderAnswer;
+    renderDirect(overview,{...direct,code:state?.code,retryAt:state?.retryAt},renderCheck,()=>{if(synthesis?.key!==synthesisKey(context))return;synthesis=null;render()});
     if(queryNotice)overview.append(el('small',role===1?'Clinical reference; interpret evidence against the patient context and local protocols.'+(queryNotice.includes('not saved')?' This personal question is not saved to chat history.':''):queryNotice,'query-interpretation'));
-    if(!direct.supported){const intro=checkedPassage(topic,sources,sources.find(p=>p.overview));if(intro){const basic=el('details');basic.append(el('summary','About '+topic),el('p',intro.text));renderCheck(basic,intro);overview.append(basic)}}
+    overview.classList.add('primary-medical-response');
     header.append(overview,saveControls(topic));
-    const framework=el('details',undefined,'source-directory');framework.append(el('summary','About these six medical decks'),el('p','Six Medical Decks plus research resources. These references inform the organization; they do not validate this application or certify its answers.'));for(const ref of frameworkReferences){const row=el('p');reference(row,ref.title,ref.url);framework.append(row)}header.append(framework);
     const guide=el('details',undefined,'source-directory');guide.append(el('summary','Source guide · 10 medical and public-health organizations'),el('p','These organizations have different responsibilities. A publisher citation does not mean it reviewed or certified this HealthBrowse response.'));
     for(const a of authorities){const item=el('p');reference(item,a.name,a.url);item.append(document.createTextNode(' · '+a.scope));guide.append(item)}header.append(guide)
   }
-  header.append(el('p','Publisher sources are linked. Independent clinical review is pending.','meta'));deck.append(header);
-  const grid=el('div',undefined,'deck-grid faq-list');if(!unresolved)deck.append(el('h3','Six Medical Decks','faq-heading'));deck.append(grid);$('roleHint').textContent=profile.guide;
+  card.append(header);
   $('clinicalNotice').textContent=professionalRole(role)?'Professional research reference. Check current guidelines, patient context and local protocols before clinical use. This tool is not clinically validated.':'HealthBrowse provides general education, not a diagnosis or an individual treatment plan. Discuss care with a licensed healthcare professional.';
-  const texts=textRecords(),resources=unresolved?[]:catalog[topic]||[];
-  sectionNames.forEach((label,i)=>{
-    const number=i+1,extra=number===7,box=el('section',undefined,extra?'research-resource':'med-section');box.dataset.number=String(number);
-    if(extra){const title=el('div',undefined,'sectionTitle');title.append(el('h3',domainTitle(number,role)));box.append(title)}else box.append(el('strong','Buddy says:','buddy-says'));
-    const rows=texts.filter(r=>r.deck===number&&!r.overview);
-    const ranked=sectionSources(number,resources,activeQuery,role);
-    const officialLinks=sectionLinks(medicalRecord(topic),number);
-    if(unresolved){if(!extra){box.append(el('p','Search for a medical topic to explore this area.'));if(number===1&&codes)renderCodes(box);grid.append(box)}return}
-    const preferred=rows.find(r=>checkedPassage(topic,texts,r));
-    const claim=checkedPassage(topic,texts,preferred);
-    if(number<7){const generated=synthesis?.key===synthesisKey(currentContext())&&['generated','sourced'].includes(synthesis.status)?synthesis.decks.find(d=>d.id===number):null;let response=generated||domainAnswer(currentContext(),number,{detail:true});if(synthesis?.status==='loading'&&!response.supported)response={text:'Retrieving evidence for this area…',blocks:[],citations:[],checks:[],supported:false};responses.push({id:number,...response});renderAnswer(box,{...response,list:number===3},renderCheck)}else if(claim){box.append(el('p',claim.text,'excerpt'));renderCheck(box,claim)}
-    const drawer=el('details',undefined,'research-drawer');drawer.dataset.section=String(number);drawer.open=opened.has(String(number));drawer.append(el('summary','Sources and further reading'));
-    const cardBox=box;
-    for(const officialLink of officialLinks){const row=el('p');reference(row,officialLink.title+' · '+officialLink.publisher,officialLink.url);drawer.append(row)}
-    const morePassages=rows.filter(p=>p!==preferred).slice(0,professionalRole(role)?3:1);for(const p of morePassages){const check=checkedPassage(topic,texts,p);if(check){drawer.append(el('p',check.text,'excerpt'),el('small',p.vintage||'Source date unverified.','meta'));renderCheck(drawer,check)}}
-    if(number===4)renderCodes(drawer);
-    if(number===7){drawer.append(el('p',live?.message||'Search or refresh to retrieve current publications.','meta'),button('Refresh publication index',runLive));if(live?.records?.length){const rankedList=el('details');rankedList.append(el('summary','Additional indexed publications ('+live.records.length+')'));live.records.forEach(r=>rankedList.append(linkRecord(r)));drawer.append(rankedList,button('Export search record',download))}}
-    if(number===7){
-      if(careTopic!==topic||!carePanel){careTopic=topic;carePanel=el('div');renderCare(carePanel,topic,resources.filter(r=>r.kind==='facility'))}
-      drawer.append(carePanel);
-    }
-    {
-      if(number===7 && ranked.some(item=>item.r.kind==='education'))drawer.append(el('p','Education listings are from the supplied catalog. Check current dates and entry requirements with the institution.','meta'));
-      const display=ranked.slice(0,3);
-      for(const item of display){const link=linkRecord(item.r);link.append(el('small',item.why,'meta'));drawer.append(link)}
-      if(ranked.length>3){const more=el('details',undefined,'resource-list');more.dataset.section=String(number);more.open=opened.has(String(number));more.append(el('summary','More source records ('+(ranked.length-3)+')'));ranked.slice(3).forEach(item=>more.append(linkRecord(item.r)));drawer.append(more)}
-      if(!ranked.length && number===7){for(const [title,url] of [['NCBI GEO datasets','https://www.ncbi.nlm.nih.gov/gds/?term='],['Hugging Face datasets','https://huggingface.co/datasets?search='],['GitHub research repositories','https://github.com/search?type=repositories&q=']]){const row=el('p');reference(row,'Search '+title,url+encodeURIComponent(topic));drawer.append(row)}}
-    }
-    cardBox.append(drawer);if(extra){const shelf=el('details',undefined,'resource-shelf');shelf.append(el('summary','Research papers, datasets & care resources'),cardBox);deck.append(shelf)}else{cardBox.append(button('Explore this with Buddy',()=>openDomain(number)));const faq=el('details',undefined,'faq-item');faq.dataset.faq=String(number);faq.open=sameTopic?openedFAQs.has(String(number)):(role===1||number===1);const summary=el('summary');summary.append(el('span',faqQuestions[i],'faq-question'));faq.append(summary,cardBox);grid.append(faq)}
-  });
-  if(!unresolved){
-    const citations=el('section',undefined,'faq-citations');citations.setAttribute('aria-label','Authorized citations');citations.append(el('h3','Authorized Citations'));
-    const list=el('ol');for(const r of faqReferences(responses)){const row=el('li');reference(row,r.title||'Supporting source',r.url);if(r.date)row.append(el('small',r.date,'meta'));list.append(row)}
-    citations.append(list);if(!list.children.length)citations.append(el('p','No supporting citations are available for this response.'));
-    citations.append(el('p','Sources used in these answers. Open inline citations for supporting passages and verification details. Publisher citations do not mean clinical certification.','meta'));
+  if(direct){
+    const refs=answerReferences(direct);
+    const citations=el('section',undefined,'answer-citations');citations.setAttribute('aria-label','Authorized citations');
+    citations.append(el('h3','Authorized Citations'));
+    if(refs.length){
+      const list=el('ol');
+      for(const ref of refs){const row=el('li');reference(row,ref.title||'Supporting source',ref.url);if(ref.date)row.append(el('small',ref.date,'meta'));list.append(row)}
+      citations.append(list);
+    }else citations.append(el('p','No supporting citations are available for this response.'));
     const copyStatus=el('span',undefined,'meta');copyStatus.setAttribute('role','status');
-    citations.append(button('Copy deck summary',async()=>{const text=faqMarkdown({topic,role:roles[role],clinical:professionalRole(role),answer:responses.find(r=>r.id===0)||{},decks:responses.filter(r=>r.id>0)});try{await navigator.clipboard.writeText(text);copyStatus.textContent='Deck summary copied.'}catch{copyStatus.textContent='Clipboard unavailable. Use your browser’s copy command to select the answers.'}}),copyStatus);
-    deck.append(citations);
-  }
-  mobile.update({topic,role:roles[role],responses:unresolved?[]:responses});
-  buddy.sync(true,!unresolved);if(!unresolved){copilot.sync();if($('buddyResearch').open)research.sync()}else research.reset();
+    citations.append(button('Copy answer',async()=>{try{
+      await navigator.clipboard.writeText(answerMarkdown({topic,role:roles[role],answer:direct}));copyStatus.textContent='Answer copied.';
+    }catch{copyStatus.textContent='Clipboard unavailable. Select the answer text to copy it.'}}),copyStatus);
+    if(synthesis?.status!=='platform')citations.append(medicalPacketControl().view);
+    card.append(citations);
+    displayedEvidence=answerHandoff(direct,refs);
+    if(!direct.safety && direct.kind!=='platform' && (direct.supported||direct.blocks?.length||direct.generation)){
+      enrichResult(header.querySelector('.primary-medical-response'),{readingParent:card,mode:'medical',topic,query:activeQuery,answer:direct,
+        articles:[...(live?.records||[]),...refs,...Object.values(medicalRecord(topic)?.links||{}).flat()],visual:synthesis?.key===synthesisKey(currentContext())?synthesis.visual:null,allowLookup:canSaveResearchQuestion(activeQuery),signal:imageView?.signal});
+      card.append(verificationCallout());
+    }
+    card.append(researchResourcesPanel(openResources));
+  }else if(codes)renderCodes(card);
+  mobile.update({responseMode,topic,role:roles[role],responses:direct?[direct]:[]});
+  buddy.sync(true,!unresolved);copilot.sync();if(!unresolved&&$('buddyResearch').open)research.sync();else if(unresolved)research.reset();
 }
-let searchRequest;
+function researchResourcesPanel(open){
+  const resources=catalog[topic]||[];
+  const shelf=el('details',undefined,'resource-shelf');shelf.open=open;
+  shelf.append(el('summary','Research papers, datasets & care resources'));
+  const content=el('div',undefined,'research-resource');
+  if(codes||medicalRecord(topic)?.mesh?.length)renderCodes(content);
+  content.append(el('p',live?.message||'Search the index for publications about this topic.','meta'),button('Refresh publication index',runLive));
+  if(live?.records?.length){
+    const papers=el('details');papers.append(el('summary','Indexed publications ('+live.records.length+')'));
+    live.records.forEach(r=>papers.append(linkRecord(r)));content.append(papers,button('Export search record',download));
+  }
+  const directory=el('details',undefined,'resource-list');directory.append(el('summary','Further research sources'));
+  for(const r of sectionLinks(medicalRecord(topic),7)){const row=el('p');reference(row,r.title+' · '+r.publisher,r.url);directory.append(row)}
+  const ranked=sectionSources(7,resources,activeQuery,role);
+  for(const item of ranked){const row=linkRecord(item.r);row.append(el('small',item.why,'meta'));directory.append(row)}
+  if(!ranked.length)for(const [title,url] of [['NCBI GEO datasets','https://www.ncbi.nlm.nih.gov/gds/?term='],['Hugging Face datasets','https://huggingface.co/datasets?search='],['GitHub research repositories','https://github.com/search?type=repositories&q=']]){
+    const row=el('p');reference(row,title,url+encodeURIComponent(topic));directory.append(row);
+  }
+  content.append(directory);
+  if(careTopic!==topic||!carePanel){careTopic=topic;carePanel=el('div');renderCare(carePanel,topic,resources.filter(r=>r.kind==='facility'))}
+  content.append(carePanel);shelf.append(content);return shelf;
+}
+let searchRequest, imageView;
 function resultGroup(label){
   const group=el('details'),summary=el('summary',label),body=el('div');
   group.open=false;group.append(summary,body);$('resultsBody').append(group);
@@ -209,18 +309,26 @@ async function search(input,chosenTopic,confirmed=false){
   finally{if(sequence===searchSequence){$('searchSubmit').textContent='Search ↗';$('find').setAttribute('aria-busy','false')}}
 }
 async function performSearch(input,chosenTopic,confirmed=false){
+  // A publication lookup can time out while the same browser answer stays on screen.
+  // Keep image freshness tied to replacing the question rather than that service's deadline.
+  imageView?.abort();imageView=new AbortController();
+  resetBrowserPacket();
   synthesisController?.abort();synthesisController=null;synthesis=null;aiRequested=false;
   queryNotice='';
   $('searchSwitch').replaceChildren();$('scopeQuestion').replaceChildren();
 
   searchRequest?.abort(); controller?.abort();controller=null;
   const request=new AbortController();searchRequest=request;
-  const explicitCode=/^(?:what is |look up |search for )?(?:icd|snomed)/i.test(input.trim()) && codeQuery(input);
-  const prepared=prepareQuery(input),status=prepared.status;
+  const priorMode=responseMode,priorTopic=topic;
+  displayedEvidence=null;generalResult=null;
+  responseMode=classifyResponseMode(input,{index:lookupIndex,topic:priorTopic,previousMode:activeResearchReady?priorMode:undefined});
+  const screened=screenGeneralQuery(input);
+  const prepared=screened.status==='ok'&&responseMode==='medical'?prepareQuery(input):screened,status=prepared.status;
   if(status!=='ok'){
     notifySafety({status,safety:prepared.safety?.safety});
     $('notice').textContent=status==='unsafe'?'Buddy’s response is below.':guardMessage(status);$('results').hidden=true;$('resultsBody').replaceChildren();
     topic='';unresolved=true;activeQuery='';live=null;codes=null;mobile.update({topic:'',role:roles[role],responses:[]});buddy.sync(true,false);
+    copilot.sync();research.reset();
     const message=el('div',undefined,'overview-note search-answer');
     message.setAttribute('role','alert');message.append(el('h2',prepared.safety?.title||(status==='emergency'?'Get urgent help now':'Remove identifying details to continue')));
     renderAnswer(message,prepared.safety||{text:guardMessage(status)},renderCheck);
@@ -228,9 +336,29 @@ async function performSearch(input,chosenTopic,confirmed=false){
     $('card').hidden=false;$('card').replaceChildren(message);$('card').focus({preventScroll:true});$('card').scrollIntoView({block:'start'});
     return;
   }
+  if(responseMode==='general'){
+    activeQuery=input;topic=input;unresolved=false;live=null;codes=null;
+    $('card').hidden=false;$('query').value=input;render();$('card').focus({preventScroll:true});$('card').scrollIntoView({block:'start'});
+    const timer=setTimeout(()=>request.abort(),16000);
+    try{
+      const response=await fetch('/api/browser/general',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:input,...(priorMode==='general'&&priorTopic&&priorTopic.length<=180?{topic:priorTopic}:{})}),signal:request.signal,cache:'no-store'});
+      const data=await response.json();
+      if(searchRequest!==request)return;
+      if(!['answered','insufficient','blocked'].includes(data.status))throw Error('Source service unavailable');
+      generalResult=data;topic=data.topic||input;activeResearchReady=data.status==='answered';
+      $('notice').textContent=data.status==='answered'?'Your response and sources are ready.':'See the response below.';
+    }catch{
+      if(searchRequest!==request)return;
+      generalResult={status:'unavailable',topic:input,answer:'The source service could not finish this search. Please try again.'};
+      $('notice').textContent='Search could not finish.';
+    }finally{clearTimeout(timer)}
+    render();return;
+  }
+  if(priorMode==='general'){topic='';activeQuery='';unresolved=true;activeResearchReady=false;}
   input=prepared.query;queryNotice=prepared.notice||'';
-  const clarification=clarifyQuery(input,{topic,context:!!activeQuery&&!unresolved});
-  if(clarification){$('card').hidden=false;$('results').hidden=true;renderClarification($('card'),clarification,q=>search(q,null,true),draft=>{if(draft!==undefined)$('query').value=draft;$('query').focus()});$('notice').textContent='Choose a meaning or add the missing subject.';return;}
+  const narrativeTopic=generalMode(role)?publicQuestionTopic(correctSpelling(input),lookupIndex):null;
+  const clarification=narrativeTopic===''?missingSymptomTopic:clarifyQuery(input,{topic,context:!!activeQuery&&!unresolved});
+  if(clarification){unresolved=true;copilot.sync();$('card').hidden=false;$('results').hidden=true;renderClarification($('card'),clarification,q=>search(q,null,true),draft=>{if(draft!==undefined)$('query').value=draft;$('query').focus()});$('notice').textContent='Choose a meaning or add the missing subject.';return;}
   $('card').hidden=false;$('copilot').hidden=false;
   const corrected=correctSpelling(input),code=codeQuery(input);
   let {choices,keywords}=resolveSearch(corrected,lookupIndex);choices=inScopeChoices(choices);
@@ -260,6 +388,11 @@ async function performSearch(input,chosenTopic,confirmed=false){
       $('results').hidden=true;render();$('card').focus({preventScroll:true});$('card').scrollIntoView({block:'start',behavior:'smooth'});return;
     }
   }
+  if(narrativeTopic){exact=narrativeTopic;choices=[];}
+  const followUpStudy=priorMode==='medical'&&activeResearchReady&&priorTopic&&!choices.length&&studyFollowUp(input);
+  if(followUpStudy)exact=priorTopic;
+  const learningSubject=narrativeTopic||followUpStudy?'':educationalSubject(corrected);
+  if(!code&&!chosenTopic&&learningSubject){exact=learningSubject[0].toUpperCase()+learningSubject.slice(1);choices=[];}
   // A clear question is eligible even when it has no local disease-title match.
   // Multiple named subjects are preserved as one question for server retrieval.
   if(!code&&(!choices.length&&!exact||choices.length>1)){exact=retrievalTerms(corrected)||corrected.slice(0,160);exact=exact[0].toUpperCase()+exact.slice(1);choices=[];}
@@ -275,10 +408,10 @@ async function performSearch(input,chosenTopic,confirmed=false){
   }
   const subject=choices[0]||exact,match=Object.hasOwn(catalog,subject)?subject:null;
   aiRequested=true;
-  codes=codeResult;activeQuery=input;topic=subject;void recordTopic(subject,'search',questionDeck(input)||1);activeResearchReady=true;live={message:'Searching Europe PMC…'};
+  codes=codeResult;activeQuery=input;topic=subject;if(!prepared.ephemeral)void recordTopic(subject,'search',questionDeck(input)||1);activeResearchReady=true;live={message:'Searching Europe PMC…'};
   $('card').querySelectorAll('details[open]').forEach(d=>d.open=false);
   render();
-  $('notice').textContent=(corrected!==input?'Understood as “'+corrected+'”. ':'')+'Your sources are below. Preparing the answer and six decks…';
+  $('notice').textContent=(corrected!==input?'Understood as “'+corrected+'”. ':'')+'Preparing your cited answer…';
   const target=questionDeck(corrected);
   if(target)copilot.activate(target);
   $('query').value=input;
@@ -286,7 +419,7 @@ async function performSearch(input,chosenTopic,confirmed=false){
   if(match){
     const local=resultGroup('Medical sources · '+match);
     const sources=filtered('core','guideline').slice(0,3);
-    sources.forEach(r=>local.append(linkRecord(r)));local.append(button('Open full MedCard',()=>$('card').scrollIntoView()));
+    sources.forEach(r=>local.append(linkRecord(r)));local.append(button('View answer',()=>$('card').scrollIntoView()));
   }else panel($('resultsBody'),'Searching medical education and published evidence beyond the local topic catalog.');
   const papers=resultGroup('Additional indexed publications'),figures=resultGroup('Published figures');
   $('searchSubmit').textContent='Search ↗';$('find').setAttribute('aria-busy','false');
@@ -324,7 +457,7 @@ try{
   const loaded=await Promise.allSettled(files.map(file=>fetchJSON(file)));
   const content=(i,fallback)=>loaded[i].status==='fulfilled'?loaded[i].value:fallback;
   catalog=content(0,{});taxonomy=content(1,{departments:[],entities:[]});passages=remapPassages(content(2,{}));allowedTopics=new Map(content(3,[]).map(t=>[t.toLowerCase(),t]));feed=content(4,{topics:[]});
-  if(!feed.topics.length&&!Object.keys(passages).length)throw Error('Medical topic content is unavailable.');
+
   allowedTopics.set('asthma','Asthma');
   medlineLookup=medlineIndex(feed);
   for(const item of feed.topics)if(!allowedTopics.has(item.title.toLowerCase()))allowedTopics.set(item.title.toLowerCase(),item.title);
@@ -338,11 +471,11 @@ depts=taxonomy.departments.map(d=>d.name);assignments=Object.fromEntries(taxonom
 $('readingMode').disabled=false;
 $('readingMode').addEventListener('change',event=>{
   const next=roles.indexOf(event.target.value);if(next<0||next===role)return;
-  role=next;try{sessionStorage.setItem('hb-reader',JSON.stringify(roles[role]))}catch{}
+  resetBrowserPacket();role=next;try{sessionStorage.setItem('hb-reader',JSON.stringify(roles[role]))}catch{}
   render();
 });
 render();
-$('notice').textContent='Ready. Ask a question about a medical topic.';
+$('notice').textContent='Ready. Ask a research question.';
 const queued=searchUI.ready(search);
 void chats.init();
 const params=new URLSearchParams(location.search);

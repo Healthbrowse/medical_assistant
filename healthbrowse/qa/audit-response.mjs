@@ -1,3 +1,5 @@
+import {clinicalSections} from '../dist/clinical-sections.js';
+
 // Software/coverage checks and review suggestions, not a medical-certification bot.
 const textOf=s=>s?.blocks?.map(b=>b.text).join(' ')||s?.text||'';
 export function auditResponse(testCase,role,status,result,elapsedMs){
@@ -7,36 +9,43 @@ export function auditResponse(testCase,role,status,result,elapsedMs){
   if(status!==422||result.code!==testCase.expectedCode)add('error','safety-interceptor','Expected '+testCase.expectedCode+' before inference.','Repair the privacy/emergency admission path before release.');
   return {passed:!findings.length,findings};
  }
- if(status!==200||result.status!=='generated'){
+ if(status!==200||!['generated','sourced'].includes(result.status)){
   const provider=/provider_busy|rate_limited/.test(result.code||'');
   add('error',provider?'provider-capacity':'response-availability',result.code||'HTTP '+status,provider?'Review provider allowance and request spacing; this is an infrastructure failure, not evidence of model hallucination.':'Inspect the gateway/provider error and restore a complete response.');
   return {passed:false,findings};
  }
- if(!textOf(result.answer).trim())add('error','direct-answer','The answer is empty.','Always render a direct answer or a clear evidence-gap message.');
- if(!result.answer?.generation)add('review','generated-answer','Only a source excerpt or gap was returned.','Inspect retrieval coverage and withheld claims; do not label excerpts as AI synthesis.');
- const ids=(result.decks||[]).map(d=>d.id).sort((a,b)=>a-b);
- if(testCase.mode==='search'&&ids.join()!=='1,2,3,4,5,6')add('error','six-decks','Deck IDs: '+ids.join(),'Return all six clinical domains exactly once.');
- if(testCase.mode==='chat'&&ids.length)add('error','buddy-focus','Buddy repeated the deck array.','Return the requested follow-up without repeating the browser workspace.');
- for(const section of [result.answer,...(result.decks||[])].filter(Boolean)){
-  const name=section.id?'Deck '+section.id:'Direct answer';
-  if(!textOf(section).trim())add('error','empty-section',name+' is empty.','Show an explanation or explicit source gap.');
-  if(section.id&&!section.generation)add('review','deck-coverage',name+' used an excerpt or gap.','Inspect available sources for this domain before adding more generated detail.');
-  for(const block of section.blocks||[]){
-   if(section.generation&&!block.references?.length)add('error','missing-citation',name+' has an uncited generated block.','Withhold the claim until it has a supporting source.');
-   for(const ref of block.references||[]){
-    let valid=false;try{const u=new URL(ref.url);valid=u.protocol==='https:'&&!u.username&&!u.password;}catch{}
-    if(!valid||!ref.id||!ref.quote||!ref.text?.includes(ref.quote))add('error','source-integrity',name+' contains an invalid citation or quotation.','Resolve URLs and quotations from server-owned evidence.');
-    if(!ref.date)add('review','source-date',name+' has no source date.','Display a verified publication date or explicitly labeled snapshot date.');
-   }
-   if(section.generation&&!/[.!?]["”’)]?$/.test(block.text.trim()))add('error','unfinished-answer',name+' contains an unfinished sentence.','Avoid hard text truncation and reject incomplete model output.');
+ const answerBlock=result.answer||{};
+ const hasGeneration=Boolean(answerBlock?.generation);
+ if(!textOf(answerBlock).trim())add('error','direct-answer','The answer is empty.','Render a direct answer or explain what evidence is missing.');
+ if(!hasGeneration)add('review','generated-answer','Only a source excerpt or gap was returned.','Inspect retrieval coverage and provider availability.');
+ if(result.decks!==undefined&&(!Array.isArray(result.decks)||result.decks.length)){
+  add('error',testCase.mode==='chat'?'buddy-focus':'browser-format','The response includes an unexpected deck collection.','Return only the answer to the current question.');
+ }
+ if(testCase.mode==='search'&&role==='Clinicians'){
+  if(!answerBlock?.clinicalSynthesis)add('error','clinical-format','The clinical report flag is missing.','Return the clinician report with sections for synthesis, evidence and limitations.');
+  const groups=clinicalSections(answerBlock);
+  const keys=new Set(groups.map(g=>g.key));
+  if(hasGeneration&&(answerBlock.blocks||[]).some(b=>!b.kind&&!keys.has(b.section)))add('error','clinical-claim-section','A generated clinical claim is missing its report section.','Assign each supported claim to synthesis, evidence or limitations.');
+  if(groups.map(g=>g.key).join(',')!=='synthesis,evidence,limitations'||groups.some(g=>!g.blocks.length&&!g.notes.length))add('error','clinical-sections','The clinical report lacks a section or an explanation of a gap.','Show all three sections with cited findings or a source limitation.');
+ }
+ if(role==='General'&&answerBlock?.clinicalSynthesis)add('error','general-format','The General response has been marked as a clinician report.','Use the plain-language reader view.');
+ if(hasGeneration&&!answerBlock?.blocks?.length)add('error','missing-citation','The generated answer contains no claim-level source records.','Return the direct claim with the passage that supports it.');
+ for(const block of answerBlock?.blocks||[]){
+  if(block.kind==='follow-up')continue;
+  const references=block.references?.length?block.references:block.citation?[block.citation]:[];
+  if(block.kind==='diagnosis-lead'&&!references.length)continue;
+  if(!references.length)add('error','missing-citation','A medical answer block lacks a citation.','Withhold the claim until it has a supporting source.');
+  for(const ref of references){
+   let valid=false;try{const u=new URL(ref.url);valid=u.protocol==='https:'&&!u.username&&!u.password;}catch{}
+   if(!valid||!ref.id||!ref.quote||!ref.text?.includes(ref.quote))add('error','source-integrity','The answer contains an invalid citation or quotation.','Resolve URLs and quotations from server-owned evidence.');
+   if(!ref.date)add('review','source-date','A cited passage has no source date.','Display its publication or snapshot date when verified.');
   }
+  if(hasGeneration&&!/[.!?]["”’)]?$/.test(block.text.trim()))add('error','unfinished-answer','An answer block contains an unfinished sentence.','Reject truncated model output.');
  }
  const answer=textOf(result.answer).toLowerCase();
  for(const facet of testCase.facets||[])if(!facet.terms.some(t=>answer.includes(t)))add('review','question-coverage','Direct answer may miss: '+facet.name+'.','Review this facet semantically and add supported information or explicitly state the evidence gap.');
  if(role==='General'&&/\b(hematopoiesis|cytopenia|clonal|immunophenotyp|etiopathogenesis|myeloblast)\b/i.test(answer)&&!/(?:means|called|which|a type of|immature)/i.test(answer))add('review','plain-language','Possible unexplained clinical terminology.','Define unfamiliar terms in ordinary language for General users.');
  if(role==='Clinicians'&&answer.split(/\s+/).length<25)add('review','clinical-depth','The clinician answer is very short.','Add source-supported diagnostic or mechanistic context appropriate to the question.');
- const deckTexts=(result.decks||[]).map(textOf).map(s=>s.trim().toLowerCase());
- if(deckTexts.some(s=>s&&s===answer.trim()))add('review','repetition','A deck exactly repeats the overview.','Use the deck to expand its clinical domain rather than duplicate the direct answer.');
  if(elapsedMs>30000)add('review','latency','Response took '+Math.round(elapsedMs/1000)+' seconds.','Investigate provider timing, source budget and capacity. Keep progress and cancellation visible.');
  return {passed:!findings.some(f=>f.severity==='error'),findings};
 }

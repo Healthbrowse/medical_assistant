@@ -1,6 +1,11 @@
+import {educationalVisual} from './education-visuals.mjs';
+import {learningDecks} from './learning-decks.mjs';
+import {isBuddyOverview,buddyOverviewDecks} from './buddy-decks.mjs';
+import {buddyDeckIntent} from '../dist/buddy-deck-intent.js';
 import {educationEvidence,addEducation} from './education-evidence.mjs';
 import {clarifyQuery} from '../dist/query-understanding.js';
-import {retrieveEvidence} from './live-evidence.mjs';
+import {retrieveEvidence,medicalTopicIndex,retrieveLiteraturePacket} from './live-evidence.mjs';
+import {classifyResponseMode} from '../dist/response-mode.js';
 import {outsideMedicalScope,scopeAnswer,insufficientClinicalContext,medicalPersona} from '../dist/medical-contract.js';
 import {assessSafety,safetyAnswer,safetyPolicyVersion,securityFlagFor} from '../dist/safety-policy.js';
 import {securityVariants,assessBuddySafety,buddySafetyAnswer,buddyHelpAnswer,buddyPolicyVersion} from '../dist/buddy-policy.js';
@@ -8,8 +13,11 @@ import {citedEvidence,prepareCited,presentCited,prepareCitedReview,applyCitedRev
 import {isReadingRole,normalizeReadingRole} from '../dist/reading-profiles.js';
 import {inspectQuery} from '../dist/clinical-engine.js';
 import {evidenceFor,generationMessages,validateDraft,reviewMessages,reviewPasses,presentDraft} from './model-evidence.mjs';
-import {modelEndpoint as endpoint,modelReviewEndpoint} from './model-provider.mjs';
+import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol} from './model-provider.mjs';
+import {deepseekPayload,readDeepSeekResult} from './deepseek-client.mjs';
 import {compactGeneration,compactReviews,ContextLimit} from './model-context.mjs';
+import {documentEvidence} from './document-evidence.mjs';
+import {validateDocuments} from '../dist/document-policy.js';
 import {groundedEvidence,prepareGrounded,decodeGrounded,groundedReview,groundedReviewPasses,presentGrounded} from './model-grounded.mjs';
 const headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'};
 const reply=(body,status=200)=>Response.json(body,{status,headers:{...headers,...(body.retryAfterSeconds!==undefined?{'Retry-After':String(body.retryAfterSeconds)}:{})}});
@@ -20,7 +28,20 @@ export function retryDelay(value,now=Date.now()){
  const raw=value.trim();const seconds=/^\d+(?:\.\d+)?$/.test(raw)?Number(raw):(Date.parse(raw)-now)/1000;
  return Number.isFinite(seconds)&&seconds>=0&&seconds<=604800?Math.ceil(seconds):undefined;
 }
-export function modelStatus(env){return {general:{configured:!!endpoint(env,'general')},professional:{configured:!!endpoint(env,'professional')},validation:env.MODEL_PROVIDER==='groq'?'Server-resolved citations; AI interpretation is not independently clinically validated':'Automated support review; independent clinical validation pending'};}
+export function modelStatus(env){
+ const deepseek=env.MODEL_PROVIDER==='deepseek';
+ function routeStatus(route){
+  const config=endpoint(env,route);
+  return {configured:!!config,...(deepseek&&config?{model:config.model}:{})};
+ }
+ return {general:routeStatus('general'),professional:routeStatus('professional'),
+  ...(deepseek?{provider:'deepseek',agent:routeStatus('agent')}:{}),
+  validation:deepseek||env.MODEL_PROVIDER==='groq'?'Server-resolved citations; AI interpretation is not independently clinically validated':'Automated support review; independent clinical validation pending'};
+}
+function evidenceMode(input,assets){
+ const index=medicalTopicIndex(assets);
+ return classifyResponseMode(input.question,{index,topic:input.topic,previousMode:classifyResponseMode(input.topic,{index})});
+}
 async function boundedJSON(stream,max){
  const reader=stream?.getReader();if(!reader)throw Error('Missing body');const decoder=new TextDecoder();let n=0,text='';
  try{while(true){const {value,done}=await reader.read();if(done)break;n+=value.byteLength;if(n>max){await reader.cancel();throw Error('Body too large')}text+=decoder.decode(value,{stream:true})}}finally{reader.releaseLock()}
@@ -44,7 +65,8 @@ async function reserve(env,user){
  if(!result.meta?.changes)fail(429,'rate_limited','Your request limit has been reached. The cited sources remain available.',Math.ceil((60000-Date.now()%60000)/1000));
 }
 async function complete(config,messages,signal,maxTokens=6000,schema){
- const payload=config.protocol==='groq-cited-v1'&&schema?{model:config.model,messages,temperature:0,max_completion_tokens:maxTokens,stream:false,reasoning_effort:'low',include_reasoning:false,response_format:{type:'json_schema',json_schema:{name:'healthbrowse_answer',strict:true,schema}}}:{model:config.model,messages,temperature:0,max_tokens:maxTokens,stream:false,response_format:schema?{type:'json_schema',json_schema:{name:'healthbrowse',strict:true,schema}}:{type:'json_object'}};
+ const deepseek=config.protocol==='deepseek-cited-v1';
+ const payload=deepseek?deepseekPayload(config.model,messages,maxTokens,schema):config.protocol==='groq-cited-v1'&&schema?{model:config.model,messages,temperature:0,max_completion_tokens:maxTokens,stream:false,reasoning_effort:'low',include_reasoning:false,response_format:{type:'json_schema',json_schema:{name:'healthbrowse_answer',strict:true,schema}}}:{model:config.model,messages,temperature:0,max_tokens:maxTokens,stream:false,response_format:schema?{type:'json_schema',json_schema:{name:'healthbrowse',strict:true,schema}}:{type:'json_object'}};
  const res=await fetch(config.url,{method:'POST',headers:{Authorization:'Bearer '+config.key,'Content-Type':'application/json'},redirect:'manual',signal,
   body:JSON.stringify(payload)});
  // Configuration/credit failures are not hallucinations; do not repeat billable requests.
@@ -55,21 +77,33 @@ async function complete(config,messages,signal,maxTokens=6000,schema){
   if(res.status===400||res.status===404||res.status===422)fail(503,'provider_configuration','The AI provider could not accept this model request. Showing source excerpts instead.');
   fail(503,'provider_unavailable','The AI provider is temporarily unavailable. Showing source excerpts instead.');
  }
- const data=await boundedJSON(res.body,120000),content=data.choices?.[0]?.message?.content;
+ const data=await boundedJSON(res.body,120000);
+ if(deepseek)return readDeepSeekResult(data,config.model,schema);
+ const content=data.choices?.[0]?.message?.content;
  if(data.choices?.[0]?.finish_reason==='length'||typeof content!=='string')throw Error('Incomplete model response');
  return JSON.parse(content.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,''));
 }
 export async function modelAPI(request,env,assets){
  const url=new URL(request.url);
  if(url.pathname==='/api/ai/status'&&request.method==='GET')return reply(modelStatus(env));
- if(url.pathname!=='/api/ai/answer')return reply({error:'Unknown AI route.'},404);
+ const evidenceOnly=url.pathname==='/api/ai/evidence';
+ if(!evidenceOnly&&url.pathname!=='/api/ai/answer')return reply({error:'Unknown AI route.'},404);
  if(request.method!=='POST')return reply({error:'Use POST.'},405);
  let phase='input',fallbackEvidence=null,fallbackInput=null;
  try{
   if(request.headers.get('origin')&&request.headers.get('origin')!==url.origin)fail(403,'origin','Cross-origin requests are not supported.');
   if(!request.headers.get('content-type')?.startsWith('application/json'))fail(415,'body','Use JSON.');
-  let b;try{b=await boundedJSON(request.body,12000)}catch{fail(400,'body','Invalid or oversized question.')}
-  if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['topic','question','role','mode','deck','history','searchQuery','browserContext'].includes(k)))fail(400,'body','Unexpected input.');
+  let b;try{b=await boundedJSON(request.body,450000)}catch{fail(400,'body','Invalid or oversized question or document.')}
+  if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['topic','question','role','mode','deck','history','searchQuery','browserContext','attachments'].includes(k)))fail(400,'body','Unexpected input.');
+  if(evidenceOnly){
+   if(Object.keys(b).some(k=>!['topic','question','role','mode','deck'].includes(k))||
+      (b.mode!==undefined&&b.mode!=='search')||(b.deck!==undefined&&b.deck!==0))fail(400,'body','Evidence retrieval accepts a search question, topic and reading mode.');
+   b.mode='search';b.deck=0;
+  }
+  const documentMode=b.attachments!==undefined;
+  if(documentMode&&b.mode!=='chat')fail(400,'buddy_upload_only','Open Buddy to ask about an attached file.');
+  if(documentMode){try{validateDocuments(b.attachments)}catch(error){fail(400,'document_input',error.message)}}
+  else if(JSON.stringify(b).length>12000)fail(400,'body','Invalid or oversized question.');
   if(typeof b.topic!=='string'||b.topic.length>160||typeof b.question!=='string'||!b.question.trim()||b.question.length>1600||!isReadingRole(b.role)||!['search','chat'].includes(b.mode)||!Number.isInteger(b.deck)||b.deck<0||b.deck>6)fail(400,'body','Check the topic, question and reading mode.');
   if(b.history!==undefined&&(!Array.isArray(b.history)||b.history.length>4||b.history.some(q=>typeof q!=='string'||q.length>1600)))fail(400,'body','Invalid follow-up context.');
   if(b.searchQuery!==undefined&&(typeof b.searchQuery!=='string'||b.searchQuery.length>1600))fail(400,'body','Invalid browser context.');
@@ -81,8 +115,10 @@ export async function modelAPI(request,env,assets){
   const clinicalDecision=screened.action!=='allow'?screened:expanded.map(text=>assessSafety(text,context)).find(result=>result.action!=='allow');
   const buddyDecision=inputs.map(assessBuddySafety).find(result=>result.action!=='allow');
   const statuses=inputs.map(inspectQuery);
+  const clarification=documentMode?null:clarifyQuery(b.question,{topic:b.topic,context:!!b.topic});
+  const outOfScope=!documentMode&&(outsideMedicalScope(b.question)||(evidenceOnly&&!clarification&&evidenceMode(b,assets)!=='medical'));
   // Log only policy outcomes, never query text, identity, tokens or medical details.
-  const category=statuses.includes('emergency')?'emergency':statuses.includes('private')?'private':clinicalDecision?.category||buddyDecision?.category||(statuses.includes('unsafe')?'unsafe_context':outsideMedicalScope(b.question)?'out_of_scope':'educational');
+  const category=statuses.includes('emergency')?'emergency':statuses.includes('private')?'private':clinicalDecision?.category||buddyDecision?.category||(statuses.includes('unsafe')?'unsafe_context':outOfScope?'out_of_scope':'educational');
   console.info(JSON.stringify({event:'safety_screened',policyVersion:buddyDecision&&!clinicalDecision?buddyPolicyVersion:safetyPolicyVersion,action:category==='educational'?'allow':'redirect',category}));
   const flag=securityFlagFor(clinicalDecision?.category||buddyDecision?.category);
   if(flag)console.warn(JSON.stringify({event:'security_flag',...flag,action:'blocked'}));
@@ -92,10 +128,9 @@ export async function modelAPI(request,env,assets){
   if(category!=='educational'){
    return reply({status:'blocked',code:'unsafe_request',answer:clinicalDecision?safetyAnswer(clinicalDecision.category):buddySafetyAnswer(buddyDecision?.category),decks:[]},422);
   }
-  const clarification=clarifyQuery(b.question,{topic:b.topic,context:!!b.topic});
-  if(clarification)return reply({status:'clarification',clarification,decks:[]});
+  if(clarification&&!evidenceOnly)return reply({status:'clarification',clarification,decks:[]});
   b.persona=medicalPersona(b.role);b.role=normalizeReadingRole(b.role);
-  const help=b.mode==='chat'?buddyHelpAnswer(b.question):null;
+  const help=b.mode==='chat'&&!documentMode?buddyHelpAnswer(b.question):null;
   if(help){phase='authentication';await identity(request,env);return reply({status:'platform',answer:help,decks:[]})}
   const route=b.role==='Medical professional'?'professional':'general',config=endpoint(env,route);
   const reviewer=modelReviewEndpoint(env,route);
@@ -104,25 +139,42 @@ export async function modelAPI(request,env,assets){
   phase='quota';
   await reserve(env,user);
   phase='evidence';
-  const local=config?.protocol==='groq-cited-v1'||!config?citedEvidence(assets,b):grounded?groundedEvidence(assets,b):evidenceFor(assets,b.topic,b.role,b.question);
-  const evidence=grounded?local:addEducation(await retrieveEvidence(b,local,env,request.signal),educationEvidence(assets,b),b);
-  if(!evidence?.sources.length)return reply({status:'unavailable',code:'no_evidence',error:evidence?.retrieval?.providers.some(p=>p.status==='unavailable')?'The medical source service could not complete this search. Please retry. This does not mean your question is unclear.':'No sufficiently relevant passage was retrieved for this question. Try a more specific medical term; no answer has been invented.',retrieval:evidence?.retrieval},422);
-  if(!grounded){fallbackEvidence=evidence;fallbackInput=b;}
+  if(evidenceOnly){
+   if(clarification)return reply({query_decomposition:[],retrieved_sources:[],evidence_gaps:[clarification.text]});
+   return reply(await retrieveLiteraturePacket(b,env,request.signal,fetch,assets));
+  }
+  if (isBuddyOverview(b)) {
+   const intent = buddyDeckIntent(b.question,{topic:b.topic,index:medicalTopicIndex(assets),queryMode:evidenceMode(b,assets)});
+   if (intent.explicit && (intent.topic || b.topic)) {
+    const subject = (intent.topic || b.topic).trim();
+    b = {...b,topic:subject,question:'What is ' + subject + '?'};
+   }
+  }
+  const local=documentMode?null:grounded?groundedEvidence(assets,b):usesCitedProtocol(config)||!config?citedEvidence(assets,b):evidenceFor(assets,b.topic,b.role,b.question);
+  const evidence=documentMode?documentEvidence(b.attachments,b):grounded?local:learningDecks(addEducation(await retrieveEvidence(b,local,env,request.signal,fetch,assets),educationEvidence(assets,b),b),b,local);
+  if(evidence&&!documentMode)evidence.visual=educationalVisual(assets,b);
+  if(documentMode&&!evidence.sources.length)return reply({status:'unavailable',code:'document_evidence',error:'No usable passages were found in the attachments. Check the extracted text; embedded instructions and unsupported content are excluded.'},422);
+  if(!evidence?.sources.length){
+   const interrupted=evidence?.retrieval?.providers?.some(p=>p.status==='unavailable');
+   return reply({status:'unavailable',code:interrupted?'evidence_unavailable':'no_evidence',error:interrupted?'The medical sources could not be reached. Please retry shortly; your question was accepted.':'No sufficiently relevant passage was retrieved for this question. Add a medical detail or inspect the sources; no answer has been invented.',retrieval:evidence?.retrieval,...(interrupted?{retryAfterSeconds:15}:{})},interrupted?503:200);
+  }
+  if(!grounded||documentMode){fallbackEvidence=evidence;fallbackInput=b;}
   if(!config)fail(503,'model_not_configured','The AI service is not configured. Retrieved source passages are shown below.');
+  if(grounded&&documentMode)fail(503,'document_model_unavailable','The document review model is unavailable. Retrieved document passages are shown below.');
   if(!reviewer)fail(503,'reviewer_not_configured','The support reviewer is not configured. Showing source excerpts instead.');
   // The deadline includes both generation, review and one possible repair.
   const started=Date.now(),deadline=AbortSignal.timeout(120000);
   // Incoming Request.signal is absent on older Workers compatibility dates.
   const signal=request.signal?AbortSignal.any([request.signal,deadline]):deadline;
-  if(config.protocol==='groq-cited-v1'){
+  if(usesCitedProtocol(config)){
    const prepared=prepareCited(b,evidence);
    phase='generation';
    const raw=await complete(config,prepared.messages,signal,prepared.maxTokens,prepared.schema);
    const check=prepareCitedReview(raw,prepared,b);
    phase='support_review';
-   const review=check.claims.length?await complete(config,check.messages,signal,check.maxTokens,check.schema):{checks:[]};
+   const review=check.claims.length?await complete(reviewer,check.messages,signal,check.maxTokens,check.schema):{checks:[]};
    phase='presentation';
-   return reply({...presentCited(applyCitedReview(review,check,prepared,b),prepared,b,config.model),retrieval:evidence.retrieval});
+   return reply({...presentCited(applyCitedReview(review,check,prepared,b),prepared,b,config.model),protocol:config.protocol,retrieval:evidence.retrieval});
   }
   let reason='';
   for(let attempt=0;attempt<2;attempt++){
@@ -134,11 +186,14 @@ export async function modelAPI(request,env,assets){
    try{
     if(grounded){
      const prepared=prepareGrounded(b,evidence,reason);
+     phase='generation';
      const raw=await complete(config,prepared.messages,signal,prepared.maxTokens,prepared.schema);
      const draft=decodeGrounded(raw,b,prepared),check=groundedReview(draft,prepared,b);
+     phase='support_review';
      const review=await complete(reviewer,check.messages,signal,check.maxTokens,check.schema);
      if(!groundedReviewPasses(review,draft,prepared)){reason='Claim support or direct-answer facet coverage failed: '+JSON.stringify(review).slice(0,350);continue;}
-     return reply(presentGrounded(draft,prepared,b,config.model,attempt>0));
+     phase='presentation';
+     return reply({...presentGrounded(draft,prepared,b,config.model,attempt>0),...(isBuddyOverview(b)?{decks:buddyOverviewDecks(b,evidence)}:{}),visual:evidence.visual||null});
     }
     const prepared=config.compact?compactGeneration(b,evidence,reason):{messages:generationMessages(b,evidence,reason),evidence,maxTokens:6000};
     phase='generation';
@@ -152,9 +207,9 @@ export async function modelAPI(request,env,assets){
      if(!reviewPasses(review,batch.draft)){passed=false;reason='The direct answer was incomplete or a claim was unsupported. '+JSON.stringify(review).slice(0,300);break}
     }
     if(!passed)continue;
-    return reply(presentDraft(draft,prepared.evidence,b,config.model,attempt>0));
+    return reply({...presentDraft(draft,prepared.evidence,b,config.model,attempt>0),decks:buddyOverviewDecks(b,evidence),visual:evidence.visual||null,learningMode:!!evidence.learningMode,retrieval:evidence.retrieval});
    }catch(error){
-    if(error instanceof ContextLimit)fail(422,'context_limit','This question and its evidence exceed the model context. Try a shorter question or explore one deck with the buddy.');
+    if(error instanceof ContextLimit)fail(422,'context_limit','This question and its evidence exceed the model context. Try asking about one part of the question.');
     if(signal.aborted){
      if(request.signal?.aborted)fail(499,'request_cancelled','The request was cancelled.');
      fail(503,'model_timeout','AI generation and verification exceeded the response deadline. Showing source excerpts instead.');
@@ -168,10 +223,11 @@ export async function modelAPI(request,env,assets){
   // Never log questions, tokens, provider bodies, identities or error messages.
   if(error.code==='provider_busy')console.warn(JSON.stringify({event:'ai_provider_limited',phase,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})}));
   if(!(error instanceof Failure))console.error(JSON.stringify({event:'ai_request_failed',phase,kind:['TypeError','SyntaxError','TimeoutError','AbortError'].includes(error?.name)?error.name:'Error'}));
-  if(fallbackEvidence?.sources.length&&fallbackInput&&env.RETRIEVAL_LIVE!=='off'){
-   const prepared=prepareCited(fallbackInput,fallbackEvidence);const result=presentCited({answer:[],decks:{}},prepared,fallbackInput,'');
+  if(fallbackEvidence?.sources.length&&fallbackInput&&(isBuddyOverview(fallbackInput)||fallbackEvidence.documentMode||env.MODEL_PROVIDER==='deepseek'||env.RETRIEVAL_LIVE!=='off')){
+   const prepared=prepareCited(fallbackInput,fallbackEvidence);const result=presentCited({answer:[]},prepared,fallbackInput,'');
    const message=error instanceof Failure?error.message:'AI synthesis could not finish. Retrieved source excerpts remain available.';
-   return reply({...result,status:'sourced',code:error.code||'model_unavailable',message,retrieval:fallbackEvidence.retrieval,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})});
+   return reply({...result,protocol:'source-excerpts-v1',decks:buddyOverviewDecks(fallbackInput,fallbackEvidence),status:'sourced',code:error.code||'model_unavailable',message,retrieval:fallbackEvidence.retrieval,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})});
   }
+  if(evidenceOnly&&phase==='evidence')return reply({query_decomposition:[],retrieved_sources:[],evidence_gaps:['Evidence retrieval could not be completed.']},503);
   return reply({status:'unavailable',code:error.code||'model_unavailable',error:error instanceof Failure?error.message:'AI synthesis is temporarily unavailable. Showing source excerpts instead.',...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})},error.status||503)}
 }

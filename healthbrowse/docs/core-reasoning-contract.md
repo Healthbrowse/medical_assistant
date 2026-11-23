@@ -1,6 +1,6 @@
 # HealthBrowse core reasoning contract
 
-This contract implements General and Clinical Professional reading modes. Legacy Student preferences and API role aliases normalize to General. A prompt does not create a vector database, validate a dataset, grant professional credentials, or turn a research prototype into a regulated diagnostic system.
+This contract covers General and Clinician reading modes. Legacy Student preferences use the Clinician educational style. Clinical credential verification and independent clinical review are separate activities.
 
 ## Current implementation and requested capabilities
 
@@ -9,7 +9,7 @@ This contract implements General and Clinical Professional reading modes. Legacy
 | Visible roles | General and Clinicians are the two selectable reading modes. | A role selection is not professional credential verification. |
 | Patient style | General and the legacy Patient API role use plain-language, empathetic explanations and the exact disclaimer below. | Educational information, not personal diagnosis or prescribing. |
 | Clinical style | Clinical terminology, concise explanatory reasoning, differential considerations and source scope. Codes and metrics require explicit source support. | Patient education sources cannot be promoted to clinical guidelines. |
-| Decks | Browser Summary plus the existing six clinical decks. | Eight new internal decks were not defined or connected by this change. |
+| Browser response | General users receive a plain-language answer. Clinicians receive Clinical Synthesis, Evidence Breakdown, and Limitations & Contraindications. | Where the supplied passages leave a question open, the report identifies the missing evidence. |
 | Active evidence | The Groq path uses attributed MedlinePlus passages and targeted CDC/NCI text snapshots. | Historical MedQuAD passages are excluded from this active route. No claim that the deployed system is MedQuAD-only or that all records are verified. |
 | Retrieval | Server-owned lexical selection of complete passages with source IDs, dates and deck mapping. | Qdrant is not connected; these are not vector matches. |
 | Citations | Server-resolved inline source links and passages, schema checks and automated claim-support review. | An internal deck or intent label alone is not evidence; no invented MedQuAD intent types. Automated review is not independent clinical validation. |
@@ -17,7 +17,7 @@ This contract implements General and Clinical Professional reading modes. Legacy
 
 ## App-owned response wording
 
-General answers append this once, including source-excerpt fallback and copied six-deck responses:
+General answers append this once, including source-excerpt fallbacks and copied responses.
 
 > I am an AI, not a doctor. Please consult a healthcare provider before making medical decisions.
 
@@ -43,7 +43,7 @@ High-risk requests received by `/api/ai/answer` emit a structured `security_flag
 
 ## Verification and remaining work
 
-Regression checks cover General/Clinicians and search/chat entry points; exact disclaimer and evidence-gap copy; obvious off-topic examples and safe medical counterparts; high-risk pre-provider blocking; metadata-only security flags; preserved emergency precedence; legacy Student-to-General normalization; and rejection of forged multimodal evidence. Existing citation and unsupported-claim tests remain applicable.
+Regression checks cover both audiences and search/chat entry points, disclaimer and gap language, safety screening, metadata-only security flags, emergency precedence and rejection of forged multimodal evidence. The citation and unsupported-claim tests apply to the direct answer.
 
 Provider responses are mocked in automated tests. These are not live-model safety benchmarks, clinical certification, a guarantee of zero hallucinations, or proof against all adversarial prompts. Human clinical review and live-provider evaluation remain outstanding.
 

@@ -7,7 +7,7 @@ import {assessSafety,securityFlagFor} from '../dist/safety-policy.js';
 import {modelAPI} from '../server/model-api.mjs';
 import {generationMessages,presentDraft} from '../server/model-evidence.mjs';
 import {citedEvidence,prepareCited,presentCited} from '../server/model-cited.mjs';
-import {faqMarkdown} from '../dist/faq-export.js';
+import {answerMarkdown} from '../dist/answer-export.js';
 const assets=Object.fromEntries(['medline-topics','clinical-passages','grounded-sources'].map(n=>['/'+n+'.json',{text:readFileSync(new URL('../dist/'+n+'.json',import.meta.url),'utf8')}]));
 const base={topic:'Leukemia',question:'What is leukemia?',role:'General',mode:'search',deck:0};
 const call=b=>modelAPI(new Request('https://site.test/api/ai/answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}),{},assets);
@@ -40,10 +40,10 @@ test('high-risk requests are blocked and server flags contain no query or identi
 });
 test('patient disclaimer is appended once and clinical output avoids patient framing',()=>{
  const answer={text:'A cited educational answer.',blocks:[]};
- for(const role of ['General','General reader','Patient','Medical student','Student']){const r=withAudienceDisclaimer(withAudienceDisclaimer(answer,role),role);assert.equal(r.text.split(patientDisclaimer).length,2);assert.equal(r.audienceDisclaimer,patientDisclaimer);}
- for(const role of ['Clinicians','Medical professional'])assert.equal(withAudienceDisclaimer(answer,role).audienceDisclaimer,undefined);
+ for(const role of ['General','General reader','Patient']){const r=withAudienceDisclaimer(withAudienceDisclaimer(answer,role),role);assert.equal(r.text.split(patientDisclaimer).length,2);assert.equal(r.audienceDisclaimer,patientDisclaimer);}
+ for(const role of ['Clinicians','Medical professional','Medical student','Student','Medical education'])assert.equal(withAudienceDisclaimer(answer,role).audienceDisclaimer,undefined);
  assert.equal(withAudienceDisclaimer({text:domainRestriction,safety:{}},'General').text,domainRestriction);
- assert.ok(faqMarkdown({topic:'Leukemia',clinical:false,answer,decks:[]}).includes(patientDisclaimer));
+ assert.ok(answerMarkdown({topic:'Leukemia',clinical:false,answer,decks:[]}).includes(patientDisclaimer));
 });
 test('both response protocols use the exact evidence-gap text and retain source provenance',()=>{
  const input={...base,role:'General reader'},e=citedEvidence(assets,input),p=prepareCited(input,e),empty={...e,sources:[]};
@@ -53,7 +53,7 @@ test('both response protocols use the exact evidence-gap text and retain source 
  for(const role of ['General reader','Medical professional']){
   const messages=generationMessages({...input,role},e);assert.match(messages[0].content,/metadata alone cannot establish an imaging diagnosis/);assert.match(messages[0].content,/Do not use memorized facts/);
  }
- const student=generationMessages({...input,persona:'student'},e);assert.match(student[0].content,/Student persona/);assert.match(student[0].content,/supervised learning/);
+ const learning=generationMessages({...input,role:'Medical student'},e);assert.match(learning[0].content,/Clinicians persona/);assert.match(learning[0].content,/medical education/);assert.match(learning[0].content,/anatomy, physiology/);
  assert.ok(e.sources.every(s=>s.url&&s.title));
 });
 test('client-supplied images, vector context and patient records cannot masquerade as retrieved evidence',async t=>{

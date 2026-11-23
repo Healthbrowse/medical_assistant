@@ -18,3 +18,10 @@ test('extracts vocabulary topics embedded in complete questions without forwardi
   assert.deepEqual(resolveSearch('Compare asthma and diabetes',index).choices,['Asthma','Diabetes']);
   assert.deepEqual(resolveSearch('What is asthmatic?',index).choices,[]);
 });
+
+test('ordinary all is not the ALL leukemia acronym in a symptom description',async()=>{
+ const {topicIndex}=await import('../dist/discovery.js');
+ const index=topicIndex([{name:'Sore Throat',aliases:['Pharyngitis']},{name:'Acute Lymphocytic Leukemia',aliases:['ALL']}]);
+ assert.deepEqual(resolveSearch('Doctor said viral pharyngitis all throat hurting pretty bad',index).choices,['Sore Throat']);
+ assert.deepEqual(resolveSearch('What are the treatments for ALL?',index).choices,['Acute Lymphocytic Leukemia']);
+});

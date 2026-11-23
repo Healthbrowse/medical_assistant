@@ -27,11 +27,11 @@ globalThis.fetch=async(url,options)=>{
  if(!r.ok)console.error(JSON.stringify({providerStatus,errorType:copy.error?.type,errorCode:copy.error?.code,message:copy.error?.message?.slice(0,300)}));
  return r;
 };
-const request=new Request('https://site.test/api/ai/answer',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer fixture-session-12345'},body:JSON.stringify({topic,role,mode,question,deck:mode==='chat'?4:0,searchQuery:'What is '+topic+'?'})});
+const request=new Request('https://site.test/api/ai/answer',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer fixture-session-12345'},body:JSON.stringify({topic,role,mode,question,deck:0,searchQuery:'What is '+topic+'?'})});
 const start=Date.now();
 const response=await modelAPI(request,{DB,SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public',MODEL_PROVIDER:'groq',GROQ_API_KEY:key},assets);
 const result=await response.json();DB.close();
 const report={topic,role,mode,question,status:response.status,providerStatus,elapsedMs:Date.now()-start,usage,result};
 if(process.argv[6])writeFileSync(process.argv[6],JSON.stringify({...report,drafts},null,2));
-console.log(JSON.stringify({...report,result:{status:result.status,error:result.error,answer:result.answer?.text,decks:result.decks?.map(d=>({id:d.id,generated:!!d.generation,text:d.text})),validation:result.validation}},null,2));
-process.exitCode=response.ok?0:1;
+console.log(JSON.stringify({...report,result:{status:result.status,error:result.error,answer:result.answer?.text,sections:result.answer?.clinicalSynthesis?[...new Set((result.answer.blocks||[]).map(b=>b.section).filter(Boolean))]:undefined,validation:result.validation}},null,2));
+process.exitCode=response.ok&&result.status==='generated'&&result.answer?.generation&&!result.decks?.length?0:1;

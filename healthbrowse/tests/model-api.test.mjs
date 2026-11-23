@@ -10,9 +10,9 @@ import {compactGeneration,compactReviews,contextCost,ContextLimit} from '../serv
 const assets=Object.fromEntries(['medline-topics','clinical-passages'].map(name=>['/'+name+'.json',{text:readFileSync(new URL('../dist/'+name+'.json',import.meta.url),'utf8')}]));
 const input={topic:'Leukemia',question:'What is leukemia?',role:'General reader',mode:'search',deck:0};
 const evidence=evidenceFor(assets,input.topic,input.role,input.question);
-function draftFor(e=evidence,mode='search'){
- const claim=s=>({text:s.text.slice(0,Math.min(300,s.text.length)),support:[{id:s.id,quote:s.text.slice(0,Math.min(300,s.text.length))}]});
- return {answer:{claims:[claim(e.sources[0])]},decks:mode==='chat'?[]:Array.from({length:6},(_,i)=>({id:i+1,claims:e.sources.find(s=>s.deck===i+1&&!s.overview)?[claim(e.sources.find(s=>s.deck===i+1&&!s.overview))]:[]}))};
+function draftFor(e=evidence){
+ const source=e.sources[0],text=source.text.slice(0,300);
+ return {answer:{claims:[{text,support:[{id:source.id,quote:text}]}]}};
 }
 function fixture(t,provider){
  const DB=openWorkspace(':memory:');const journal=JSON.parse(readFileSync(new URL('../drizzle/meta/_journal.json',import.meta.url)));
@@ -24,23 +24,26 @@ function fixture(t,provider){
   const b=JSON.parse(opts.body);calls.push({url,body:b,authorization:opts.headers.Authorization});
   if(provider)return provider(b,calls);
   const data=JSON.parse(b.messages[1].content);
-  const output=data.draft?{questionAnswered:true,checks:[...data.draft.answer.claims,...data.draft.decks.flatMap(d=>d.claims)].map(c=>({id:c.id,verdict:'supported'}))}:draftFor({sources:data.evidence},data.mode);
+  const output=data.draft?{questionAnswered:true,checks:data.draft.answer.claims.map(c=>({id:c.id,verdict:'supported'}))}:draftFor({sources:data.evidence});
   return Response.json({choices:[{message:{content:JSON.stringify(output)},finish_reason:'stop'}]});
  });
  const call=(body=input,options={})=>modelAPI(new Request('https://site.test/api/ai/answer',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(options.token||'valid-token-12345'),...options.headers},body:JSON.stringify(body),signal:options.signal}),env,assets);
  return {call,env,calls,DB};
 }
-test('model response returns a direct answer and exactly six source-linked decks',async t=>{
+test('legacy search generates and reviews only the directly cited answer',async t=>{
  const {call,calls}=fixture(t);const response=await call();assert.equal(response.status,200);const r=await response.json();
- assert.equal(r.status,'generated');assert.equal(r.decks.length,6);assert.equal(calls.length,2);assert.equal(calls[0].body.model,'llama-adapter');
- for(const b of [r.answer,...r.decks].flatMap(s=>s.blocks)){assert.ok(b.references.length);assert.ok(b.references.every(s=>s.text.includes(s.quote)));assert.match(b.verification,/Not independent/)}
+ assert.equal(r.status,'generated');assert.deepEqual(r.decks,[]);assert.equal(calls.length,2);assert.equal(calls[0].body.model,'llama-adapter');
+ const generation=JSON.parse(calls[0].body.messages[1].content),review=JSON.parse(calls[1].body.messages[1].content);
+ assert.equal(generation.domains,undefined);assert.equal(generation.activeDeck,undefined);
+ assert.deepEqual(Object.keys(review.draft),['answer']);
+ for(const b of r.answer.blocks){assert.ok(b.references.length);assert.ok(b.references.every(s=>s.text.includes(s.quote)));assert.match(b.verification,/Not independent/)}
  assert.equal(r.answer.checks.length,0,'Do not falsely label paraphrases as exact source matches');
 });
 test('non-identifying symptom wording reaches the model intact in either reading mode',async t=>{
  const {call,calls}=fixture(t),question='I have a sore throat for three days, what should I do?';
  for(const role of ['General','Clinicians']){
   const r=await (await call({...input,topic:'Sore Throat',question,searchQuery:question,role})).json();
-  assert.equal(r.status,'generated');assert.equal(r.decks.length,6);
+  assert.equal(r.status,'generated');assert.deepEqual(r.decks,[]);
   const generation=calls.at(-2).body;
   assert.equal(JSON.parse(generation.messages[1].content).question,question);
   assert.match(generation.messages[0].content,/No invented citations.*individual diagnosis/);
@@ -50,12 +53,13 @@ test('non-identifying symptom wording reaches the model intact in either reading
  assert.equal(calls.length,before);
 });
 test('both model routes accept the two labels and normalize legacy roles',async t=>{
- const {call,calls}=fixture(t);for(const role of ['General','Clinicians','Patient','Medical student','Medical professional','Advanced professional']){const r=await call({...input,role});assert.equal(r.status,200);assert.equal(calls.at(-1).body.model,(role.includes('professional')||role==='Clinicians')?'medgemma':'llama-adapter')}
+ const {call,calls}=fixture(t);for(const role of ['General','Clinicians','Patient','Medical student','Medical professional','Advanced professional']){const r=await call({...input,role});assert.equal(r.status,200);assert.equal(calls.at(-1).body.model,(['Clinicians','Medical student','Medical professional','Advanced professional'].includes(role))?'medgemma':'llama-adapter')}
  assert.notEqual(generationMessages(input,evidence)[0].content,generationMessages({...input,role:'Medical professional'},evidence)[0].content);
 });
-test('server owns retrieval and citations; rejects fabricated citations, altered quotes and misfiled decks',()=>{
- for(const mutate of [d=>d.answer.claims[0].support[0].id='fake',d=>d.answer.claims[0].support[0].quote='Made-up evidence about an imaginary cure',d=>d.decks[0].id=2,d=>d.answer.claims[0].support=[],d=>d.answer.claims[0].text='You have leukemia.']){const draft=draftFor();mutate(draft);assert.throws(()=>validateDraft(draft,input,evidence))}
- const valid=validateDraft(draftFor(),input,evidence);assert.equal(reviewPasses({questionAnswered:true,checks:[]},valid),false);
+test('server owns retrieval and citations and ignores surplus output from old adapters',()=>{
+ for(const mutate of [d=>d.answer.claims[0].support[0].id='fake',d=>d.answer.claims[0].support[0].quote='Made-up evidence about an imaginary cure',d=>d.answer.claims[0].support=[],d=>d.answer.claims[0].text='You have leukemia.']){const draft=draftFor();mutate(draft);assert.throws(()=>validateDraft(draft,input,evidence))}
+ const old={...draftFor(),decks:[{id:5,claims:[{text:'unsupported'}]}]};
+ const valid=validateDraft(old,input,evidence);assert.deepEqual(Object.keys(valid),['answer']);assert.equal(reviewPasses({questionAnswered:true,checks:[]},valid),false);
 });
 test('failed automated support review triggers one repair then withholds unsafe output',async t=>{
  const {call,calls}=fixture(t,async b=>{const data=JSON.parse(b.messages[1].content);return Response.json({choices:[{message:{content:JSON.stringify(data.draft?{questionAnswered:false,checks:[]}:draftFor())}}]})});
@@ -63,7 +67,7 @@ test('failed automated support review triggers one repair then withholds unsafe 
 });
 test('one repaired draft can pass but is labeled corrected, not certified',async t=>{
  const {call}=fixture(t,async(b,calls)=>{const data=JSON.parse(b.messages[1].content);let d;
-  if(data.draft)d={questionAnswered:true,checks:[...data.draft.answer.claims,...data.draft.decks.flatMap(s=>s.claims)].map(c=>({id:c.id,verdict:'supported'}))};
+  if(data.draft)d={questionAnswered:true,checks:data.draft.answer.claims.map(c=>({id:c.id,verdict:'supported'}))};
   else{d=draftFor();if(calls.length===1)d.answer.claims[0].support[0].id='invented'}
   return Response.json({choices:[{message:{content:JSON.stringify(d)}}]});});
  const r=await (await call()).json();assert.equal(r.status,'generated');assert.equal(r.corrected,true);
@@ -134,7 +138,7 @@ test('HF_TOKEN connects only General to the exact requested hosted model',async 
  assert.equal(modelStatus(env).general.configured,true);
  assert.equal(modelStatus(env).professional.configured,false);
  const result=await (await call()).json();
- assert.equal(result.status,'generated');assert.equal(result.decks.length,6);
+ assert.equal(result.status,'generated');assert.deepEqual(result.decks,[]);
  assert.equal(result.model,GENERAL_MODEL);
  for(const c of calls){
   assert.equal(c.url,HF_CHAT_URL);assert.equal(c.body.model,GENERAL_MODEL);
@@ -167,9 +171,9 @@ test('short-context retrieval preserves complete passages and checks all claims 
  const checked=new Set();
  for(const b of batches){
   assert.ok(contextCost(b.messages,b.maxTokens)<=8192);
-  for(const claim of [b.draft.answer,...b.draft.decks].flatMap(s=>s.claims))checked.add(claim.id);
+  for(const claim of b.draft.answer.claims)checked.add(claim.id);
  }
- assert.deepEqual(checked,new Set([d.answer,...d.decks].flatMap(s=>s.claims.map(c=>c.id))));
+ assert.deepEqual(checked,new Set(d.answer.claims.map(c=>c.id)));
  assert.throws(()=>compactGeneration({...input,question:'long '.repeat(6000)},evidence),ContextLimit);
 });
 
@@ -193,7 +197,7 @@ test('DR7 Clinicians use their own endpoint, key and clinical prompts',async t=>
  env.MODEL_PROFESSIONAL_URL='https://dr7.ai/api/v1/medical/chat/completions';
  env.MODEL_PROFESSIONAL_ID='medgemma-4b-it';env.MODEL_PROFESSIONAL_KEY='dr7-test-fixture';
  const r=await (await call({...input,role:'Clinicians'})).json();
- assert.equal(r.status,'generated');assert.equal(r.decks.length,6);
+ assert.equal(r.status,'generated');assert.deepEqual(r.decks,[]);
  for(const c of calls){assert.equal(c.url,env.MODEL_PROFESSIONAL_URL);assert.equal(c.body.model,'medgemma-4b-it');assert.equal(c.authorization,'Bearer dr7-test-fixture')}
  assert.match(calls[0].body.messages[0].content,/precise clinical language/);
  const p=JSON.parse(calls[0].body.messages[1].content);assert.equal(p.role,'Medical professional');
@@ -206,20 +210,23 @@ test('insufficient provider credit produces a useful error without repeat charge
  assert.equal((await r.json()).code,'provider_credits');assert.equal(calls.length,1);
 });
 
-test('large claim reviews are batched without losing any claims or question context',()=>{
- const sources=Array.from({length:6},(_,i)=>({id:'S'+i,deck:i+1,text:'An intact source passage. '.repeat(22),focus:'Test',date:'2026',historical:false}));
- const claim=(n,s)=>({id:'C'+n,text:'A supported statement. '.repeat(15),support:[{id:s.id,quote:s.text}]});
- const draft={answer:{id:0,claims:[claim(0,sources[0])]},decks:sources.map((s,i)=>({id:i+1,claims:[claim(i+1,s)]}))};
- const batches=compactReviews(draft,{sources},input);
- assert.ok(batches.length>1);
- const seen=new Set();
- for(const b of batches){
-  assert.ok(contextCost(b.messages,b.maxTokens)<=8192);
-  const payload=JSON.parse(b.messages[1].content);assert.equal(payload.question,input.question);
-  assert.equal(payload.draft.answer.claims[0].id,'C0');
-  for(const c of [b.draft.answer,...b.draft.decks].flatMap(s=>s.claims))seen.add(c.id);
+test('compact clinical review fails closed when competing evidence exceeds the review window',()=>{
+ const clinical={...input,role:'Clinicians'};
+ const sources=Array.from({length:16},(_,i)=>({id:'S'+i,text:('Source passage '+i+'. ').repeat(70)}));
+ const draft={answer:{id:0,claims:[{id:'C1',text:'A source-supported statement.',support:[{id:'S0',quote:sources[0].text.slice(0,100)}]}]}};
+ assert.throws(()=>compactReviews(draft,{sources},clinical),ContextLimit);
+ const [batch]=compactReviews(draft,{sources:sources.slice(0,2)},clinical);
+ const payload=JSON.parse(batch.messages[1].content);
+ assert.equal(payload.question,input.question);assert.equal(payload.draft.answer.claims[0].id,'C1');
+ assert.deepEqual(payload.sources.map(s=>s.id),['S0','S1']);
+ assert.ok(contextCost(batch.messages,batch.maxTokens)<=8192);
+});
+
+test('client preserves evidence-gap explanations and source retry guidance',async()=>{
+ for(const [code,status] of [['no_evidence',200],['evidence_unavailable',503]]){
+  let calls=0;const result=await requestSynthesis(input,input.question,{tokenProvider:async()=>'test-token',fetcher:async()=>++calls===1?Response.json({}):Response.json({status:'unavailable',code,error:'Specific source explanation',...(status===503?{retryAfterSeconds:15}:{})},{status})});
+  assert.equal(result.message,'Specific source explanation');assert.equal(result.code,code);if(status===503)assert.ok(result.retryAt>Date.now());
  }
- assert.equal(seen.size,7);
 });
 test('dedicated base reviewer receives review prompts while adapter receives generation prompts',async t=>{
  const {call,env,calls}=fixture(t);env.MODEL_GENERAL_REVIEW_ID='base-review';

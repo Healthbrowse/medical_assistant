@@ -47,6 +47,7 @@ export async function accountRequest(path,{method='GET',body,signal}={}){
 }
 
 export function clearResearchSession(){
+  if(typeof document!=='undefined')document.dispatchEvent(new Event('healthbrowse-session-cleared'));
   for(const key of ['hb-context','hb-transcript','hb-reader','hb-terms','hb-welcome','hb-account-recovery','hb-email-change','hb-study-notes']){
     sessionStorage.removeItem(key);
   }

@@ -1,6 +1,8 @@
 import {frameworkVersion} from '../dist/disease-framework.js';
+import {medicalPersona,patientDisclaimer} from '../dist/medical-contract.js';
 import {inspectInput} from '../dist/clinical-engine.js';
 import {isReadingRole,normalizeReadingRole} from '../dist/reading-profiles.js';
+import {documentHasIdentifiers} from '../dist/document-policy.js';
 import {workspaceExport} from './workspace-export.mjs';
 const themes=['system','light','dark'];
 const uuid=/^[\da-f]{8}-[\da-f]{4}-[1-8][\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i;
@@ -12,10 +14,82 @@ function value(input,max,label){if(typeof input!=='string'||!input.trim()||input
 function publicText(input,max,label){const text=value(input,max,label);if(inspectInput(text)!=='ok')fail('Save public research only. Remove personal details.');return text}
 function sourceURL(input){let url;try{url=new URL(input)}catch{fail('Invalid source link.')}
  if(!['https:','http:'].includes(url.protocol)||url.username||url.password||url.href.length>2048)fail('Invalid source link.');return url.href}
-async function body(request){
+function savedPassages(refs){
+ return refs.map(ref=>{
+  if(!ref||typeof ref!=='object')fail('Invalid clinical citation.');
+  only(ref,['id','title','url','quote','date','sourceType','studyDesign','attribution']);
+  const id=value(ref.id,180,'citation identifier');
+  if(/[\[\]<>\u0000-\u001f\u007f]/.test(id))fail('Invalid citation identifier.');
+  const citation={id,title:value(ref.title,600,'citation title'),url:sourceURL(ref.url)};
+  if(ref.quote!==undefined)citation.quote=value(ref.quote,3200,'citation passage');
+  for(const key of ['date','sourceType','studyDesign','attribution'])
+   if(ref[key]!==undefined)citation[key]=value(ref[key],600,key);
+  if(Object.values(citation).some(documentHasIdentifiers))fail('Remove personal identifiers from saved sources.');
+  return citation;
+ });
+}
+function savedClinicalFields(b,chat){
+ if(b.clinicalSynthesis!==true||normalizeReadingRole(chat.reading_mode)!=='Medical professional'
+  ||!Array.isArray(b.blocks)||b.blocks.length>12)fail('Invalid clinical report.');
+ const citations=savedPassages(b.citations);
+ const used=new Set();
+ const blocks=b.blocks.map(block=>{
+  if(!block||typeof block!=='object')fail('Invalid clinical claim.');
+  only(block,['text','section','references']);
+  if(!['synthesis','evidence','limitations'].includes(block.section)||!Array.isArray(block.references)
+   ||!block.references.length||block.references.length>6)fail('Invalid clinical claim citations.');
+  const text=value(block.text,4200,'clinical claim');
+  if(documentHasIdentifiers(text))fail('Remove personal identifiers from saved claims.');
+  const references=block.references.map(index=>{
+   if(!Number.isInteger(index)||index<0||index>=citations.length)fail('Unknown clinical citation.');
+   used.add(index);return citations[index];
+  });
+  return {section:block.section,text,references};
+ });
+ if(used.size!==citations.length)fail('Clinical citations must refer to a displayed claim.');
+ if(b.gaps!==undefined&&(!Array.isArray(b.gaps)||b.gaps.length>8))fail('Invalid clinical coverage notes.');
+ const gaps=b.gaps?.map(gap=>{
+  const text=value(gap,600,'clinical coverage note');
+  if(documentHasIdentifiers(text))fail('Remove personal identifiers from coverage notes.');
+  return text;
+ });
+ return {clinicalSynthesis:true,blocks,citations,...(gaps?.length?{gaps}:{})};
+}
+function savedBuddyFields(b,chat){
+ if(b.clinicalSynthesis!==undefined||!Array.isArray(b.buddyDecks)||b.buddyDecks.length!==6||
+    !Array.isArray(b.blocks)||b.blocks.length>12)fail('Invalid six-deck report.');
+ const citations=savedPassages(b.citations),used=new Set();
+ function cleanText(input,max,label){
+  const text=value(input,max,label);
+  if(documentHasIdentifiers(text))fail('Remove personal identifiers from saved content.');
+  return text;
+ }
+ function claim(block){
+  if(!block||typeof block!=='object')fail('Invalid saved claim.');
+  only(block,['text','title','references']);
+  if(!Array.isArray(block.references)||!block.references.length||block.references.length>6)fail('Invalid claim citations.');
+  const references=block.references.map(index=>{
+   if(!Number.isInteger(index)||index<0||index>=citations.length)fail('Unknown citation.');
+   used.add(index);return citations[index];
+  });
+  return {text:cleanText(block.text,4200,'claim'),references,...(block.title?{title:cleanText(block.title,240,'claim title')}:{})};
+ }
+ const blocks=b.blocks.map(claim);
+ const buddyDecks=b.buddyDecks.map((deck,i)=>{
+  if(!deck||typeof deck!=='object')fail('Invalid deck.');
+  only(deck,['deck','title','blocks']);
+  if(deck.deck!==i+1||!Array.isArray(deck.blocks)||deck.blocks.length>6)fail('Invalid deck order or claims.');
+  return {deck:deck.deck,title:cleanText(deck.title,240,'deck title'),blocks:deck.blocks.map(claim)};
+ });
+ if(used.size!==citations.length)fail('Citations must refer to a displayed claim.');
+ if(b.gaps!==undefined&&(!Array.isArray(b.gaps)||b.gaps.length>8))fail('Invalid coverage notes.');
+ const gaps=b.gaps?.map(gap=>cleanText(gap,600,'coverage note'));
+ return {buddyDecks,blocks,citations,...(gaps?.length?{gaps}:{}),...(medicalPersona(chat.reading_mode)==='patient'?{audienceDisclaimer:patientDisclaimer}:{})};
+}
+async function body(request,maxBytes=28000){
  if(!request.headers.get('Content-Type')?.startsWith('application/json'))fail('Use application/json.',415);
  const reader=request.body?.getReader();if(!reader)fail('Missing request body.');let size=0,raw='';const decoder=new TextDecoder();
- try{while(true){const chunk=await reader.read();if(chunk.done)break;size+=chunk.value.byteLength;if(size>28000){await reader.cancel();fail('Request too large.',413)}raw+=decoder.decode(chunk.value,{stream:true})}}finally{reader.releaseLock()}
+ try{while(true){const chunk=await reader.read();if(chunk.done)break;size+=chunk.value.byteLength;if(size>maxBytes){await reader.cancel();fail('Request too large.',413)}raw+=decoder.decode(chunk.value,{stream:true})}}finally{reader.releaseLock()}
  let data;try{data=JSON.parse(raw+decoder.decode())}catch{fail('Invalid JSON.')}
  if(!data||typeof data!=='object'||Array.isArray(data))fail('Invalid request.');return data;
 }
@@ -95,14 +169,16 @@ export async function workspaceAPI(request,db,user,{sessionId=null}={}){
    if(parts.length>2||(parts[1]&&parts[1]!=='turns'))fail('Chat resource unavailable.',404);
    const chat=await ownedChat(id);
    if(parts[1]==='turns'&&method==='POST'){
-    const b=await body(request);only(b,['id','question','text','deck','citations','overview','historyEpoch','frameworkVersion']);
+    const b=await body(request,96000);only(b,['id','question','text','deck','citations','overview','historyEpoch','frameworkVersion','clinicalSynthesis','blocks','gaps','buddyDecks']);
     if(!uuid.test(b.id)||!Number.isInteger(b.deck)||b.deck<1||b.deck>7||!Number.isSafeInteger(b.historyEpoch))fail('Invalid chat turn.');
     const question=publicText(b.question,2000,'question'),text=value(b.text,16000,'answer');
     if(/\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b|\b(?:MRN|SSN|medical record number|patient name)\b/i.test(text))fail('Remove personal identifiers from saved text.');
     if(!Array.isArray(b.citations)||b.citations.length>30)fail('Invalid citations.');
-    const citations=b.citations.map(c=>({title:value(c?.title,500,'citation title'),url:sourceURL(c?.url)}));
+    const evidence=b.buddyDecks!==undefined?savedBuddyFields(b,chat):b.clinicalSynthesis!==undefined||b.blocks!==undefined||b.gaps!==undefined?savedClinicalFields(b,chat):
+     {citations:b.citations.map(c=>({title:value(c?.title,500,'citation title'),url:sourceURL(c?.url)}))};
     if(b.frameworkVersion!==undefined&&b.frameworkVersion!==frameworkVersion)fail('Unknown research framework.');
-    const turn=JSON.stringify({frameworkVersion:b.frameworkVersion||'seven-section-v1',topic:chat.topic,question,text,deck:b.deck,citations,overview:b.overview===true});
+    const turn=JSON.stringify({frameworkVersion:b.frameworkVersion||'seven-section-v1',topic:chat.topic,question,text,deck:b.deck,...evidence,overview:b.overview===true});
+    if(b.buddyDecks!==undefined&&new TextEncoder().encode(turn).length>160000)fail('Chat turn too large.',413);
     const previous=await sql('SELECT turn_json FROM hb_chat_turns WHERE id=? AND chat_id=?',b.id,id).first();
     if(previous){if(previous.turn_json!==turn)fail('This message ID was already used.',409);return response({saved:true,id:b.id})}
     const now=new Date().toISOString();

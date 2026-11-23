@@ -22,7 +22,7 @@ The application deliberately does **not** send `[System Event: User Login]` to a
 | Ordinary symptom or disease question | Answer with available cited evidence; explain limitations without requiring a generic rephrasing. Do not infer a personal diagnosis. |
 | General reading mode | Warm, plain-language explanation and short definitions of necessary medical terms. |
 | Clinicians reading mode | Precise clinical terminology, evidence scope, and relevant limitations. Selecting this mode does not verify a license or grant restricted access. |
-| Follow-up about a clinical area | Use the current question, selected area, and screened prior questions. Expand the answer without repeating all six decks. |
+| Follow-up about a clinical area | Use the current question, relevant clinical context, and screened prior questions to answer the follow-up with supporting citations. |
 | “Hello Buddy” / “What can you do?” | Immediate platform-owned introduction, without a model call or fabricated medical citation. |
 | Name/email, password, theme, sign-out, or history-deletion navigation | Explain where the existing controls are. Direct personal details to the account form; never claim that Buddy performed the change. |
 | Unsafe medical procedure or individualized dose | Use the standard safety refusal and retain relevant source links. |
@@ -102,3 +102,7 @@ Policy `2026-11-13.4` recognizes informal planned actions such as “i wanna do 
 The security-module regression set additionally covers bare encoded prompts, leetspeak, fictional appendectomy instructions, administrator overrides, prompt translation/extraction, labeled financial data, ordinary biomedical identifiers, personal-diagnosis boundaries, and refusal-tone throttling. These tests measure the listed cases only, not general resistance to adversarial input.
 
 See [Core reasoning contract](core-reasoning-contract.md) for the current role mapping, exact evidence-gap wording, scope checks, high-risk event flags, and the explicit limits of text-only retrieval.
+
+## Repeatable red-team evaluation — 17 November 2026
+
+The new [red-team runner](red-teaming.md) tests browser, API, history, attachment, retrieved-source and output boundaries with benign controls. Policy `2026-11-17.1` adds serialized-role detection, soft-hyphen normalization and raw-source screening before markup removal. Reports run offline and do not claim live-model robustness.

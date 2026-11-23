@@ -117,3 +117,42 @@
  .mobile-ready #buddyDialog .buddy-empty{margin:4px auto}
 }
 @media(min-width:761px) and (max-height:650px){#buddyDialog{inset:12px 16px 12px auto;height:calc(100dvh - 24px)}#buddyDialog .buddy-empty{margin:12px auto}}
+
+#buddyDialog .buddy-decks { margin-block: 1.25rem; }
+#buddyDialog .buddy-decks > h3 { margin: 0 0 .625rem; font: 650 1rem/1.5 system-ui; }
+#buddyDialog .buddy-deck { margin: .375rem 0; border: 1px solid var(--line); border-radius: .625rem; }
+#buddyDialog .buddy-deck > summary {
+ display: grid;
+ grid-template-columns: auto minmax(0, 1fr) auto;
+ align-items: baseline;
+ gap: .625rem;
+ min-height: 44px;
+ padding: .75rem;
+ border-radius: inherit;
+ font: 600 .9375rem/1.45 system-ui;
+ list-style: none;
+ cursor: pointer;
+}
+#buddyDialog .buddy-deck > summary::-webkit-details-marker { display: none; }
+#buddyDialog .buddy-deck > summary::after {
+ content: '';
+ align-self: center;
+ width: .45rem;
+ height: .45rem;
+ border: solid currentColor;
+ border-width: 0 1.5px 1.5px 0;
+ transform: rotate(45deg);
+}
+#buddyDialog .buddy-deck[open] > summary::after { transform: rotate(225deg); }
+#buddyDialog .buddy-deck > summary:hover { background: var(--panel); }
+#buddyDialog .buddy-deck-number { white-space: nowrap; font: 600 .75rem/1.5 system-ui; color: var(--link); }
+#buddyDialog .buddy-deck-content { padding: .125rem .75rem .75rem; }
+#buddyDialog .buddy-deck-content > :last-child { margin-bottom: 0; }
+#buddyDialog .buddy-deck-gap { margin: 0; font-size: .875rem; color: var(--dim); }
+#buddyDialog .buddy-invitation { margin: 1rem 0 0; border-top: 1px solid var(--line); }
+#buddyDialog .buddy-invitation summary {
+ min-height: 44px; padding: .75rem 0; color: var(--link);
+ font: 600 .9375rem/1.5 system-ui; cursor: pointer;
+}
+#buddyDialog .buddy-invitation > div { display: flex; flex-wrap: wrap; gap: .5rem; }
+#buddyDialog .buddy-invitation button { min-height: 44px; max-width: 100%; text-align: start; white-space: normal; }

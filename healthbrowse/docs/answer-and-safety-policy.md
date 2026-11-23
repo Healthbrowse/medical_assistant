@@ -1,6 +1,6 @@
 # Response and safety policy — 13 November 2026
 
-HealthBrowse answers the question first and then displays six clinical domains. General mode requests plain English; Clinicians mode requests clinical terminology, reasoning and limitations, restricted to the same retrieved evidence. Selecting Clinicians changes reading style, not permissions or professional verification.
+HealthBrowse answers the question from retrieved evidence. General mode uses plain English. The Clinician report organizes clinical findings, evidence, and limitations in three sections. Both reading modes use the same permissions and safety checks.
 
 Medical claims must link to server-selected source passages. The source registry checks publisher domains, including NLM/MedlinePlus, CDC, NCI, WHO, FDA and NHS. PubMed indexing does not mean NIH certifies an article. Citations, source identity, automated support review and clinical validation are distinct. Unsupported areas remain visible with an evidence-gap message; no system can promise zero hallucinations.
 

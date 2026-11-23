@@ -1,32 +1,221 @@
-/* Shared site navigation; scoped so research-card headers are unaffected. */
-.site-header{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding-block:12px}
-.site-header .brand,.site-header .wordmark{min-width:0;white-space:nowrap}
-.site-header nav{display:flex;justify-content:flex-end;align-items:center;gap:6px 14px;margin:0;grid-column:2;grid-row:1}
-.site-header nav a{display:flex;align-items:center;min-height:44px;font:500 14px/1.35 system-ui;text-decoration:none;padding:8px 0;overflow-wrap:anywhere}
-.site-header nav a:hover{text-decoration:underline}
-.nav-appearance{display:flex;align-items:center;gap:12px}
-.nav-appearance-label{display:none}
-.site-header .theme-controls{margin:0}
-.site-header .theme-controls button{min-height:44px}
-.nav-actions{display:none;align-items:center;justify-self:end;grid-column:2;grid-row:1}
-.nav-actions button,.site-header .nav-signout{font:600 14px/1.2 system-ui;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:8px 14px;cursor:pointer;white-space:nowrap}
-.nav-actions .nav-toggle{display:none;align-items:center;gap:8px}
-.auth-entry .site-header nav>a,.auth-entry .site-header .nav-signout{display:none}
-.site-header a:focus-visible,.site-header button:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
-@media(max-width:70rem){
-  .site-header,.auth-entry .site-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;padding:10px clamp(12px,3vw,24px)}
-  .site-header .brand,.site-header .wordmark{grid-column:1;grid-row:1;font-size:clamp(16px,3vw,24px);gap:6px}
-  .site-header .brand small{font-size:9px;padding:3px}
-  .site-header .mark{width:28px;height:28px;flex:none}
-  .site-header .wordmark img{width:28px;height:28px}
-  .site-header .theme-controls button{font-size:12px;padding-inline:8px}
-  .site-header.nav-ready .nav-actions{display:flex}
-  .site-header.nav-ready .nav-toggle{display:inline-flex}
-  .site-header nav{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:minmax(0,1fr);gap:0;border-top:1px solid var(--line);padding-top:6px;width:100%;min-width:0}
-  .site-header nav a{padding:12px;border-radius:8px;min-height:46px}
-  .site-header nav a:hover{background:var(--panel)}
-  .nav-appearance{justify-content:space-between;padding:12px;gap:12px}
-  .nav-appearance-label{display:block;font:500 14px/1.35 system-ui}
-  .site-header .nav-signout{width:100%;margin-top:6px;text-align:left;padding-inline:12px}
-  .site-header.nav-ready:not(.nav-open) nav{display:none}
+/* Shared navigation for the research desk and account workspace. */
+.site-header, .auth-entry .site-header {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: clamp(16px, 3vw, 48px);
+  width: 100%;
+  max-width: 1260px;
+  min-height: 68px;
+  margin-inline: auto;
+  padding: 8px clamp(16px, 3.5vw, 48px);
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
 }
+.site-header .nav-brand {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: 6px;
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+  font: 680 clamp(20px, 2vw, 26px)/1 "Inter", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -.045em;
+}
+.site-header .nav-brand img {
+  display: block;
+  width: 40px;
+  height: 40px;
+  flex: none;
+}
+.site-header .nav-brand b {
+  color: #12695f;
+  font-weight: inherit;
+}
+.site-header .nav-brand small {
+  align-self: center;
+  margin-inline-start: -3px;
+  padding: 3px 5px;
+  border: 1px solid #a2cec3;
+  border-radius: 5px;
+  color: #225f55;
+  background: #e3f2eb;
+  font: 700 10px/1 system-ui, sans-serif;
+  letter-spacing: .06em;
+}
+:root[data-theme=dark] .site-header .nav-brand b { color: #a2dbcd; }
+:root[data-theme=dark] .site-header .nav-brand small {
+  color: #b6e4d9;
+  background: #213b38;
+  border-color: #47655f;
+}
+.site-header #siteNav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: clamp(6px, 1vw, 16px);
+  margin: 0;
+  min-width: 0;
+}
+.site-header .nav-primary, .site-header .nav-appearance {
+  display: flex;
+  align-items: center;
+}
+.site-header .nav-primary {
+  gap: 2px;
+  padding-inline-end: clamp(8px, 1.5vw, 24px);
+  border-inline-end: 1px solid var(--line);
+}
+.site-header :is(.nav-primary a, .nav-group summary, .nav-toggle, .nav-popover a, .nav-signout) {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: 550 14px/1.35 system-ui, sans-serif;
+  text-align: start;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.site-header .nav-primary a { color: var(--dim); }
+.site-header .nav-primary a[aria-current="page"],
+.site-header .nav-account summary[aria-current="true"] {
+  color: var(--link);
+  background: var(--panel);
+  font-weight: 650;
+}
+.site-header :is(.nav-primary a, .nav-group summary, .nav-toggle, .nav-popover a):hover,
+.site-header .nav-group[open] > summary {
+  color: var(--ink);
+  background: var(--hover);
+  text-decoration: none;
+}
+.site-header .nav-icon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.site-header .nav-group { position: relative; margin: 0; }
+.site-header .nav-group > summary { list-style: none; }
+.site-header .nav-group > summary::-webkit-details-marker { display: none; }
+.site-header .nav-group > summary::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin: -3px 1px 0 3px;
+  border-style: solid;
+  border-color: currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+.site-header .nav-group[open] > summary::after { margin-top: 3px; transform: rotate(225deg); }
+.site-header .nav-popover {
+  position: absolute;
+  z-index: 1;
+  inset: calc(100% + 6px) 0 auto auto;
+  min-width: 192px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--elevated);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 12%);
+}
+.site-header .nav-session { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 4px; }
+.site-header .nav-signout { width: 100%; color: var(--danger); }
+.site-header .nav-signout:not(:disabled):hover,
+:root[data-theme=dark] .site-header .nav-signout:not(:disabled):hover { color: var(--danger); background: var(--danger-bg); }
+.site-header .nav-signout:disabled { cursor: wait; opacity: .65; }
+.site-header .theme-controls {
+  flex: none;
+  margin: 0;
+  padding: 2px;
+  gap: 0;
+}
+.site-header .theme-controls button {
+  min-height: 44px;
+  min-width: 44px;
+  margin: 0;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.site-header .nav-toggle { border: 1px solid var(--line); background: var(--surface); }
+.site-header .nav-actions, .site-header .nav-appearance-label { display: none; }
+.site-header :is(a, summary, button):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+@media (max-width: 60rem) {
+  .site-header, .auth-entry .site-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 8px;
+    min-height: 60px;
+    padding: 8px clamp(12px, 3vw, 24px);
+  }
+  .site-header .nav-brand { grid-area: 1 / 1; justify-self: start; }
+  .site-header .nav-brand img { width: 32px; height: 32px; }
+  .site-header.nav-ready .nav-actions { display: block; grid-area: 1 / 2; justify-self: end; }
+  .site-header #siteNav {
+    grid-area: 2 / 1 / 3 / -1;
+    display: grid;
+    gap: 2px;
+    justify-content: stretch;
+    margin-top: 8px;
+    padding: 8px 3px 4px;
+    border-top: 1px solid var(--line);
+    max-height: calc(100dvh - 120px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  body:not(.auth-entry) .site-header.nav-ready:not(.nav-open) #siteNav { display: none; }
+  .site-header .nav-primary {
+    display: grid;
+    gap: 2px;
+    padding: 0 0 6px;
+    margin-bottom: 2px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .site-header .nav-appearance { justify-content: space-between; padding: 2px 12px; }
+  .site-header .nav-appearance-label { display: block; font: 550 14px/1.35 system-ui, sans-serif; }
+  .site-header .nav-group > summary::after { margin-inline-start: auto; margin-inline-end: 4px; }
+  .site-header .nav-popover {
+    position: static;
+    min-width: 0;
+    margin: 2px 4px 6px 12px;
+    padding: 2px 0 2px 8px;
+    border: 0;
+    border-inline-start: 2px solid var(--line);
+    border-radius: 0;
+    background: var(--paper);
+    box-shadow: none;
+  }
+}
+.auth-entry .site-header :is(.nav-actions, .nav-primary, .nav-group, .nav-appearance-label) { display: none; }
+.auth-entry .site-header #siteNav {
+  display: flex;
+  grid-area: 1 / 2;
+  justify-self: end;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  overflow: visible;
+}
+.auth-entry .site-header .nav-appearance { padding: 0; }
+@media print { .site-header .theme-controls { display: none; } }

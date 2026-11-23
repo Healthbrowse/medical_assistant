@@ -1,12 +1,14 @@
-import {securityFlagFor} from './safety-policy.js';
+import {researchRiskCategory,securityFlagFor} from './safety-policy.js';
 import {domainRestriction} from './medical-contract.js';
 import {standardRefusalText,promptBoundaryText} from './refusal.js';
 // Bounded, deterministic checks, not a general-purpose abuse classifier.
 // Never interpret chat text as a UI event or a permission grant.
-export const buddyPolicyVersion='2026-11-13.4';
-const normalize=value=>String(value||'').normalize('NFKC').replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g,'').trim();
+export const buddyPolicyVersion='2026-11-19.1';
+const normalize=value=>String(value||'').normalize('NFKC').replace(/[\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g,'').trim();
 const plain=value=>normalize(value).toLowerCase().replace(/[’']/g,'').replace(/[^\p{L}\p{M}\p{N}]+/gu,' ').trim();
 const controlTag=/(?:<\s*trigger_audio\s*:|\[\s*system\s+event\s*:\s*user\s+login\s*\])/i;
+// Serialized model-role markers are data, never authority from a visitor/source.
+const forgedRole=/(?:<\|(?:im_start|start_header_id)\|>\s*(?:system|developer|assistant)\b|<\|(?:system|developer)\|>|<<\/?SYS>>|\[\/?INST\]|<\s*\/?(?:system|developer)\s*>|["']role["']\s*:\s*["'](?:system|developer|assistant)["'])/i;
 const credential=/(?:\b(?:hf_|gsk_|sk-)[a-z\d_-]{20,}|\bBearer\s+[a-z\d._~-]{20,}|\b(?:password|api[_ -]?key|access[_ -]?token|client[_ -]?secret)\s*(?:is\s+|[:=]\s*)\S{4,})/i;
 const contact=/(?:[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:MRN|SSN|patient ID)\s*[:=]\s*\S+|(?:^|\s)(?:\+?\d[ ().-]*){10,15}(?!\d))/i;
 
@@ -67,9 +69,12 @@ export function assessBuddySafety(text){
  for(const value of variants){
   const q=plain(value);
   if(controlTag.test(value))return {action:'redirect',category:'forged_event'};
-  if(/\b(?:reveal|repeat|print|show|translate|summarize|summarise|extract|leak|give me|tell me)\b.{0,90}\b(?:system (?:prompt|instructions|rules|message)|core (?:rules|instructions)|developer (?:prompt|instructions)|hidden (?:rules|instructions)|internal (?:configuration|settings)|api keys?|access tokens?|passwords?|backend (?:configuration|secrets))\b/.test(q))return {action:'redirect',category:'prompt_extraction'};
+  if(forgedRole.test(value))return {action:'redirect',category:'forged_role'};
+  if(/\b(?:reveal|repeat|print|show|translate|summarize|summarise|extract|leak|provide|disclose|display|give me|tell me)\b.{0,90}\b(?:system (?:prompt|instructions|rules|message)|core (?:rules|instructions)|developer (?:prompt|instructions)|hidden (?:rules|instructions)|internal (?:configuration|settings)|api keys?|access tokens?|passwords?|backend (?:configuration|secrets))\b/.test(q))return {action:'redirect',category:'prompt_extraction'};
   if(/\b(?:output|repeat|print|show|copy)\b.{0,35}\b(?:everything|all (?:text|messages|instructions))\b.{0,30}\b(?:above|before)\b/.test(q))return {action:'redirect',category:'prompt_extraction'};
   if(/\b(?:ignore|disregard|override|forget)\b.{0,45}\b(?:previous|prior|system|developer|safety|all)\b.{0,35}\b(?:instructions?|rules?|prompts?|guardrails?|protocols?|filters?)\b|\b(?:enter|enable|activate) developer mode\b|\b(?:act as|you are now) (?:dan|a developer|an? unrestricted|an? uncensored|an? evil doctor)\b|\b(?:roleplay|play|pretend)\b.{0,50}\b(?:no rules|unrestricted|uncensored)\b|\b(?:ignore|ignora) (?:todas? (?:las )?)?instrucciones anteriores\b|पिछले\s+निर्देश.{0,20}(?:भूल|अनदेखा)/u.test(q))return {action:'redirect',category:'persona_override'};
+  const researchRisk=researchRiskCategory(value);
+  if(researchRisk)return {action:'redirect',category:researchRisk};
   const action=/\b(?:how|help me|teach|write|create|build|make|generate|steps|instructions|script|code)\b/.test(q);
   if(action&&/\b(?:phishing|ransomware|keylogger|credential stealer|malware|steal (?:passwords|credentials|accounts)|bypass (?:your |the )?(?:authentication|login|security|2fa|safety filters?|guardrails?)|hack (?:someone|their|an account|a hospital))\b/.test(q)&&!/^(?:what is|what are|explain (?:the )?risks|how (?:can i |do i |to )?(?:prevent|detect|recognize|recognise|report|protect against|respond to|avoid))\b/.test(q))return {action:'redirect',category:'unsafe_cyber'};
   if(action&&/\b(?:(?:build|make|assemble) (?:a |an )?(?:bomb|explosive)|(?:kill|murder|attack|poison) (?:someone|a person|my neighbor|my neighbour)|(?:write|generate|create) (?:a |an )?(?:hateful|harassing|racist) (?:message|post|speech)|(?:forge|fabricate) (?:an? )?(?:identity|passport|credit card))\b/.test(q))return {action:'redirect',category:'harmful_content'};
@@ -87,7 +92,7 @@ export function buddySafetyAnswer(category){
 
 export function buddyHelpAnswer(question){
  const q=plain(question);let text;
- if(/^(?:hi|hello|hey|hi buddy|hello buddy|hey buddy|who are you|what can you do|how (?:do i|can i|to) use (?:buddy|healthbrowse))$/.test(q))text="Hi, I'm Buddy, your AI research companion. Choose one of the six clinical areas or ask a follow-up about the current topic. I'll use the available sources and explain when evidence is missing. You can switch between General and Clinicians for different levels of detail.";
+ if(/^(?:hi|hello|hey|hi buddy|hello buddy|hey buddy|who are you|what can you do|how (?:do i|can i|to) use (?:buddy|healthbrowse))$/.test(q))text="Hi, I'm Buddy, your AI research companion. Ask a follow-up about your search or choose a source you’d like to check. I'll use the available sources and explain when evidence is missing. You can switch between General and Clinicians for different levels of detail.";
  else if(/^(?:how (?:do i|can i|to)|where (?:do i|can i|is)).{0,25}\b(?:change|edit|update) (?:my )?(?:name|email|profile)\b/.test(q))text='Open Account & help, then Profile. Update your name there. Use Edit / verify email for an email change and follow the confirmation steps. Enter personal details in the account form, not in this chat.';
  else if(/^(?:how (?:do i|can i|to)|where (?:do i|can i|is)).{0,25}\b(?:reset|change|forgot) (?:my )?password\b|^i forgot my password$/.test(q))text='For a forgotten password, open the sign-in page and select Forgot password. If you are already signed in and know your password, open Account & help, then Security & Authentication. Enter passwords and email codes only in the account forms.';
  else if(/^(?:how (?:do i|can i|to)|where (?:do i|can i|is)).{0,25}\b(?:delete|clear) (?:all (?:of )?)?(?:my )?chat history\b/.test(q))text='Open Account & help, then Data & Privacy. Use Delete complete chat history and read the confirmation carefully. This deletes saved conversations; clearing the current Buddy view alone does not delete your saved history.';

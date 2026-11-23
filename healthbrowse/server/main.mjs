@@ -16,9 +16,11 @@ const server=http.createServer(async (incoming,outgoing)=>{
       url.pathname.startsWith('/api/me/')?'personal-api':url.pathname.startsWith('/api/')?'public-api':'asset';
     if(draining&&route==='/readyz'){status=503;outgoing.writeHead(status);outgoing.end();return}
     const chunks=[];let bytes=0;
+    const chatTurn=/^\/api\/me\/chats\/[0-9a-f-]+\/turns$/i.test(url.pathname);
+    const maxBytes=url.pathname==='/api/ai/answer'?450000:chatTurn?96000:32768;
     for await(const chunk of incoming){
       bytes+=chunk.length;
-      if(bytes>32768){status=413;outgoing.writeHead(status);outgoing.end('Request too large');return}
+      if(bytes>maxBytes){status=413;outgoing.writeHead(status);outgoing.end('Request too large');return}
       chunks.push(chunk);
     }
     const headers=new Headers();

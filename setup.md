@@ -4,12 +4,11 @@ The React frontend and FastAPI main backend are the selected replacement archite
 
 ## Existing browser
 
-Install Node 24 and Git. Clone the repository and choose the documented development branch:
+Install Node 24 and Git. Clone the repository’s main branch:
 
 ```sh
-git clone https://github.com/McChandra/medical_chatbot.git
+git clone --branch main https://github.com/abby2395/medical_chatbot.git
 cd medical_chatbot
-git switch feature/responsive-healthbrowse-auth
 cd healthbrowse
 npm ci
 npm run build
@@ -17,7 +16,7 @@ npm test
 npm start
 ```
 
-Open http://localhost:8080. The branch is a development reference, not the final capstone release tag. For exact reproduction, check out the commit recorded with your experiment instead of relying on a moving branch.
+Open http://localhost:8080. For exact reproduction, check out the commit recorded with your experiment.
 
 Use [account configuration](healthbrowse/docs/ACCOUNTS.md), [workspace storage](healthbrowse/docs/WORKSPACE.md) and [model integration](healthbrowse/docs/model-integration.md) for environment requirements. Supabase Auth and a configured model provider are required for their respective online features; installing packages does not enable email delivery or hosted inference. Use an untracked local environment file or secret manager. Never commit a service-role key, model API token or SMTP password.
 

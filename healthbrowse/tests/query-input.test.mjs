@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {prepareQuery,canSaveResearchQuestion} from '../dist/query-input.js';
+import {prepareQuery,canSaveResearchQuestion,publicQuestionTopic} from '../dist/query-input.js';
 import {topicIndex,resolveSearch} from '../dist/discovery.js';
 import {medlinePassages} from '../dist/disease-framework.js';
 import {searchAnswer,domainAnswer} from '../dist/search-experience.js';
@@ -51,7 +51,8 @@ test('natural symptom questions receive cited educational answers instead of a r
   for(const role of ['General reader','Medical professional']){
    const answer=searchAnswer({...context,role},p.query);
    assert.equal(answer.supported,true,question);assert.ok(answer.citations.length);
-   assert.match(answer.text,/Other causes can include/);assert.match(answer.text,/Treatment depends on the cause/);
+   if(role==='Medical professional'||(!question.includes('what should I do')&&!question.startsWith('Why is')))assert.match(answer.text,/Other causes can include/);
+   if(role==='Medical professional'||!question.startsWith('Why is'))assert.match(answer.text,/Treatment depends on the cause/);
    if(role==='General reader')assert.match(answer.text,/do not determine the cause/);
    else{assert.match(answer.text,/Clinical reference.*history, examination, investigations and local protocols/);assert.doesNotMatch(answer.text,/your symptoms|your duration/);}
    assert.doesNotMatch(answer.text,/rephrase|Remove personal details/);
@@ -83,8 +84,40 @@ test('the form submission path used by Enter and Search produces the symptom ans
 test('direct diagnosis questions include a limitation while retaining cited educational content',()=>{
  for(const role of ['General reader','Medical professional']){
   const answer=searchAnswer({...context,role},'I have a sore throat. What do I have?');
-  assert.match(answer.diagnosisNotice,/cannot diagnose individuals/);
-  assert.equal(answer.text.split('cannot diagnose individuals').length,2);
+  assert.match(answer.diagnosisNotice,/confirm a diagnosis from symptoms alone/);
+  assert.equal(answer.text.split('confirm a diagnosis from symptoms alone').length,2);
   assert.ok(answer.citations.length);
  }
+});
+
+test('caregiver questions use public topics and keep cause and next-step requests distinct',()=>{
+ const multiple='My daughter has a sore throat and fever. What should we do?';
+ assert.equal(publicQuestionTopic(multiple,index),'Sore Throat and Fever');
+ assert.equal(publicQuestionTopic('Our mother feels dizzy. What can we do?',index),'Dizziness and Vertigo');
+ assert.equal(publicQuestionTopic('Our daughter feels unusual. What can we do?',index),'');
+ assert.equal(publicQuestionTopic('What is a mitochondrion?',index),null);
+ assert.equal(canSaveResearchQuestion(multiple),false);
+ assert.equal(prepareQuery('Our daughter is struggling to breathe. What can we do?').status,'emergency');
+ const general={...context,role:'General reader'};
+ const causes=searchAnswer(general,'Why does my daughter have a sore throat?');
+ assert.ok(causes.supported);assert.doesNotMatch(causes.text,/Treatment depends/);
+ const next=searchAnswer(general,'My daughter has a sore throat. What should we do?');
+ assert.ok(next.supported);assert.match(next.text,/your family member/);assert.match(next.text,/Treatment depends/);
+ assert.ok(next.citations.every(c=>c.url==='https://medlineplus.gov/sorethroat.html'));
+});
+
+test('Buddy reuses an active topic only for a self-contained reference, never a new unmatched caregiver story',()=>{
+ for(const q of ['What should I do next?', 'What should we do about it?', 'Could this cause it?']){
+  assert.equal(publicQuestionTopic(q,index,'Sore Throat'),'Sore Throat');
+  assert.equal(publicQuestionTopic(q,index),'');
+  const answer=searchAnswer({...context,role:'General reader'},q);
+  assert.ok(answer.supported,q);assert.ok(answer.citations.length);
+ }
+ assert.equal(publicQuestionTopic('My mother feels off. What should we do next?',index,'Sore Throat'),'');
+ assert.equal(publicQuestionTopic('My mother has a headache. What should we do next?',index,'Sore Throat'),'Headache');
+});
+
+test('offline care-seeking answers avoid inferring a need for a visit from generic treatment passages',()=>{
+ const answer=searchAnswer({...context,role:'General reader'},'My daughter has a sore throat. Should we see a doctor?');
+ assert.match(answer.text,/whether a visit is needed/);assert.doesNotMatch(answer.text,/Treatment depends/);
 });

@@ -7,14 +7,19 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "build": "node scripts/build-account.mjs && node scripts/build-worker.mjs",
+    "build": "node scripts/build-account.mjs && node scripts/build-files.mjs && node scripts/build-worker.mjs",
     "start": "node server/main.mjs",
     "test": "node --test tests/*.test.mjs",
     "qa:bot": "node scripts/qa-bot.mjs",
-    "db:generate": "drizzle-kit generate"
+    "qa:red-team": "node scripts/red-team.mjs",
+    "db:generate": "drizzle-kit generate",
+    "dev": "node scripts/dev.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.118.0"
+    "@supabase/supabase-js": "2.118.0",
+    "pdfjs-dist": "6.5.438",
+    "fflate": "0.8.3",
+    "fast-xml-parser": "5.12.1"
   },
   "devDependencies": {
     "drizzle-kit": "0.31.10",

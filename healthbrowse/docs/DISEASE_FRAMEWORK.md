@@ -1,10 +1,10 @@
-# Six Medical Decks, evidence routing and Buddy sessions
+# Medical evidence organization and Buddy sessions
 
-The visible section heading is **Six Medical Decks**; each deck retains its expandable question-and-answer layout. Internal FAQ identifiers remain unchanged for compatibility.
+HealthBrowse uses internal topic identifiers to select evidence for a question and to reopen previously saved Buddy sessions.
 
-The current framework is `medical-faq-v3`. General and Clinicians are the two reading modes. Selecting Clinicians changes presentation; it grants no restricted permissions or clinical credential status.
+The internal framework is `medical-faq-v3`. General and Clinicians are the two reading modes. Both use the same account permissions.
 
-| FAQ | Evidence sought | Missing evidence behavior |
+| Evidence question | Evidence sought | Missing evidence behavior |
 | --- | --- | --- |
 | Who is most affected, and what are the risk factors? | Population distribution, risk exposures and prevention | No unsupported incidence, prevalence or population estimates |
 | What exactly causes this condition? | Etiology, cellular mechanisms and genetics | No causation inferred from diagnostic markers or association alone |
@@ -15,17 +15,17 @@ The current framework is `medical-faq-v3`. General and Clinicians are the two re
 
 ## Presentation and generation
 
-The browser renders a direct Browser Summary, six keyboard-accessible native details/summary accordions, and a muted Authorized Citations block. Symptoms are listed as discrete source-backed items. Opening one FAQ does not close another, and the current open state survives synthesis updates. A new topic starts with the first FAQ open. The separate research shelf retains papers, trials, grants, education, datasets and care resources.
+General search displays a direct, plain-language answer. Clinician search displays Clinical Synthesis, Evidence Breakdown, and Limitations & Contraindications. Each medical claim links to its evidence. The separate research shelf offers papers, trials, grants, education, datasets and care resources.
 
-The language model returns schema-checked claims, not executable markup or UI commands. The frontend generates the requested FAQ presentation and a **Copy deck summary** Markdown export from the same displayed responses. Exported citations are deduplicated by source URL. Each clinical claim retains its supporting inline references and passage details; directory links are not falsely included as used citations. Displayed source fallbacks remain identified as excerpts in exported text. The system does not manufacture a summary when the evidence does not answer the question.
+The server checks model claims against the supplied evidence. The reader can copy the displayed answer and its supporting citations as Markdown. Source excerpts keep their attribution and the report identifies gaps in the retrieved evidence.
 
-Buddy stays closed until clicked. Selecting a FAQ opens a contextual conversation about that area; follow-ups do not repeat all six FAQs. Role-specific instructions distinguish everyday education from precise clinical interpretation, but cannot create missing specialist evidence from patient-education sources.
+Readers open Buddy to ask a follow-up about the current question, answer or source. Buddy uses the audience selected in the browser.
 
 ## Source routing and compatibility
 
 Original source paragraphs, source identifiers, headings, dates and URLs remain intact. `faq-spec.js` maps prior disease-spectrum annotations into the new registry. Old symptom/diagnostic content is split by explicit headings, intent and text; a passage can support both only when both appear. Treatment exposures mentioned as risk factors are not treatment recommendations. Natural-history and prognosis records now belong to FAQ 6, retaining treatment-exposure metadata. New source routing is not a clinically validated classifier.
 
-The current Cold Sores snapshot contains no diagnostic passage. FAQ 4 therefore shows an explicit evidence gap with no invented tests or citations. This is intentional and covered by regression tests. Snapshot dates are not publication or prevalence observation dates.
+The current Cold Sores snapshot lacks a diagnostic passage. A question about diagnostic testing needs another relevant source or an evidence-gap message. Snapshot dates represent collection dates.
 
 New saved turns carry `medical-faq-v3`. Existing `disease-spectrum-v2` and older turns are preserved with their original version labels; old section numbers do not silently become new FAQ meanings. Session scopes include the framework version. No research data is deleted by this update.
 
@@ -39,7 +39,7 @@ The welcome is driven by authenticated application state, never an LLM-generated
 
 Shared input checks, server screening, source checks, schema validation and automated claim-support review remain in place. Unsafe procedure instructions are withheld while ordinary medical education remains available. Immediate-danger queries receive supportive escalation rather than a generic refusal. Automated review can miss errors and does not certify clinical accuracy or eliminate hallucinations.
 
-Regression tests cover both roles, source preservation, FAQ-specific evidence gaps, safe citation export, treatment notices, session isolation, refresh suppression, and blocked autoplay. Provider requests are mocked. The Worker integration test exercises the built server locally. These checks do not constitute a live-model benchmark, clinical review, completed Google OAuth flow, or real-device visual/audio testing.
+Regression tests cover both audiences, source preservation, evidence gaps, citation export, session isolation, refresh suppression and blocked autoplay. Provider requests use fixtures. The Worker integration test exercises the built server locally.
 
 ## References
 

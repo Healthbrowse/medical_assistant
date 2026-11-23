@@ -1,5 +1,6 @@
 import {sessionIdFromVerifiedAccessToken} from './auth-session.mjs';
 import {workspaceAPI} from './workspace-api.mjs';
+import {saveSupport} from './support-api.mjs';
 // No service key, authorization header, contact body or feedback body is logged.
 import {isReadingRole,normalizeReadingRole} from '../dist/reading-profiles.js';
 const themes=['system','light','dark'];
@@ -106,6 +107,10 @@ export async function accountAPI(request,env){
     const auth=await freshFetch(base+'/auth/v1/user',{headers});
     if(!auth.ok)reject(auth.status===401||auth.status===403?401:503,'The account session could not be verified.');
     const identity=await auth.json(),user=identity.id;if(!uuid.test(user||''))reject(401,'Invalid account session.');
+    if(env.DB&&['/api/feedback','/api/contact'].includes(path)){
+      if(method!=='POST')return reply({error:'Use POST.'},405);
+      return await saveSupport(env,identity,path.slice(5),await jsonBody(request),triageFeedback);
+    }
     if(env.DB&&path.startsWith('/api/me/'))return workspaceAPI(request,env.DB,identity,{sessionId:sessionIdFromVerifiedAccessToken(token,user)});
     const db=(...args)=>database(base,headers,...args);
     const owner='user_id=eq.'+user;
@@ -145,7 +150,7 @@ export async function accountAPI(request,env){
       }
       if(method==='DELETE'){await db('hb_history?'+owner,'DELETE');return reply({cleared:true});}
     }else if(path==='/api/feedback' && method==='POST'){
-      const b=await jsonBody(request);only(b,['message']);const message=bounded(b.message,3000,'feedback');
+      const b=await jsonBody(request);only(b,['message','category','requestId']);const message=bounded(b.message,2000,'feedback');
       if(privateText.test(message))reject(400,'Remove identifiers and personal medical details.');
       const feedback=triageFeedback(message);
       const id=await db('rpc/hb_submit_feedback','POST',{p_message:message,p_type:feedback.type,p_sentiment:feedback.sentiment});

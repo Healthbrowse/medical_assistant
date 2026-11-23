@@ -2,18 +2,18 @@
 
 ## Implemented
 
-The shared web application retains its six medical decks, authenticated account flow and source-grounded model pipeline. A new H-and-pulse SVG replaces the plus/asterisk mark; matching installed-app icons use the same design.
+The mobile web app shares the authenticated search and source-grounded answer flow with the desktop browser.
 
-At widths up to 760px, the actual search form moves into a sticky header without duplicating its input, autocomplete or submission handlers. Four bottom-navigation actions change with the selected reading mode. The existing menu retains appearance controls and sign-out. First mobile visits default to dark mode; an explicit saved preference wins.
+The search form appears below the header. Four bottom-navigation actions change with the selected reading mode. The menu includes appearance controls and sign-out.
 
 | Reading mode | Bottom actions | Workspace |
 | --- | --- | --- |
-| General (including legacy Patient preference) | Search, Saved, History, Account | Plain-language answers, guided Buddy prompts and a pinned medical disclaimer |
-| Clinicians | Search, Evidence, Sources, History | Expanded quick-reference decks and horizontal Risk, Symptoms, Tests, Treatment and Outlook shortcuts |
+| General (including legacy Patient preference) | Home, Sources, History, Account | Plain-language answers, guided Buddy prompts and a pinned medical disclaimer |
+| Clinicians | Home, Evidence, Sources, History | Clinical Synthesis, Evidence Breakdown, and Limitations & Contraindications |
 
-These are presentation styles, not verified professional credentials or access permissions. Clinical stored identifiers are unchanged. Student has been removed. Existing Student preferences and saved chats open in General mode.
+Reading modes control answer presentation. Legacy Student selections use the Clinician educational style.
 
-Source taps open the available supporting passage and its original publisher link. Modified clicks retain ordinary browser link behavior. This does not embed complete licensed textbooks, fetch missing chapters or certify the generated text. Deck labels describe actual evidence state—cited AI summary, source excerpt or evidence gap—not a numerical probability of clinical correctness.
+Tapping a citation reveals the available supporting passage and its original publisher link. Readers can distinguish cited generated claims, source excerpts and evidence gaps.
 
 The Student workspace, study-card controls and notebook are no longer presented. Existing session notes are not deleted by this role change; normal sign-out cleanup still clears them.
 
@@ -29,13 +29,13 @@ Detected safety blocks can request a short device vibration when supported and r
 
 ## Not connected
 
-Camera/QR scanning, automatic document capture/OCR, medical image uploads, a patient health vault, Qdrant retrieval, cine-loop playback and clinical image interpretation are not connected. No controls imply these services are operational. The current retrieval schema remains text-only and six-deck; eight internal evidence decks have not been supplied. Native iOS/Android packaging is separate work.
+Dedicated clinical imaging interpretation, a patient health vault and vector-based cross-modal retrieval require separate integrations.
 
 ## Verification
 
 Automated regression tests cover role routing and persistence, source passage click events, source-preserving study cards, bounded/private notes and logout cleanup, dictation cancellation and unsupported devices, local-only speech voices, and long-press behavior. Existing search, safety, account and citation suites remain applicable.
 
-The managed preview service cannot launch this existing Worker configuration because it has neither a preview dev script nor a static-directory manifest. Browser visual QA, real-device keyboard behavior, screen-reader interaction, microphone permission, speech quality and haptics remain unverified. Tests use mocked browser APIs and do not validate medical accuracy or clinical performance.
+Differences in software keyboards, speech support and haptic behavior require device-specific testing.
 
 ## Reference documentation
 
@@ -43,3 +43,5 @@ The managed preview service cannot launch this existing Worker configuration bec
 - [MDN: VisualViewport](https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport)
 - [MDN: Navigator.vibrate](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate)
 - NCI Dictionary: [etiology](https://www.cancer.gov/publications/dictionaries/cancer-terms/def/etiology), [prognosis](https://www.cancer.gov/publications/dictionaries/cancer-terms/def/prognosis), [biopsy](https://www.cancer.gov/publications/dictionaries/cancer-terms/def/biopsy), [biomarker](https://www.cancer.gov/publications/dictionaries/cancer-terms/def/biomarker). Dictionary explanations checked 2026-11-13.
+
+Home returns to the top without clearing the current answer or opening the keyboard. Sources opens the current browser answer’s references. Uploaded document citations open within Buddy. Before any search it shows a short explanation and a search action. Bookmarks remain available in Account settings.

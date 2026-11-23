@@ -1,3 +1,4 @@
+import {definitionSubject,definitionScore} from './answer-relevance.js';
 import {assessSafety,safetyAnswer} from './safety-policy.js';
 import {securityVariants,assessBuddySafety,buddySafetyAnswer,hasBuddySecrets,hasUnsafeBuddyOutput} from './buddy-policy.js';
 import {verifyClaim} from './claim-check.js';
@@ -8,7 +9,7 @@ const plain = value => String(value ?? '').normalize('NFKC').toLowerCase().repla
 const words = value => plain(value).split(' ').filter(Boolean);
 const list = value => Array.isArray(value) ? value : [];
 const emergencySigns = /\b(stroke|heart attack|chest pain|chest pressure|face droop\w*|sudden(?:ly)? (?:weakness|numbness|confused|unable to speak)|slurred speech|cant stop bleeding|cannot stop bleeding|bleeding wont stop|cant breathe|cannot breathe|unable to breathe|struggling to breathe|difficulty breathing|trouble breathing|cant swallow|cannot swallow|unable to swallow|not breathing|overdos\w*|unconscious|kill myself|suicid\w*)\b/;
-const personal = /\b(i (?:have|had|am|feel|felt|think|suspect|took|take|cant|cannot|was|noticed|developed|might|may)|im (?:having|feeling|taking|experiencing|unable|dizzy)|my (?!research\b|question\b|course\b|assignment\b|presentation\b|project\b|search\b)|our patient|a patient (?:presents|reports|has|with)|he is|she is|this patient|patient (?:name|id)|am i|ive been|should i (?:take|stop|start|change|increase|reduce|go to)|someone (?:is|has|just)|\d{1,3} year old (?:man|woman|male|female|patient) (?:with|has|presents|reports))\b/;
+const personal = /\b(i (?:have|had|am|feel|felt|think|suspect|took|take|cant|cannot|was|noticed|developed|might|may)|im (?:having|feeling|taking|experiencing|unable|dizzy)|my (?!research\b|question\b|course\b|assignment\b|presentation\b|project\b|search\b)|our (?:patient|child|daughter|son|baby|mother|father|parent|partner|toddler|teenager|husband|wife|grandmother|grandfather|brother|sister|mom|mum|dad)|a patient (?:presents|reports|has|with)|he is|she is|this patient|patient (?:name|id)|am i|ive been|should i (?:take|stop|start|change|increase|reduce|go to)|someone (?:is|has|just)|\d{1,3} year old (?:man|woman|male|female|patient) (?:with|has|presents|reports))\b/;
 const dateIdentifier = /\b(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:st|nd|rd|th)?[,]?\s+\d{4}|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{4})\b/i;
 const selfHarmStatement = /\b(?:i (?:want|intend|plan) to (?:die|(?:kill|hurt|harm) myself)|i(?:m| am) (?:feeling )?suicidal|i (?:have|am having|keep having) (?:active )?suicidal thoughts|i (?:might|will) (?:kill|hurt|harm) myself|(?:im having |having |experiencing |^)(?:active suicidal thoughts|thoughts of suicide right now))\b/;
 const identifiers = /(?:[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:mrn|dob|ssn|patient id|patient name|date of birth|medical record number|my name is|home address)\b|\b\d{3}-\d{2}-\d{4}\b|(?:^|\s)(?:\+?\d[ ().-]*){10,15}(?!\d)|\b(?:phone|mobile|telephone)\s*[:=]?\s*\d)/i;
@@ -97,16 +98,17 @@ function metadataAnswer(intent, question, topic, records, seen) {
   for(const r of items){
     if(!r.title || !safeURL(r.url) || !fitsTerms(remaining,r.title+' '+(r.detail||'')))continue;
     let line='';
+    let sourceFields=['title'];
     if(intent.field && ['authors','date','studyDesign','population','identifier'].includes(intent.field)){
       const key=intent.field==='identifier'?(question.toLowerCase().includes('pmid')?'pmid':'doi'):intent.field;
       if(!r[key] || /unknown|unavailable|unreviewed/i.test(String(r[key])))continue;
-      line=r.title+' — '+String(r[key]);
+      line=r.title+' — '+String(r[key]);sourceFields=['title',key];
     }else if(intent.id==='codes' && r.kind==='terminology' && r.code && r.system){
       if(/icd/.test(plain(question))&&!plain(r.system).includes('icd'))continue;
       if(/snomed/.test(plain(question))&&!plain(r.system).includes('snomed'))continue;
       const requested=plain(question).match(/icd (9|10|11)/)?.[1];
       if(requested&&!words(r.system).includes(requested))continue;
-      line='Terminology lookup candidate: '+r.system+' '+r.code+' — '+r.title+'. Confirm the full descriptor and subtype.';
+      line='Terminology lookup candidate: '+r.system+' '+r.code+' — '+r.title+'. Confirm the full descriptor and subtype.';sourceFields=['title','system','code'];
     }else if(intent.id==='education' && r.kind==='education'){
       if(/free|cost|tuition|accredit|certif|enrol|registration|deadline/.test(plain(question)))continue;
       line='Cataloged education resource: '+r.title+(r.publisher?' · '+r.publisher:'')+'. Check the institution for current availability and eligibility.';
@@ -125,9 +127,9 @@ function metadataAnswer(intent, question, topic, records, seen) {
       if(/size|how many/.test(plain(question)) && !/size.{0,10}\d/i.test(r.detail||''))continue;
       if(/access/.test(plain(question)) && !/access|controlled|register/i.test(r.detail||''))continue;
       if(/modality/.test(plain(question)) && !/modality/i.test(r.detail||''))continue;
-      line=[r.title,r.detail,r.license].filter(Boolean).join(' — ');
+      line=[r.title,r.detail,r.license].filter(Boolean).join(' — ');sourceFields=['title','detail','license'];
     }
-    if(line && novel(line,seen))return {text:line,citations:[{title:r.title,url:r.url}],deck:intent.deck};
+    if(line && novel(line,seen))return {text:line,citations:[{title:r.title,url:r.url}],sourceFields,deck:intent.deck};
   }
 }
 
@@ -156,13 +158,13 @@ export function answerQuestion({question='',topic='',deck,passages=[],visibleTex
   selected=intent.deck;
   const seen=[...list(visibleTexts),...prior.map(h=>h.text||h.answer||'')].filter(s=>typeof s==='string').map(plain);
   if(!intent.evidence)return metadataAnswer(intent,q,topic,records,seen) || noEvidence();
-  const terms=residualTerms(q,topic,intent);
+  const terms=residualTerms(q,topic,intent),definition=intent.id==='definition'&&definitionSubject(q,topic);
   const matches=[];
-  const ranked=orderedPassages(scoped(passages,topic),role,topic).map((p,i)=>({p,i,match:(p.intent===intent.id?5:0)+(intent.id==='definition'&&plain(p.focus)===plain(topic)?15:0)+(intent.id==='definition'&&plain(p.heading).includes(plain(topic))?5:0)})).sort((a,b)=>b.match-a.match||a.i-b.i).map(x=>x.p);
+  const ranked=orderedPassages(scoped(passages,topic),role,topic).map((p,i)=>({p,i,match:(definition?definitionScore(p,q,topic):0)+(p.intent===intent.id?5:0)+(intent.id==='definition'&&plain(p.focus)===plain(topic)?15:0)+(intent.id==='definition'&&plain(p.heading).includes(plain(topic))?5:0)})).sort((a,b)=>b.match-a.match||a.i-b.i).map(x=>x.p);
   for(const p of ranked) {
     if(hasUnsafeBuddyOutput(p.text)||assessBuddySafety(p.text).action!=='allow')continue;
     const subtype=plain(p.focus).endsWith(' '+plain(topic)) && !topicLabels(topic).includes(plain(p.focus));
-    if(!(topicLabels(topic).includes(plain(p.focus)) || subtype) || (intent.id==='definition'?!p.overview:selectedDeck(p.deck)!==selected) || typeof p.text!=='string' || !p.text.trim() || !p.title || !p.record || !safeURL(p.url)) continue;
+    if(!(topicLabels(topic).includes(plain(p.focus)) || subtype) || (intent.id==='definition'?(definition?definitionScore(p,q,topic)===0:!p.overview):selectedDeck(p.deck)!==selected) || typeof p.text!=='string' || !p.text.trim() || !p.title || !p.record || !safeURL(p.url)) continue;
     const evidence=plain(p.text);
     if(intent.id==='course'&&/\b(untreated|without (?:treatment|intervention))\b/.test(q)&&!/(untreated|without (?:treatment|intervention)|not treated)/.test(evidence))continue;
     // Match the specific property requested, not just a deck label.

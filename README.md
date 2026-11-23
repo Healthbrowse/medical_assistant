@@ -6,7 +6,7 @@
 
 ## Introduction and objective
 
-HealthBrowse helps users ask medical questions, read a direct answer, inspect six organized areas of evidence and ask follow-up questions through Buddy. General, Medical education and Clinicians reading modes adjust language and depth. The objective is to improve relevance and traceability while making limitations visible. The prototype is for education and research; it is not a clinically validated diagnostic product.
+HealthBrowse helps users ask medical questions, read a cited answer, inspect its sources and ask follow-up questions through Buddy. The General mode uses plain language. The Clinicians mode covers clinical practice and medical education. The objective is to improve relevance and traceability while making limitations visible. The prototype is for education and research; it is not a clinically validated diagnostic product.
 
 The companion MedQuAD Medical Chatbot is the earlier Streamlit/FastAPI medical question-answering research project. Its retrieval and model experiments provide prior work for the capstone. The proposed new study tests whether fine-tuning a medical-passage reranker improves retrieval and the source support of answers. [Current HealthBrowse site](https://healthbrowseai.abhaysrivastava518.chatgpt.site) · [Architecture](healthbrowse/docs/capstone/ARCHITECTURE.md) · [Research protocol](healthbrowse/docs/capstone/EXPERIMENT_PLAN.md)
 
@@ -15,9 +15,8 @@ The companion MedQuAD Medical Chatbot is the earlier Streamlit/FastAPI medical q
 See [setup.md](setup.md) for the existing application, configuration boundaries and research reproduction. The current browser uses Node 24:
 
 ```sh
-git clone https://github.com/McChandra/medical_chatbot.git
+git clone https://github.com/abby2395/medical_chatbot.git
 cd medical_chatbot
-git switch feature/responsive-healthbrowse-auth
 cd healthbrowse
 npm ci
 npm run build
@@ -43,11 +42,11 @@ Current methods include source collection, terminology and keyword retrieval, au
 | Browser API | Worker routes and Node adapter | FastAPI and Pydantic |
 | Companion chatbot | Streamlit and FastAPI | Reuse reviewed Python logic behind the shared API |
 | Identity and workspace | Supabase Auth; hosted D1 workspace; separate PostgreSQL research components | Supabase Auth plus durable PostgreSQL with ownership enforcement |
-| Generation | Groq-hosted openai/gpt-oss-120b, role-specific prompts | Fixed generator baseline while evaluating retrieval changes |
+| Generation | DeepSeek role-specific synthesis and literature planning, with configurable Groq and custom profiles | Fixed generator baseline while evaluating retrieval changes |
 | New training | Not implemented | Compact cross-encoder fine-tuned with PyTorch/Sentence Transformers |
 | Delivery | Sites deployment; Node Docker/CI and deployment assets | React/FastAPI container on Cloud Run with tested CI/CD |
 
-The same hosted generator serves the reading modes. Llama QLoRA, FLAN-T5 and MedGemma research must not be described as the active production model. A separate model review request does not make responses hallucination-free.
+The DeepSeek profile selects separate General and Clinician checkpoints. See the [model configuration and verification guide](healthbrowse/docs/model-integration.md) for checkpoint IDs and how to confirm a deployment’s active provider. Llama QLoRA, FLAN-T5 and MedGemma research must not be described as the active production model. A separate model review request does not make responses hallucination-free.
 
 ## Data integration and research description
 
@@ -475,7 +474,7 @@ The failed workflow was created on a separate demonstration branch and was not i
 
 **Unit Test:** [Python Syntax Test](tests/test_python_syntax.py)
 
-**GitHub Actions:** [View Workflow Runs](https://github.com/McChandra/medical_chatbot/actions)
+**GitHub Actions:** [View Workflow Runs](https://github.com/abby2395/medical_chatbot/actions)
 
 **Scope:** The current workflow provides CI validation. Automated AWS deployment, retraining, and infrastructure provisioning are not implemented as continuous delivery.
 
@@ -579,7 +578,7 @@ medical_chatbot/
 ### Clone Repository
 
 ```bash
-git clone https://github.com/McChandra/medical_chatbot.git
+git clone https://github.com/abby2395/medical_chatbot.git
 cd medical_chatbot
 ```
 
@@ -718,7 +717,7 @@ Each team member completes the individual peer evaluation required by the course
 - Chandra Mouli Mudumba
 - Rahul Pawar
 
-**GitHub Repository:** https://github.com/McChandra/medical_chatbot
+**GitHub Repository:** https://github.com/abby2395/medical_chatbot
 
 ---
 
@@ -744,7 +743,7 @@ Production authentication, clinical review and privacy controls require separate
 
 ## HealthBrowse product workspace
 
-The [HealthBrowse project](healthbrowse/README.md) contains the public seven-section research browser, standalone server, personal account API, installable mobile web app, and deployment instructions. Start the standalone service from the `healthbrowse` directory. Repository-level GitHub Actions workflows handle CI, reviewed source updates and optional Cloud Run release.
+The [HealthBrowse project](healthbrowse/README.md) contains the public research browser, standalone server, personal account API, installable mobile web app, and deployment instructions. Start the standalone service from the `healthbrowse` directory. Repository-level GitHub Actions workflows handle CI, reviewed source updates and optional Cloud Run release.
 
 </details>
 

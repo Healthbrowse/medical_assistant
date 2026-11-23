@@ -6,6 +6,9 @@ import {lookupTerminology,patientEducationForCode} from './terminology.mjs';
 import {researchRoute} from './research-routes.mjs';
 import {careLookup} from './care.mjs';
 import {modelAPI} from '../server/model-api.mjs';
+import {publicFigureResponse} from '../server/public-figure.mjs';
+import {generalBrowser} from '../server/general-browser.mjs';
+import {educationImage,medicalFigureResponse} from '../server/education-visuals.mjs';
 export async function respond(request,env,assets) {
   if(request.cf?.tlsVersion && request.cf.tlsVersion!=='TLSv1.3')
     return new Response('TLS 1.3 is required.',{status:426});
@@ -20,6 +23,10 @@ export async function respond(request,env,assets) {
     return Response.json(browserConfig(env),{headers});
   }
   if(url.pathname.startsWith('/api/ai/'))return modelAPI(request,env,assets);
+  if(url.pathname==='/api/browser/general')return generalBrowser(request,assets);
+  if(url.pathname==='/api/browser/public-figure')return publicFigureResponse(request,fetch,assets);
+  if(url.pathname==='/api/browser/medical-figure')return medicalFigureResponse(request,assets);
+  if(url.pathname==='/api/education-image')return educationImage(request,assets);
   if(url.pathname.startsWith('/api/me/')||['/api/feedback','/api/contact'].includes(url.pathname)){
     return accountAPI(request,env);
   }
@@ -43,7 +50,7 @@ export async function respond(request,env,assets) {
     return Response.json(result,{headers});
   }
   if(url.pathname.startsWith('/api/research/'))return researchRoute(url,assets,headers);
-  if(url.pathname==='/api/profile')return Response.json({readingModes:3,labels:['General','Clinicians','Medical education']},{headers});
+  if(url.pathname==='/api/profile')return Response.json({readingModes:2,labels:['General','Clinicians']},{headers});
   if(url.pathname==='/api/clinical-lens'){
     const tier=Number(url.searchParams.get('tier'));
     if(!Number.isInteger(tier)||tier<3||tier>5)return new Response('Unknown reading mode.',{status:400,headers});

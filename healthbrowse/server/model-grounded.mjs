@@ -1,4 +1,4 @@
-import {faqPassages} from '../dist/faq-spec.js';
+import {faqPassages,generalTreatmentNotice} from '../dist/faq-spec.js';
 // Opt-in compact protocol. It resolves references on the server, not by trusting
 // model-authored quotes. Schema/ID checks still do not establish clinical truth.
 import {evidenceFor,validateDraft,presentDraft} from './model-evidence.mjs';
@@ -97,18 +97,23 @@ export function decodeGrounded(raw,input,prepared){
  const keys=input.mode==='chat'?[]:['1','2','3','4','5','6'];
  if(!exact(raw,['answer','decks','gaps'])||!exact(raw.decks,keys)||!Array.isArray(raw.gaps)||new Set(raw.gaps).size!==raw.gaps.length||raw.gaps.some(id=>!prepared.facets.some(f=>f.id===id)))throw Error('Invalid grounded response shape or gaps');
  const sources=new Map(prepared.evidence.sources.map(s=>[s.id,s]));
+ let claimNumber=0;
  const section=(claims,deck=0)=>{
   if(!Array.isArray(claims)||claims.length>(deck?1:3))throw Error('Too many compact claims');
-  return {claims:claims.map(c=>{
+  const supportedClaims=claims.map(c=>{
    if(!exact(c,['text','sources'])||typeof c.text!=='string'||c.text.length>180||!Array.isArray(c.sources)||c.sources.length<1||c.sources.length>2||new Set(c.sources).size!==c.sources.length)throw Error('Invalid compact claim');
    const support=c.sources.map(id=>{
     const s=sources.get(id);if(!s||(deck&&(s.deck!==deck||s.overview)))throw Error('Unknown or misfiled source');
     if(s.scopeTerms?.length&&!s.scopeTerms.some(term=>new RegExp('\\b'+term+'\\b','i').test(c.text)))throw Error('Claim omits source subtype');
     return {id,quote:s.text};
    });return {text:c.text,support};
-  })};
+  });
+  // Apply the live gateway's safety and citation checks to each research deck.
+  // Reviewer IDs must stay unique across the whole structured response.
+  const validated=validateDraft({answer:{claims:supportedClaims}},input,prepared.evidence).answer;
+  return {id:deck,claims:validated.claims.map(c=>({...c,id:'C'+(++claimNumber)}))};
  };
- const draft=validateDraft({answer:section(raw.answer),decks:keys.map(id=>({id:Number(id),...section(raw.decks[id],Number(id))}))},input,prepared.evidence);
+ const draft={answer:section(raw.answer),decks:keys.map(id=>section(raw.decks[id],Number(id)))};
  if(!draft.answer.claims.length&&raw.gaps.length!==prepared.facets.length)throw Error('An empty answer must declare all question gaps');
  const result={...draft,gaps:raw.gaps},issues=groundedDraftIssues(result,prepared);
  if(issues.length)throw Error(issues.join('; '));
@@ -150,6 +155,11 @@ export function groundedReviewPasses(review,draft,prepared){
 }
 export function presentGrounded(draft,prepared,input,model,corrected){
  const result=presentDraft(draft,prepared.evidence,input,model,corrected);
+ result.decks=draft.decks.map(section=>{
+  const deckInput={...input,question:'',mode:'chat',deck:section.id};
+  const formatted=presentDraft({answer:section},prepared.evidence,deckInput,model,corrected).answer;
+  return {id:section.id,...formatted,...(section.id===5&&input.role==='General reader'?{treatmentNotice:generalTreatmentNotice}:{})};
+ });
  result.protocol='grounded-v2';result.gaps=prepared.facets.filter(f=>draft.gaps.includes(f.id)).map(f=>({id:f.id,label:f.label}));
  const gapText=result.gaps.map(f=>'The retrieved evidence does not answer: '+f.label+'.').join(' ');
  if(gapText){result.answer.text+='\n\n'+gapText;result.answer.blocks.push({title:'Evidence gaps',text:gapText,references:[]});}

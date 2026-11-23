@@ -1,5 +1,5 @@
 export function retryState(answer,now=Date.now()){
- if(!['provider_busy','rate_limited'].includes(answer?.code))return null;
+ if(!['provider_busy','rate_limited','evidence_unavailable'].includes(answer?.code))return null;
  const remaining=Number.isFinite(answer.retryAt)?Math.max(0,Math.ceil((answer.retryAt-now)/1000)):0;
  return {disabled:remaining>0,label:remaining>0?'Retry AI answer in '+(remaining<60?remaining+'s':Math.ceil(remaining/60)+' min'):'Retry AI answer'};
 }

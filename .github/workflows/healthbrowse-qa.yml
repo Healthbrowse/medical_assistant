@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Maximum persona cases (4 = search and Buddy in both modes; 16 = full matrix)'
+        description: 'Maximum persona cases (4 = search and Buddy in both modes; 18 = full matrix)'
         required: true
         default: '4'
         type: choice
-        options: ['4', '8', '16']
+        options: ['4', '8', '16', '18']
 permissions:
   contents: read
 concurrency:
@@ -33,6 +33,7 @@ jobs:
       - run: npm test
       - name: Exercise General and Clinician responses using public example questions
         env:
+          MODEL_PROVIDER: groq
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           QA_CASE_LIMIT: ${{ inputs.limit }}
         run: |

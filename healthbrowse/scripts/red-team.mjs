@@ -1,0 +1,10 @@
+import {mkdir,writeFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {parseArgs} from 'node:util';
+import {runRedTeam,redTeamMarkdown} from '../qa/red-team.mjs';
+const {values}=parseArgs({options:{out:{type:'string',default:'qa-results/red-team'}}});
+const report=await runRedTeam(),out=resolve(values.out);await mkdir(out,{recursive:true});
+await writeFile(resolve(out,'report.json'),JSON.stringify(report,null,2)+'\n');
+await writeFile(resolve(out,'report.md'),redTeamMarkdown(report));
+console.log(JSON.stringify({report:resolve(out,'report.md'),...report.summary}));
+process.exitCode=report.summary.failed?1:0;

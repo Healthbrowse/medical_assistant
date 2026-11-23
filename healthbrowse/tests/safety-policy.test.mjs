@@ -71,7 +71,7 @@ test('browser retains the safe guidance returned by server without attempting de
 
 test('personal diagnosis requests retain education with a clear limitation, without blocking conditionals',()=>{
  for(const q of ['I have a sore throat. What do I have?','Diagnose me','Confirm my diagnosis','Do I definitely have leukemia?']){
-  assert.equal(prepareQuery(q).status,'ok',q);assert.match(personalDiagnosisNotice(q),/cannot diagnose individuals/);
+  assert.equal(prepareQuery(q).status,'ok',q);assert.match(personalDiagnosisNotice(q),/confirm a diagnosis from symptoms alone/);
  }
  assert.equal(personalDiagnosisNotice('What is leukemia?'),undefined);
  assert.equal(hasUnsafeInstructions('You definitely have leukemia.'),true);

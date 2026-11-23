@@ -1,28 +1,40 @@
 // Only subject keywords are sent to external research services.
 const omit = new Set('a an and as at are be by can causes clinical describe do does education explain find for from how i in is it me medical of on or tell that the their to what which with please research about show papers evidence articles images videos latest recent studies symptoms treatment treatments diagnosis management prevention guidelines risks screening for'.split(' '));
 const words = value => value.toLowerCase().normalize('NFKD').replace(/['’]/g,'').match(/[a-z0-9]+/g) || [];
+// Common words are not disease acronyms unless the user capitalizes them.
+const ordinaryWords=new Set('all as at in it me men or us can her and on to'.split(' '));
 // Build once at startup. Match whole word spans so question wording never becomes an outbound term.
 export function topicIndex(entities, vocabulary = []) {
   const index = new Map();
+  index.caseSensitiveAliases=new Set();
   for (const label of vocabulary) {
     const term = words(label).join(' ');
     if (term.length >= 3 && !omit.has(term)) index.set(term, label);
   }
   for (const entity of entities) for (const label of [entity.name,...entity.aliases]) {
-    index.set(words(label).join(' '), entity.name);
+    const term=words(label).join(' ');index.set(term, entity.name);
+    if(/^[A-Z0-9-]{2,6}$/.test(label)&&ordinaryWords.has(term))index.caseSensitiveAliases.add(term);
   }
   // Match everyday symptom descriptions to the symptom topic, not a diagnosis.
-  const throat=index.get('sore throat');
-  if(throat)for(const phrase of ['throat hurts','throat is sore','throat sore','throat pain'])index.set(phrase,throat);
+  for (const [topic, phrases] of [
+    ['sore throat', ['throat hurts','throat is sore','throat feels sore','throat sore','throat pain']],
+    ['cough', ['coughing']], ['headache', ['head hurts']], ['dizziness and vertigo', ['feeling dizzy','feels dizzy']]
+  ]) {
+    const title=index.get(topic);
+    if(title) for(const phrase of phrases) if(!index.has(phrase)) index.set(phrase,title);
+  }
   return index;
 }
 export function resolveSearch(input, entitiesOrIndex) {
   const index = entitiesOrIndex instanceof Map ? entitiesOrIndex : topicIndex(entitiesOrIndex);
   const tokens = words(input), choices = new Set();
+  const original=String(input).normalize('NFKD').replace(/['’]/g,'').match(/[a-z0-9]+/gi)||[];
   for (let start=0; start<tokens.length; start++) {
     // At each position prefer a specific subtype to its shorter parent label.
     for (let end=tokens.length; end>start; end--) {
-      const topic=index.get(tokens.slice(start,end).join(' '));
+      const term=tokens.slice(start,end).join(' '),spelling=original.slice(start,end).join(' ');
+      if(index.caseSensitiveAliases?.has(term)&&spelling!==spelling.toUpperCase())continue;
+      const topic=index.get(term);
       if (topic) { choices.add(topic); start=end-1; break; }
     }
   }

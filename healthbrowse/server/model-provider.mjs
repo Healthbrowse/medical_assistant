@@ -3,7 +3,33 @@ export const HF_CHAT_URL='https://router.huggingface.co/v1/chat/completions';
 export const GENERAL_MODEL='meta-llama/Meta-Llama-3-8B-Instruct:featherless-ai';
 export const GROQ_CHAT_URL='https://api.groq.com/openai/v1/chat/completions';
 export const GROQ_MODEL='openai/gpt-oss-120b';
+const modelFamily='deepseek-ai/';
+export const DEEPSEEK_MODELS=Object.freeze({
+ general:modelFamily+'DeepSeek-R1-Distill-Llama-8B',
+ professional:modelFamily+'DeepSeek-R1-Distill-Qwen-32B',
+ agent:modelFamily+'DeepSeek-V3.2'
+});
+const lightweight=modelFamily+'DeepSeek-R1-0528-Qwen3-8B';
+const deepseekChoices={
+ general:[DEEPSEEK_MODELS.general,lightweight],
+ professional:[DEEPSEEK_MODELS.professional,modelFamily+'DeepSeek-R1-Distill-Qwen-14B',lightweight],
+ agent:[DEEPSEEK_MODELS.agent]
+};
+function deepseekEndpoint(env,route){
+ const option={general:env.DEEPSEEK_GENERAL_MODEL,professional:env.DEEPSEEK_CLINICIAN_MODEL}[route];
+ const model=option||DEEPSEEK_MODELS[route];
+ if(!env.HF_TOKEN||!deepseekChoices[route].includes(model))return null;
+ // Hugging Face routes the canonical model ID to an available provider. Transport
+ // and credentials are fixed together; legacy URLs and keys are never consulted.
+ return {url:HF_CHAT_URL,key:env.HF_TOKEN,model,protocol:'deepseek-cited-v1',compact:false};
+}
+export function usesCitedProtocol(config){
+ return config?.protocol==='groq-cited-v1'||config?.protocol==='deepseek-cited-v1';
+}
 export function modelEndpoint(env,route){
+ if(!Object.hasOwn(DEEPSEEK_MODELS,route))return null;
+ if(env.MODEL_PROVIDER==='deepseek')return deepseekEndpoint(env,route);
+ if(route==='agent')return null;
  if(env.MODEL_PROVIDER==='groq'){
   // Both reading modes use the hosted model, with different evidence/prompt styles.
   // Never forward a Hugging Face or DR7 key to Groq.
@@ -29,6 +55,7 @@ export function modelEndpoint(env,route){
 // Reuse its credential only on the exact same endpoint URL.
 export function modelReviewEndpoint(env,route){
  const generator=modelEndpoint(env,route);if(!generator)return null;
+ if(generator.protocol==='deepseek-cited-v1')return generator;
  if(generator.protocol==='groq-cited-v1')return {...generator,model:'openai/gpt-oss-20b'};
  const prefix=route==='general'?'MODEL_GENERAL_':'MODEL_PROFESSIONAL_';
  if(!env[prefix+'REVIEW_ID']&&!env[prefix+'REVIEW_URL']&&!env[prefix+'REVIEW_KEY'])return generator.protocol==='grounded-v2'?null:generator;

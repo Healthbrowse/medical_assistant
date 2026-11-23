@@ -1,4 +1,5 @@
 import {createMedicalRetrieval} from './medical-retrieval.js';
+import {topicIndex,resolveSearch} from './discovery.js';
 // The publisher gives these three focus areas broader topic titles.
 const focusTitles = new Map([
   ['high blood cholesterol','Cholesterol'],
@@ -25,7 +26,9 @@ export function medlineIndex(data) {
     const record=names.get(norm(title));
     if (record) names.set(focus,record);
   }
-  return {resolveQuestion:query=>related().resolve(query),find(name){const key=norm(name);if(names.has(key))return names.get(key);if(aliases.has(key))return aliases.get(key);return related().resolve(name)?.record||null;}};
+  const searchIndex=topicIndex((data.topics||[]).map(record=>({name:record.title,aliases:(record.aliases||[]).filter(a=>aliases.get(norm(a))===record)})));
+  function namedTopic(query){const choices=resolveSearch(query,searchIndex).choices;if(choices.length!==1)return null;const record=names.get(norm(choices[0]));return record?{topic:record.title,record}:null;}
+  return {resolveQuestion:query=>related().resolve(query)||namedTopic(query),find(name){const key=norm(name);if(names.has(key))return names.get(key);if(aliases.has(key))return aliases.get(key);return namedTopic(name)?.record||related().resolve(name)?.record||null;}};
 }
 
 export async function loadMedline() {

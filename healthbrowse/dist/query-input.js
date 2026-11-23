@@ -1,3 +1,5 @@
+import {generalQuestionIntent} from './general-question-intent.js';
+import {resolveSearch} from './discovery.js';
 import {outsideMedicalScope,scopeAnswer} from './medical-contract.js';
 import {assessSafety,safetyAnswer} from './safety-policy.js';
 import {inspectInput,inspectQuery} from './clinical-engine.js';
@@ -15,6 +17,25 @@ const symptoms=new Map([
  ['rash','Rashes'],['itching','Itching'],['nausea','Nausea and Vomiting'],['vomiting','Nausea and Vomiting'],
  ['dizzy','Dizziness and Vertigo'],['dizziness','Dizziness and Vertigo']
 ]);
+// null preserves ordinary medical search. A personal narrative with no recognized
+// subject stays local until the user can name the symptom or condition.
+export function contextCareQuestion(question){
+ const q=String(question).trim().toLowerCase().replace(/[?!.]+$/,'').trim();
+ if(/^(?:what (?:can|should|do) (?:i|we) do(?: (?:now|next|about (?:this|it|that)))?|what (?:are (?:the|our|my) )?next steps?|should (?:i|we) (?:call|see) (?:a|the|my|our) doctor)$/.test(q))return 'nextSteps';
+ if(/^(?:what (?:could|might) (?:cause|explain) (?:it|this|that)|could (?:this|that) cause it|what could (?:it|this) be)$/.test(q))return 'possibleCauses';
+ return null;
+}
+export function publicQuestionTopic(question,index,activeTopic=''){
+ if(contextCareQuestion(question))return activeTopic||'';
+ const intent=generalQuestionIntent(question);
+ if(!intent.caregiver && !(inspectInput(question)==='private'&&(intent.nextSteps||intent.possibleCauses)))return null;
+ return resolveSearch(question,index).choices.join(' and ');
+}
+export const missingSymptomTopic={
+ title:'What symptom or condition are you asking about?',
+ text:'Add a symptom or a medical topic so I can look up relevant sources.',
+ choices:[],allowEdit:true
+};
 export function prepareQuery(input,context=""){
  const original=String(input??'').trim(),status=inspectQuery(original);
  if(status==='unsafe'){

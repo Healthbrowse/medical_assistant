@@ -10,12 +10,12 @@ export function attachSearch({form,input,submit,notice,examples=[],reload}) {
   function send(query=input.value){
     if(failed){reload();return}
     query=String(query||'').trim();
-    if(!query){notice.textContent='Enter a medical question or choose an example.';input.focus();return}
+    if(!query){notice.textContent='Enter a research question.';input.focus();return}
     input.value=query;
     if(handler)return run(query);
     pending=query;submit.textContent='Loading sources…';
     form.setAttribute('aria-busy','true');
-    notice.textContent='Your question is queued. It will run as soon as the medical sources are ready.';
+    notice.textContent='Your question is queued. It will run as soon as the research desk is ready.';
   }
   form.onsubmit=event=>{event.preventDefault();void send()};
   for(const button of examples)button.onclick=()=>{void send(button.dataset.topic)};
@@ -23,7 +23,7 @@ export function attachSearch({form,input,submit,notice,examples=[],reload}) {
   return {
     send,
     ready(search){handler=search;idle();const query=pending;pending='';if(query){void run(query);return true}return false},
-    fail(){failed=true;idle();submit.type='button';submit.onclick=reload;submit.textContent='Reload research desk';notice.textContent='The research desk could not start. Reload to reconnect the medical sources.'}
+    fail(){failed=true;idle();submit.type='button';submit.onclick=reload;submit.textContent='Reload research desk';notice.textContent='The research desk could not start. Reload to reconnect.'}
   };
 }
 

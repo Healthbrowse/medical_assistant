@@ -38,3 +38,11 @@ export const buddySessions=sqliteTable('hb_buddy_sessions',{
  sessionId:text('session_id').notNull(),
  createdAt:text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`)
 },t=>[primaryKey({columns:[t.userId,t.sessionId]})]);
+
+// Private support inbox; only server code writes after verifying the account.
+export const supportRequests=sqliteTable('hb_support_requests',{
+ id:text('id').primaryKey(),userId:text('user_id').notNull(),kind:text('kind').notNull(),
+ name:text('name').notNull().default(''),email:text('email').notNull().default(''),message:text('message').notNull(),
+ category:text('category').notNull(),sentiment:text('sentiment').notNull(),status:text('status').notNull().default('received'),
+ payloadDigest:text('payload_digest').notNull(),createdAt:text('created_at').notNull()
+},t=>[index('hb_support_owner_time').on(t.userId,t.createdAt)]);
