@@ -1,937 +1,173 @@
-===============================================================================
-                    MEDQUAD MEDICAL CHATBOT
-                       SYSTEM DESIGN
-===============================================================================
-
-Project: MedQuAD Medical Question-Answering Chatbot
-Architecture: Modular Machine Learning System
-Initial Modality: Text / Tabular Medical Q&A
-Cloud Platform: AWS SageMaker AI
-Application: Streamlit
-Initial Model: FLAN-T5
-
-
-===============================================================================
-1. DATA INGESTION ARCHITECTURE
-===============================================================================
-
-PURPOSE
--------
-
-The data-ingestion layer is responsible for discovering and classifying raw
-data before it enters the machine-learning pipeline.
-
-The initial MedQuAD project uses tabular question-answer data. However, the
-architecture is designed so additional medical data sources can be introduced
-in future versions without redesigning the entire ingestion system.
-
-
-SUPPORTED / PLANNED DATA TYPES
-------------------------------
-
-Current:
-
-    CSV                     Tabular data
-    XLSX                    Tabular data
-
-Future:
-
-    JSON                    Structured / semi-structured data
-    Parquet                 Structured tabular data
-
-    PDF                     Document
-    TXT                     Document
-    DOC / DOCX              Document
-
-    JPG / JPEG              Image
-    PNG                     Image
-    DICOM (.dcm)            Medical image
-
-
-IMPORTANT:
-
-Supporting a file type in the architecture does NOT mean that the loader must
-be implemented in Version 1.
-
-For the current MedQuAD project, only the loaders required by the available
-dataset need to be implemented.
-
-
-===============================================================================
-2. DATA MODULE STRUCTURE
-===============================================================================
-
-src/
-|
-+-- data/
-    |
-    +-- __init__.py
-    |
-    +-- load_data.py
-    |
-    +-- preprocessing.py
-    |
-    +-- eda.py
-    |
-    +-- loaders/
-        |
-        +-- __init__.py
-        |
-        +-- tabular_loader.py
-        |
-        +-- json_loader.py
-        |
-        +-- parquet_loader.py
-        |
-        +-- document_loader.py
-        |
-        +-- image_loader.py
-
-
-VERSION 1 IMPLEMENTATION
-------------------------
-
-For the initial MedQuAD implementation:
-
-    loaders/
-    |
-    +-- __init__.py
-    |
-    +-- tabular_loader.py
-
-
-FUTURE EXTENSIONS
------------------
-
-Additional loaders can be implemented when required:
-
-    json_loader.py
-    parquet_loader.py
-    document_loader.py
-    image_loader.py
-
-
-===============================================================================
-3. INGESTION PIPELINE
-===============================================================================
-
-The ingestion system separates:
-
-    FILE DISCOVERY
-
-from:
-
-    FILE LOADING
-
-
-High-Level Flow
----------------
-
-                         RAW DATA
-                            |
-                            v
-                      load_data.py
-                            |
-                            v
-                  Discover Raw Files
-                            |
-                            v
-                    Classify Files
-                            |
-             +--------------+--------------+
-             |              |              |
-             v              v              v
-          TABULAR        DOCUMENT         IMAGE
-             |              |              |
-             v              v              v
-        Tabular Loader  Document Loader  Image Loader
-             |              |              |
-             v              v              v
-         DataFrame         Text        Image / Array
-
-
-DESIGN RULE
------------
-
-    load_data.py
-          =
-    WHAT DATA EXISTS?
-
-
-    loaders/
-          =
-    HOW DO WE READ THAT DATA?
-
-
-===============================================================================
-4. load_data.py
-===============================================================================
-
-PURPOSE
--------
-
-Discover and classify raw files.
-
-This module should NOT contain detailed parsing logic for every supported
-file format.
-
-
-INPUT
------
-
-The module accepts either:
-
-    1. A single file
-
-       Example:
-
-       data/raw/medquad.csv
-
-
-    2. A directory
-
-       Example:
-
-       data/raw/
-
-
-    3. A directory containing nested subdirectories
-
-       Example:
-
-       data/raw/
-       |
-       +-- medquad/
-       |   |
-       |   +-- medquad.csv
-       |
-       +-- external/
-       |   |
-       |   +-- questions.json
-       |
-       +-- documents/
-       |   |
-       |   +-- guidelines.pdf
-       |
-       +-- imaging/
-           |
-           +-- MRI/
-               |
-               +-- scan001.dcm
-
-
-RESPONSIBILITIES
-----------------
-
-load_data.py should:
-
-    [1] Accept an input path
-
-    [2] Check whether the path exists
-
-    [3] Determine whether the path is:
-            - File
-            - Directory
-
-    [4] Recursively search directories and subdirectories
-
-    [5] Discover raw files
-
-    [6] Inspect file extensions
-
-    [7] Classify discovered files
-
-    [8] Report unsupported formats
-
-    [9] Provide discovered files to the appropriate loader
-
-
-IT SHOULD NOT
--------------
-
-load_data.py should NOT:
-
-    X  Clean data
-
-    X  Remove duplicates
-
-    X  Perform EDA
-
-    X  Create embeddings
-
-    X  Perform feature engineering
-
-    X  Train models
-
-    X  Parse MRI images
-
-    X  Contain model-specific logic
-
-
-===============================================================================
-5. FILE DISCOVERY
-===============================================================================
-
-SINGLE FILE
------------
-
-    data/raw/medquad.csv
-              |
-              v
-        load_data.py
-              |
-              v
-         CSV detected
-              |
-              v
-           TABULAR
-
-
-DIRECTORY
----------
-
-    data/raw/
-        |
-        v
-    Recursive Search
-        |
-        +-- medquad.csv
-        |
-        +-- guidelines.pdf
-        |
-        +-- external/
-        |      |
-        |      +-- medical_data.json
-        |
-        +-- imaging/
-               |
-               +-- scan001.dcm
-
-
-All supported files are discovered even when they are located inside
-subdirectories.
-
-
-===============================================================================
-6. FILE CLASSIFICATION
-===============================================================================
-
-Files are classified according to their format and expected modality.
-
-
-    EXTENSION                  CLASSIFICATION
-    --------------------------------------------------
-
-    .csv                       Tabular
-
-    .xlsx                      Tabular
-
-    .json                      JSON
-
-    .parquet                   Parquet
-
-    .pdf                       Document
-
-    .txt                       Document
-
-    .doc                       Document
-
-    .docx                      Document
-
-    .jpg                       Image
-
-    .jpeg                      Image
-
-    .png                       Image
-
-    .dcm                       Medical Image
-
-    Unknown                    Unsupported
-
-
-Unknown files should NOT cause the entire ingestion pipeline to fail.
-
-Instead:
-
-                         Unknown File
-                              |
-                              v
-                         UNSUPPORTED
-                              |
-                              v
-                    Record / Report File
-
-
-===============================================================================
-7. loaders/ DIRECTORY
-===============================================================================
-
-PURPOSE
--------
-
-The loaders directory contains file-format and modality-specific reading logic.
-
-This prevents load_data.py from becoming one large module containing logic
-for CSV, JSON, PDF, Word, Parquet, images, DICOM, and future formats.
-
-
-Architecture
-------------
-
-                       load_data.py
-                            |
-                            v
-                       Classification
-                            |
-          +-----------------+-----------------+
-          |                 |                 |
-          v                 v                 v
-       Tabular           Document           Image
-          |                 |                 |
-          v                 v                 v
- tabular_loader.py  document_loader.py  image_loader.py
-
-
-===============================================================================
-8. tabular_loader.py
-===============================================================================
-
-STATUS:
-
-    VERSION 1 - REQUIRED
-
-
-PURPOSE
--------
-
-Load conventional tabular datasets.
-
-
-INITIAL FORMATS
----------------
-
-    .csv
-    .xlsx
-
-
-INPUT
------
-
-    File Path
-
-
-PROCESS
--------
-
-    medquad.csv
-         |
-         v
-    tabular_loader.py
-         |
-         v
-       Pandas
-         |
-         v
-      DataFrame
-
-
-OUTPUT
-------
-
-    Pandas DataFrame
-
-
-RESPONSIBILITIES
-----------------
-
-    - Read CSV files
-
-    - Read Excel files
-
-    - Handle file-reading errors
-
-    - Return a DataFrame
-
-    - Perform basic structural validation
-
-
-NOT RESPONSIBLE FOR
--------------------
-
-    - Missing-value treatment
-
-    - Duplicate removal
-
-    - Text normalization
-
-    - Feature engineering
-
-    - Model training
-
-
-Those operations belong to later pipeline stages.
-
-
-===============================================================================
-9. json_loader.py
-===============================================================================
-
-STATUS:
-
-    FUTURE / IMPLEMENT WHEN REQUIRED
-
-
-PURPOSE
--------
-
-Load JSON-based medical data.
-
-
-JSON MAY CONTAIN
-----------------
-
-    - Flat records
-
-    - Nested objects
-
-    - Lists
-
-    - Metadata
-
-    - API responses
-
-
-FLOW
-----
-
-    medical_data.json
-            |
-            v
-      json_loader.py
-            |
-            v
-    Structured Object
-            |
-            v
-    DataFrame if appropriate
-
-
-===============================================================================
-10. parquet_loader.py
-===============================================================================
-
-STATUS:
-
-    FUTURE / IMPLEMENT WHEN REQUIRED
-
-
-PURPOSE
--------
-
-Load Apache Parquet datasets.
-
-
-FLOW
-----
-
-    medical_data.parquet
-             |
-             v
-     parquet_loader.py
-             |
-             v
-      Pandas DataFrame
-
-
-Parquet may become useful when the project grows because it provides
-efficient storage and retrieval for larger structured datasets.
-
-
-===============================================================================
-11. document_loader.py
-===============================================================================
-
-STATUS:
-
-    FUTURE / IMPLEMENT WHEN REQUIRED
-
-
-PURPOSE
--------
-
-Load document-based medical information.
-
-
-POTENTIAL FORMATS
------------------
-
-    .pdf
-    .txt
-    .doc
-    .docx
-
-
-FLOW
-----
-
-    Medical Document
-           |
-           v
-    document_loader.py
-           |
-           v
-      Extract Text
-           |
-           v
-    Document Metadata
-           |
-           v
-     Text Preprocessing
-
-
-POTENTIAL FUTURE USE
---------------------
-
-External medical documents may include:
-
-    - Medical guidelines
-
-    - Research documents
-
-    - Approved medical reference material
-
-    - Additional Q&A sources
-
-
-===============================================================================
-12. image_loader.py
-===============================================================================
-
-STATUS:
-
-    FUTURE / NOT PART OF INITIAL MEDQUAD IMPLEMENTATION
-
-
-PURPOSE
--------
-
-Provide an extension point for image-based medical data.
-
-
-POTENTIAL FORMATS
------------------
-
-    .jpg
-    .jpeg
-    .png
-    .dcm
-
-
-DICOM
------
-
-DICOM (.dcm) support may eventually allow the system architecture to
-incorporate medical imaging such as MRI data.
-
-
-FUTURE FLOW
------------
-
-        MRI / Medical Image
-                |
-                v
-         image_loader.py
-                |
-                v
-          Image Decoding
-                |
-                v
-      Image Representation
-                |
-                v
-       Image Preprocessing
-                |
-                v
-           Vision Model
-
-
-IMPORTANT
----------
-
-Medical-image processing is NOT part of Version 1.
-
-The purpose of image_loader.py in the architecture is to make future
-multimodal expansion possible without redesigning the entire ingestion layer.
-
-
-===============================================================================
-13. CURRENT MEDQUAD DATA FLOW
-===============================================================================
-
-The Version 1 pipeline remains intentionally simple.
-
-
-                    MedQuAD CSV
-                         |
-                         v
-                    load_data.py
-                         |
-                         v
-                Discover + Classify
-                         |
-                         v
-                     TABULAR
-                         |
-                         v
-                tabular_loader.py
-                         |
-                         v
-                  Pandas DataFrame
-                         |
-                         v
-                  preprocessing.py
-                         |
-                         v
-                       EDA
-                         |
-                         v
-              feature_engineering.py
-                         |
-                         v
-                      train.py
-
-
-===============================================================================
-14. FUTURE DOCUMENT PIPELINE
-===============================================================================
-
-If external medical documents are introduced:
-
-
-                 Medical PDF
-                      |
-                      v
-                 load_data.py
-                      |
-                      v
-                   DOCUMENT
-                      |
-                      v
-             document_loader.py
-                      |
-                      v
-                Extracted Text
-                      |
-                      v
-              Text Preprocessing
-                      |
-                      v
-          Retrieval / Model Pipeline
-
-
-===============================================================================
-15. FUTURE MEDICAL IMAGE PIPELINE
-===============================================================================
-
-If medical images are introduced:
-
-
-                  MRI / DICOM
-                      |
-                      v
-                 load_data.py
-                      |
-                      v
-               MEDICAL IMAGE
-                      |
-                      v
-               image_loader.py
-                      |
-                      v
-              Image Preprocessing
-                      |
-                      v
-                  Vision Model
-
-
-===============================================================================
-16. NOTEBOOK INTERFACE
-===============================================================================
-
-The notebook should NOT manually manage recursive directory scanning.
-
-The goal is to expose a simple interface such as:
-
-
-    from src.data.load_data import discover_data
-
-    raw_files = discover_data("../data/raw")
-
-
-The notebook therefore focuses on:
-
-    - Experimentation
-
-    - Data inspection
-
-    - Visualization
-
-    - Model development
-
-    - Evaluation
-
-
-while reusable ingestion logic remains inside src/data/.
-
-
-===============================================================================
-17. AWS MAPPING
-===============================================================================
-
-LOCAL COMPONENT                  AWS ROLE
--------------------------------------------------------------------------------
-
-data/raw/                        Amazon S3 Raw Data Zone
-
-load_data.py                     Data / S3 Object Discovery
-
-loaders/                         Format-Specific Ingestion
-
-tabular_loader.py                Structured Data Loading
-
-document_loader.py               Future Document Ingestion
-
-image_loader.py                  Future Image / DICOM Ingestion
-
-preprocessing.py                 SageMaker Processing
-
-feature_engineering.py           Feature Processing /
-                                 Feature Store where appropriate
-
-main.ipynb                       SageMaker / Jupyter Environment
-
-train.py                         SageMaker Training
-
-evaluate.py                      Model Evaluation
-
-MLflow                           Experiment Tracking
-
-artifacts/models/                Amazon S3 Model Artifacts
-
-Model Artifact                   Model Registry
-
-predict.py                       Inference Logic
-
-postprocessing.py                Inference / Response Processing
-
-Dockerfile                       Model Container
-
-Model Container                  SageMaker Hosting
-
-Compute                          SageMaker Instance(s)
-
-Scaling                          Endpoint Auto Scaling
-
-streamlit_app.py                 User Application
-
-
-===============================================================================
-18. DESIGN PRINCIPLES
-===============================================================================
-
-Each component should have ONE primary responsibility.
-
-
-    load_data.py
-        |
-        +--> DISCOVER + CLASSIFY DATA
-
-
-    loaders/
-        |
-        +--> READ DATA
-
-
-    preprocessing.py
-        |
-        +--> CLEAN + STANDARDIZE DATA
-
-
-    eda.py
-        |
-        +--> UNDERSTAND DATA
-
-
-    feature_engineering.py
-        |
-        +--> CREATE MODEL FEATURES
-
-
-    train.py
-        |
-        +--> TRAIN MODEL
-
-
-    evaluate.py
-        |
-        +--> MEASURE MODEL
-
-
-    predict.py
-        |
-        +--> RUN INFERENCE
-
-
-    postprocessing.py
-        |
-        +--> PREPARE SAFE RESPONSE
-
-
-    streamlit_app.py
-        |
-        +--> INTERACT WITH USER
-
-
-    Dockerfile
-        |
-        +--> PACKAGE RUNTIME
-
-
-===============================================================================
-19. KEY ARCHITECTURAL RULE
-===============================================================================
-
-The central rule of the data-ingestion architecture is:
-
-
-    load_data.py
-         |
-         +--> "WHAT DATA EXISTS?"
-
-
-    loaders/
-         |
-         +--> "HOW DO WE READ THAT DATA?"
-
-
-This separation allows the current MedQuAD chatbot to remain lightweight while
-providing clear extension points for:
-
-    - Additional medical Q&A datasets
-
-    - JSON and Parquet data
-
-    - Medical reference documents
-
-    - External knowledge sources
-
-    - Medical images
-
-    - DICOM / MRI data
-
-    - Future multimodal models
-
-
-===============================================================================
-                         END OF SECTION
-===============================================================================
+HealthBrowse AI — system design
+===============================
+
+HealthBrowse is a research browser for people looking up health information
+and for clinicians studying the evidence behind an answer. The browser gives
+a direct, cited answer. Buddy carries the question into a conversation, a
+six-deck topic overview, or an analysis of a document the reader supplies.
+
+1. Application boundaries
+-------------------------
+
+The running application lives in healthbrowse/. The HTML, CSS and JavaScript
+desk lives in healthbrowse/dist/. The build packages its assets and shared
+request handler into a Worker. Cloudflare can run the Worker directly. The
+standalone Node server adapts HTTP requests to that same handler for local
+development and container deployments.
+
+The root frontend/ and backend/ belong to the earlier Streamlit/FastAPI
+MedQuAD project. The React frontend and FastAPI browser backend are the
+capstone migration target. The separate Medical Model Lab has its own model,
+data, evaluation and serving entry points.
+
+Request handlers — healthbrowse/worker/routes.mjs and healthbrowse/server/main.mjs
+Build — healthbrowse/scripts/build-worker.mjs
+
+2. From question to browser result
+----------------------------------
+
+Consider “What is the main function of the pituitary gland?” A reader can
+ask this in either audience setting. The subject sends it to medical search.
+The audience determines how the answer is written.
+
+1. The desk checks the Supabase session and reads the selected audience.
+   The client screens the question for urgent symptoms, identifying details
+   and unsafe requests. Ambiguous terms or missing context can open a short
+   clarification with selectable answers.
+2. Medical search uses POST /api/ai/answer. The server validates the request
+   and screens the supplied context along with the question. Before medical
+   retrieval, it verifies the bearer token with Supabase and enforces the
+   account's request limit.
+3. Retrieval starts from relevant local passages and can add live evidence.
+   An anatomy question can match an OpenStax passage about normal function.
+   The server assigns source identifiers and supplies passages to the model.
+4. On the cited generation path, the audience model drafts claims. A second
+   model call assesses their support. The server resolves the citations
+   against the retrieved records and withholds unsupported claims. If the
+   provider or review fails after retrieval, eligible passages can appear as
+   labeled excerpts. If evidence is insufficient, the user sees the gap.
+5. General readers see a plain-language answer. Clinicians see Clinical
+   Synthesis, Evidence Breakdown, and Limitations & Contraindications as the
+   material supports them. The result includes links to sources and can add
+   suggested reading, a credited illustration or a source-derived diagram.
+   The automated checks establish traceability; clinical accuracy still
+   requires independent review.
+
+A nonmedical question follows a separate route, POST /api/browser/general.
+It uses a curated guide when one matches, or ranks public results from
+GOV.UK, Crossref and Wikipedia. This route produces a source-based answer
+without calling the medical generation model.
+
+Routing — healthbrowse/dist/response-mode.js and healthbrowse/dist/app.js
+Synthesis — healthbrowse/server/model-api.mjs and healthbrowse/server/model-cited.mjs
+General search — healthbrowse/server/general-browser.mjs
+
+3. Evidence and model routing
+-----------------------------
+
+Bundled evidence includes MedlinePlus topics, selected CDC/NCI material,
+historical MedQuAD passages and pinned OpenStax anatomy and physiology text.
+Collection scripts preserve source identity and provenance. The scheduled
+MedlinePlus refresh proposes a change for review. The application can use
+bundled sources when live medical retrieval is disabled.
+
+With the DeepSeek profile and live retrieval enabled, the literature planner
+selects searches from public terms and indexed subject headings. A bounded
+rule-based plan is available when the model planner fails. The retrieval
+service searches MED-indexed Europe PMC records, can follow a cited study,
+and checks publication identity. It extracts passages from eligible PMC full
+text when reuse terms and identity checks pass. Abstract-only records retain
+that label. POST /api/ai/evidence exposes the searches, sources and evidence
+gaps as JSON for inspection independently of answer generation.
+
+The example configuration selects these DeepSeek checkpoints through the
+Hugging Face inference router:
+
+  General synthesis and review     deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+  Clinician synthesis and review   deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+  Literature search planning       deepseek-ai/DeepSeek-V3.2
+
+A deployment can explicitly select Groq or dedicated model endpoints.
+GET /api/ai/status shows route configuration. A signed-in test question
+with a generated answer and resolved citations checks inference end to end.
+
+Retrieval — healthbrowse/server/live-evidence.mjs and healthbrowse/server/literature-search.mjs
+Model selection — healthbrowse/server/model-provider.mjs
+Source collection and reuse — healthbrowse/docs/medical-retrieval.md
+
+4. Buddy and file questions
+---------------------------
+
+Buddy starts with the active browser question, summary and audience. A
+focused follow-up uses the relevant topic and recent conversation context.
+A medical topic overview can return six decks with citations and indicate
+where evidence is missing. The browser result remains a direct answer.
+
+The paperclip is inside Buddy. The client extracts text from a text-based
+PDF, DOCX, PPTX, TXT or Markdown file, or builds an aggregate profile for a
+CSV or TSV. The reader previews the content before attaching it. A scanned
+PDF needs OCR before this flow. The original file stays in the tab. When
+the reader submits a question, the client sends the reviewed extracted
+content to the server. It selects supporting passages for the model and
+resolves references to pages, slides or sections. An unanswered document
+question produces a gap in document evidence.
+
+Client — healthbrowse/dist/buddy.js and healthbrowse/client/file-parser.mjs
+Document evidence — healthbrowse/server/document-evidence.mjs
+
+5. Accounts, storage and operations
+-----------------------------------
+
+Supabase Auth owns identities and sessions. General and Clinicians are
+reading preferences. Model credentials stay on the server. The hosted Worker uses the D1 binding named DB for
+workspace records and request quotas. Workspace operations check the
+verified user's ownership. Eligible saved chats include their source
+references; reopening a chat displays the saved answer. Document turns and
+questions flagged as personal are excluded from account chat history.
+Personal-input screening has limits. Eligible questions and passages are
+sent to the configured model provider for inference.
+
+Authenticated feedback and contact submissions use the workspace database.
+Feedback is available for human review. Contact forwarding uses Resend when
+configured. The Node server supports a local SQLite workspace when
+WORKSPACE_DB_PATH points to a migrated database on persistent storage.
+Replicated deployments require a shared, durable workspace backend.
+
+Development and the JavaScript CI job use Node 24. The current Dockerfile
+pins a Node 26 image. See healthbrowse/package.json and healthbrowse/Dockerfile.
+The Worker exposes GET /healthz for liveness and GET /readyz for required
+browser assets. The Node adapter also marks readiness down while draining.
+On relevant changes, GitHub Actions builds and tests the application, runs
+inference checks, and smoke-tests and scans the container. Cloud Run release
+has an explicit deployment gate. The offline red-team suite exercises both
+audiences and the browser and Buddy entry points.
+
+Local commands (from healthbrowse/, using Node 24)
+    npm ci
+    npm run build
+    npm test
+    npm run qa:red-team
+    npm start
+
+Runtime setup — setup.md and healthbrowse/docs/WORKSPACE.md
+Deployment — healthbrowse/deploy/README.md
+
+6. Research workflows
+---------------------
+
+The earlier MedQuAD pipeline discovers and classifies files in
+src/data/load_data.py, then reads the selected formats via src/data/loaders/.
+Preprocessing, feature engineering, splitting and evaluation support the
+earlier experiments. The SageMaker MedGemma inference job lives in
+deployment/medgemma/. The archived HealthBrowse QLoRA evaluations and
+release reports live in healthbrowse/inference/.
+
+The independent Medical Model Lab retrieves from its own corpus, validates
+training and validation splits, and trains a QLoRA adapter on the pinned
+Meta-Llama-3-8B-Instruct base in a separate GPU run. The evaluation compares
+base and adapter answers on the same benchmark. Smoke runs check the
+pipeline; candidate comparisons and reviewed outputs inform later decisions
+about integration. The browser uses its separately configured inference provider.
+
+Lab entry point — healthbrowse_model_lab/README.md
+Capstone architecture and experiment protocol — healthbrowse/docs/capstone/
