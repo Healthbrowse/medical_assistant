@@ -20,7 +20,7 @@ jobs:
 
       - name: Compile project Python files
         run: |
-          python -m compileall -q backend frontend features models src
+          python -m compileall -q backend deployment frontend features models src
 
   unit-tests:
     name: Run lightweight unit tests

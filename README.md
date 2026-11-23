@@ -10,6 +10,23 @@ HealthBrowse helps users ask medical questions, read a cited answer, inspect its
 
 The companion MedQuAD Medical Chatbot is the earlier Streamlit/FastAPI medical question-answering research project. Its retrieval and model experiments provide prior work for the capstone. The proposed new study tests whether fine-tuning a medical-passage reranker improves retrieval and the source support of answers. [Current HealthBrowse site](https://healthbrowseai.abhaysrivastava518.chatgpt.site) · [Architecture](healthbrowse/docs/capstone/ARCHITECTURE.md) · [Research protocol](healthbrowse/docs/capstone/EXPERIMENT_PLAN.md)
 
+## How HealthBrowse answers a question
+
+After signing in, a reader chooses **General** or **Clinicians**. That choice controls the language and depth of a medical answer. The subject of the question determines where the browser searches. For example, “What is the main function of the pituitary gland?” follows the medical path for either reader. [Search and audience routing](healthbrowse/dist/app.js)
+
+| Stage | What happens |
+| --- | --- |
+| Screen the question | The browser checks for urgent symptoms, unsafe requests and identifying details. It can stop the search with guidance or offer choices when a medical question needs clarification. For hosted medical synthesis, the server repeats the safety checks, verifies the session and enforces a request quota before retrieving evidence. |
+| Find relevant sources | For medical and biology questions, HealthBrowse searches indexed passages from sources such as MedlinePlus and OpenStax. With live retrieval enabled, it can add biomedical literature from Europe PMC, including eligible open-access full text. For a nonmedical question, a separate route uses curated guides or ranks public results from GOV.UK, Crossref and Wikipedia. |
+| Generate and check the medical answer | The configured model drafts from the retrieved passages. On the cited generation path, a second model call checks claim support and the server resolves citations to source records. If generation or review fails, the service can return labeled source excerpts. If it finds too little evidence, it reports the gap. |
+| Show the result | General readers get a plain-language explanation. Clinicians get a clinical synthesis, an evidence breakdown and limitations. Readers can inspect citations, open suggested reading and view a credited illustration when a suitable one is available. |
+
+[Query routing](healthbrowse/dist/response-mode.js) · [Medical retrieval](healthbrowse/server/live-evidence.mjs) · [General search](healthbrowse/server/general-browser.mjs) · [Answer API](healthbrowse/server/model-api.mjs) · [Citation review](healthbrowse/server/model-cited.mjs)
+
+**Continue with Buddy.** From the result, the reader can ask a focused follow-up or explore a medical topic in six decks. Buddy receives the active topic and browser summary. Files are attached inside Buddy, where the reader previews extracted content before submitting a question. In document mode, Buddy looks for evidence in the attachment and cites its page, slide or section. Document conversations and questions flagged as personal are excluded from saved chat history. [Buddy](healthbrowse/dist/buddy.js) · [Document retrieval](healthbrowse/server/document-evidence.mjs) · [History rules](healthbrowse/dist/chat-history.js)
+
+**Which model runs?** The example configuration selects the DeepSeek profile. Its defaults are R1-Distill-Llama-8B for General, R1-Distill-Qwen-32B for Clinicians and V3.2 for literature search planning. An operator can check the server's configuration at `GET /api/ai/status`. The independent Llama/QLoRA Model Lab trains and evaluates research adapters in a separate workflow. [Provider configuration](healthbrowse/docs/model-integration.md) · [Medical Model Lab](healthbrowse_model_lab/README.md)
+
 ## Installation and development
 
 See [setup.md](setup.md) for the existing application, configuration boundaries and research reproduction. The current browser uses Node 24:
@@ -561,8 +578,7 @@ medical_chatbot/
 ├── features/               # Feature engineering
 ├── models/                 # ML and retrieval scripts
 ├── src/data/               # Data ingestion and preprocessing
-├── src/inference/          # Inference experiments
-├── deployment/             # Deployment research
+├── deployment/medgemma/    # SageMaker inference job and dependencies
 ├── notebooks/              # Research notebooks
 ├── monitoring/reports/     # Data and model quality reports
 ├── inference/outputs/      # Batch prediction evidence

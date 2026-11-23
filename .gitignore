@@ -119,8 +119,7 @@ hf_cache/
 #
 # Our models/ directory contains source code:
 # models/train.py
-# models/evaluate.py
-# models/predictions.py
+# models/prediction.py
 #
 # Only generated model artifacts should be ignored.
 # ------------------------------------------------------------
