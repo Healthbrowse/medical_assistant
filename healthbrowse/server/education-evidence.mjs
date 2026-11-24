@@ -1,3 +1,4 @@
+import {heartIntent,heartParagraphs} from '../dist/heart-visual.js';
 import {readingProfile} from '../dist/reading-profiles.js';
 import {domains} from '../dist/disease-framework.js';
 import {faqQuestions} from '../dist/faq-spec.js';
@@ -21,7 +22,10 @@ export function educationEvidence(assets,input){
  }
  const query=retrievalTerms(input.question,{topic:input.topic,context:input.mode==='chat'}),wanted=tokens(query).map(stem);
  if(!wanted.length)return [];
+ const priority=input.mode==='search'&&!input.attachments?.length?heartParagraphs[heartIntent(input.question)]:null;
  const matches=index.rows.map(row=>{
+  const index=priority && row.module.id==='m46676'?priority.indexOf(row.paragraph.id):-1;
+  if(index>=0)return {...row,score:1000-index};
   const count=wanted.filter(t=>row.terms.has(t)).length;
   if(count<Math.ceil(wanted.length*.75))return null;
   const text=row.paragraph.text.toLowerCase(),heading=(row.module.title+' '+row.paragraph.heading).toLowerCase();

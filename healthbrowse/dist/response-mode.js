@@ -1,3 +1,4 @@
+import {heartIntent} from './heart-visual.js';
 import {studyFollowUp} from './query-understanding.js';
 import {inspectQuery} from './clinical-engine.js';
 import {resolveSearch} from './discovery.js';
@@ -24,7 +25,7 @@ const topicFollowup = /^(?:(?:please )?(?:tell me more|go (?:deeper|on)|continue
 export function classifyResponseMode(question, {index, topic, previousMode} = {}) {
   const query = String(question ?? '').normalize('NFKC').trim();
   if (enterpriseTask.test(query) || nonmedicalSense.test(query) || (computingVirus.test(query) && computingContext.test(query))) return 'general';
-  if (clinical.test(query) || lifeScience.test(query) || personalSymptom.test(query) || medicalAbbreviation.test(query) ||
+  if (heartIntent(query) || clinical.test(query) || lifeScience.test(query) || personalSymptom.test(query) || medicalAbbreviation.test(query) ||
       clinicalResearch.test(query) || drugName.test(query)) return 'medical';
   // Only short, topic-free follow-ups inherit the current card. "Explain this
   // database" in a medical thread is a new general research question.

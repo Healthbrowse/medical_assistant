@@ -1,3 +1,4 @@
+import {heartIntent,heartSourceRank} from '../dist/heart-visual.js';
 import {conceptWords,definitionSubject,definitionScore,definitionExcerpt} from '../dist/answer-relevance.js';
 import {retrievalTerms} from '../dist/query-understanding.js';
 import {learningInstructions} from './learning-decks.mjs';
@@ -53,7 +54,9 @@ export function prepareCited(input,evidence){
  const query=words(input.question+' '+(input.searchQuery||''));
  const definition=definitionSubject(input.question,input.topic);
  const score=s=>(definition?definitionScore(s,input.question,input.topic):0)+[...query].filter(w=>words(s.heading+' '+s.text).has(w)).length+(input.mode==='chat'&&s.deck===input.deck?8:0);
- const ranked=evidence.sources.filter(s=>!clinical||!containsReasoningTag(s.text)).sort((a,b)=>score(b)-score(a)||a.text.length-b.text.length);
+ const intent=input.mode==='search'&&!input.attachments?.length?heartIntent(input.question):null;
+ const priority=s=>{const rank=heartSourceRank(intent,s);return rank<0?0:1000-rank;};
+ const ranked=evidence.sources.filter(s=>!clinical||!containsReasoningTag(s.text)).sort((a,b)=>priority(b)-priority(a)||score(b)-score(a)||a.text.length-b.text.length);
  const sourceContext=({id,text,focus,heading,date,scopeTerms,sourceType,abstractOnly,title,publicationTypes,evidenceTier,sourceIdentifier})=>({id,text,focus,heading,date,scopeTerms,sourceType,abstractOnly,...(clinical?{title,publicationTypes,evidenceTier,sourceIdentifier}:{})});
  const sources=[],seen=new Set();let budget=9500;
  // Retrieval can classify one passage under several topics. Send the passage

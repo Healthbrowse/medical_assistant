@@ -72,3 +72,55 @@ export function renderCitedDiagram(parent, topic, items, description = '') {
   parent.append(figure);
   return true;
 }
+
+export function renderBloodFlow(parent, rows) {
+  if (!rows.length) return false;
+  const title = 'Direction of blood flow';
+  const figure = document.createElement('figure');
+  figure.className = 'answer-graphic cited-diagram';
+  const heading = document.createElement('h4');
+  heading.textContent = title;
+  const svg = svgElement('svg', {role: 'img', viewBox: '0 0 430 ' + (rows.length * 52)});
+  svg.append(svgElement('title', {}, title), svgElement('desc', {},
+    rows.map(r => r.from + ' to ' + r.to + '.').join(' ')));
+  const citations = new Map();
+  for (const [i, {from, to, ref}] of rows.entries()) {
+    if (!citations.has(ref.sourceParagraph)) citations.set(ref.sourceParagraph, ref);
+    const number = [...citations.keys()].indexOf(ref.sourceParagraph) + 1;
+    const y = i * 52 + 2;
+    for (const [x, name] of [[2, from], [222, to]]) {
+      svg.append(svgElement('rect', {x, y, width: 180, height: 42, rx: 8, class: 'diagram-card'}),
+        svgElement('text', {x: x + 90, y: y + 26, 'text-anchor': 'middle'}, name));
+    }
+    const mid = y + 21;
+    svg.append(svgElement('path', {d: 'M187 ' + mid + 'h29m-8 -6 8 6 -8 6', class: 'diagram-branch'}),
+      svgElement('text', {x: 407, y: mid + 4, class: 'diagram-ref'}, '[' + number + ']'));
+  }
+  const caption = document.createElement('figcaption');
+  caption.textContent = 'Each arrow summarizes one part of normal circulation from the cited passage.';
+  const list = document.createElement('ol');
+  list.className = 'diagram-sources';
+  for (const [i, ref] of [...citations.values()].entries()) {
+    const item = document.createElement('li');
+    const source = document.createElement('a');
+    Object.assign(source, {href: ref.url, target: '_blank', rel: 'noopener noreferrer',
+      textContent: '[' + (i + 1) + '] OpenStax · ' + ref.sourceParagraph});
+    item.append(source);
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    summary.textContent = 'Read the passage';
+    const quote = document.createElement('blockquote');
+    quote.textContent = ref.text;
+    details.append(summary, quote);
+    item.append(details);
+    list.append(item);
+  }
+  caption.append(list);
+  const credit = document.createElement('a');
+  Object.assign(credit, {href: 'https://creativecommons.org/licenses/by/4.0/', target: '_blank',
+    rel: 'noopener noreferrer', textContent: 'Adapted from OpenStax Anatomy and Physiology 2e · CC BY 4.0'});
+  caption.append(credit);
+  figure.append(heading, svg, caption);
+  parent.append(figure);
+  return true;
+}

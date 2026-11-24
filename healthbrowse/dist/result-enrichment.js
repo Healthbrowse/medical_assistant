@@ -1,6 +1,8 @@
 import {renderEducationalVisual} from './education-visual.js';
 import {curatedBrowserVisuals} from './browser-curated-images.js';
-import {renderCitedDiagram} from './cited-diagram.js';
+import {roleIndex} from './reading-profiles.js';
+import {citedHeartFlow,heartIntent,heartFigures} from './heart-visual.js';
+import {renderBloodFlow,renderCitedDiagram} from './cited-diagram.js';
 
 const element = (tag, text = '', className = '') =>
   Object.assign(document.createElement(tag), {textContent: text, className});
@@ -183,10 +185,18 @@ function lookupIllustrations(endpoint) {
   return entry.promise;
 }
 
-export function visualLookupEndpoint({mode, topic, articles = [], illustrationPageId, allowLookup = true}) {
+export function visualLookupEndpoint({mode, topic, query, articles = [], illustrationPageId, allowLookup = true}) {
   if (!allowLookup || !topic || topic.length > 120) return '';
   const params = new URLSearchParams({topic});
-  if (mode === 'medical') return '/api/browser/medical-figure?' + params;
+  if (mode === 'medical') {
+    const intent = heartIntent(query);
+    if (intent === 'flow') return '';
+    if (Object.hasOwn(heartFigures, intent)) {
+      params.set('topic', 'Heart');
+      params.set('intent', intent);
+    }
+    return '/api/browser/medical-figure?' + params;
+  }
   if (mode !== 'general') return '';
   if (/^the water cycle$/i.test(topic) && articles.some(s => s.id === 'evaporation' && httpsUrl(s.url).startsWith('https://www.usgs.gov/')))
     return '/api/browser/public-figure?id=usgs-water-cycle';
@@ -196,7 +206,7 @@ export function visualLookupEndpoint({mode, topic, articles = [], illustrationPa
 }
 
 export function enrichResult(visualParent, {readingParent = visualParent, mode, topic = '', query = '',
-  answer = {}, articles = [], visual, allowLookup = true, signal, illustrationPageId} = {}) {
+  answer = {}, articles = [], visual, role, allowLookup = true, signal, illustrationPageId} = {}) {
   const normalizedArticles = Array.isArray(articles) ? articles.filter(Boolean) : [];
   const reading = suggestedArticles({mode, topic, query, answer, articles: normalizedArticles});
   const slot = element('section', '', 'result-visual');
@@ -204,6 +214,13 @@ export function enrichResult(visualParent, {readingParent = visualParent, mode, 
   visualParent.append(slot);
   readingList(readingParent, reading);
 
+  const intent = mode === 'medical' ? heartIntent(query) : null;
+  if (intent === 'flow') {
+    const refs = (answer.blocks || []).flatMap(b => citedBy(b, normalizedArticles));
+    if (renderBloodFlow(slot, citedHeartFlow(refs, roleIndex(role) === 1))) return;
+    supportVisual(slot, {topic, answer, articles: normalizedArticles});
+    return;
+  }
   const fallback = element('div');
   const mapped = mode === 'general' && enterpriseVisual(fallback, topic, query, normalizedArticles);
   if (!mapped) supportVisual(fallback, {topic, answer, articles: [...normalizedArticles, ...reading]});
@@ -235,10 +252,12 @@ export function enrichResult(visualParent, {readingParent = visualParent, mode, 
     return true;
   }
   const curated = mode === 'medical' ? curatedBrowserVisuals(topic) : [];
-  if (showImages([...curated, visual])) return;
+  const candidates = [...curated, visual];
+  const matchesIntent = candidate => !Object.hasOwn(heartFigures, intent) || candidate?.id === heartFigures[intent];
+  if (showImages(candidates.filter(matchesIntent))) return;
   slot.append(fallback);
-  const endpoint = visualLookupEndpoint({mode, topic, articles: normalizedArticles, illustrationPageId, allowLookup});
+  const endpoint = visualLookupEndpoint({mode, topic, query, articles: normalizedArticles, illustrationPageId, allowLookup});
   if (endpoint && !signal?.aborted) lookupIllustrations(endpoint).then(found => {
-    if (!signal?.aborted && slot.isConnected) showImages(found);
+    if (!signal?.aborted && slot.isConnected) showImages(found.filter(matchesIntent));
   });
 }

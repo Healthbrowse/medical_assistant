@@ -1,3 +1,5 @@
+import {heartIntent} from './heart-visual.js';
+
 // Clarify ambiguity, never use a fixed disease vocabulary as an eligibility gate.
 const abbreviations={
  MS:['Multiple sclerosis','Mitral stenosis','Metabolic syndrome'],
@@ -8,8 +10,15 @@ const abbreviations={
 };
 const vague=/^(?:(?:what|how|why|tell|explain|describe|give|show|please|me|about|is|are|do|does|the|a|an|can|you|i|it|this|that|its|more|information|details|treatment|treatments|symptoms?|causes?|diagnosis|tests?|medicine|medication|disease|condition|help|mean|means|work|works|function|functions|and|of|for|to|know|want|need|have|my|problem|something|health|medical)\s*)+$/i;
 const followup=/\b(?:it|its|this|that|these|those)\b|^(?:tell me more|go further|continue|follow[- ]?up|more)[?!. ]*$/i;
-export function clarifyQuery(question,{topic='',context=false}={}){
+export function clarifyQuery(question,{topic='',context=false,browser=false}={}){
  const q=String(question||'').trim(),plain=q.replace(/[^a-z\s]/gi,' ').replace(/\s+/g,' ').trim();
+ if(browser&&heartIntent(q)==='clarify')return {
+  title:'What would you like to know about the heart?',text:'Choose a topic or write your own question.',choices:[
+   {label:'Heart anatomy',query:'What are the chambers of the human heart?'},
+   {label:'How the heart pumps blood',query:'How does the heart pump blood?'},
+   {label:'Common heart conditions',query:'What are common heart conditions?'}
+  ],allowEdit:true
+ };
  const match=q.match(/\b(MS|RA|PE|MI|ALS)\b/i);
  if(match&&q.split(/\s+/).length<=9&&!Object.values(abbreviations).flat().some(name=>q.toLowerCase().includes(name.toLowerCase()))){
   const names=abbreviations[match[0].toUpperCase()];

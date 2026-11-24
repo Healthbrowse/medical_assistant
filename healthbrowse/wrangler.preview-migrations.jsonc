@@ -1,0 +1,10 @@
+{
+  "d1_databases": [
+    {
+      "binding": "PREVIEW_DB",
+      "database_name": "healthbrowse-preview",
+      "database_id": "9ef3126c-c6fe-4571-ae39-78136741b970",
+      "migrations_dir": "drizzle"
+    }
+  ]
+}
