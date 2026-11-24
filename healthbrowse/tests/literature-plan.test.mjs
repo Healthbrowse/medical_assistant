@@ -81,6 +81,22 @@ test('a planner outage uses GPT-OSS 120B with the same restricted vocabulary',as
  assert.equal(down.planner,'deterministic');
 });
 
+test('Workers AI plans from public terms and reuses deterministic retrieval during outages',async()=>{
+ let status=200;
+ const AI={async run(model,payload,options){
+  assert.equal(model,'@cf/google/gemma-4-26b-a4b-it');
+  assert.ok(options.signal);assert.equal(options.returnRawResponse,true);
+  assert.deepEqual(Object.keys(JSON.parse(payload.messages[1].content)).sort(),['focus','mesh','words']);
+  if(status!==200)return new Response(null,{status});
+  return Response.json({model,choices:[{finish_reason:'stop',message:{content:'{"searches":[{"terms":[1],"mesh":[0],"focus":0}]}'}}]});
+ }};
+ const options={...args,env:{MODEL_PROVIDER:'workers-ai',AI},fetcher:()=>assert.fail('unexpected HTTP call')};
+ const result=await planLiterature(options);
+ assert.equal(result.planner,'workers-ai');assert.equal(result.model,'@cf/google/gemma-4-26b-a4b-it');
+ assert.ok(result.queries.includes('hypertension exercise systematic review'));
+ status=429;assert.equal((await planLiterature(options)).planner,'deterministic');
+});
+
 test('OpenGPT selection sends literature planning directly to the Groq 120B model',async()=>{
  const options={...args,env:{...env,MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'planner-test'},buddyModel:'groq'};
  let calls=0;

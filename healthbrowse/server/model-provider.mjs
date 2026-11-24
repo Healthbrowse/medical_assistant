@@ -1,3 +1,4 @@
+import {workersEndpoint,workersProtocol} from './workers-ai.mjs';
 // Credentials are resolved only on the server, never in the browser bundle.
 export const HF_CHAT_URL='https://router.huggingface.co/v1/chat/completions';
 export const GENERAL_MODEL='meta-llama/Meta-Llama-3-8B-Instruct:featherless-ai';
@@ -27,12 +28,16 @@ function deepseekEndpoint(env,route){
  // and credentials are fixed together; legacy URLs and keys are never consulted.
  return {url:HF_CHAT_URL,key:env.HF_TOKEN,model,protocol:'deepseek-cited-v1',compact:false};
 }
+export function usesRoleModels(env){
+ return env.MODEL_PROVIDER==='deepseek'||env.MODEL_PROVIDER==='workers-ai';
+}
 export function fallbackEndpoint(env){
- if(env.MODEL_PROVIDER!=='deepseek'||env.MODEL_FALLBACK_PROVIDER!=='groq'||!env.GROQ_API_KEY)return null;
+ if(!usesRoleModels(env)||env.MODEL_FALLBACK_PROVIDER!=='groq'||!env.GROQ_API_KEY)return null;
  return {url:GROQ_CHAT_URL,key:env.GROQ_API_KEY,model:GROQ_MODEL,protocol:'groq-cited-v1',compact:false};
 }
 // Buddy accepts named choices only. Credentials and model endpoints stay on the server.
 export function buddyEndpoint(env,choice,route){
+ if(choice==='workers-ai')return workersEndpoint(env,route);
  if(choice==='deepseek')return deepseekEndpoint(env,route);
  if(choice==='groq'){
   if(env.MODEL_PROVIDER==='groq')return modelEndpoint({...env,GROQ_MODEL},'general');
@@ -41,10 +46,11 @@ export function buddyEndpoint(env,choice,route){
  return modelEndpoint(env,route);
 }
 export function usesCitedProtocol(config){
- return config?.protocol==='groq-cited-v1'||config?.protocol==='deepseek-cited-v1';
+ return config?.protocol==='groq-cited-v1'||config?.protocol==='deepseek-cited-v1'||config?.protocol===workersProtocol;
 }
 export function modelEndpoint(env,route){
  if(!Object.hasOwn(DEEPSEEK_MODELS,route))return null;
+ if(env.MODEL_PROVIDER==='workers-ai')return workersEndpoint(env,route);
  if(env.MODEL_PROVIDER==='deepseek')return deepseekEndpoint(env,route);
  if(route==='agent')return null;
  if(env.MODEL_PROVIDER==='groq'){
@@ -72,7 +78,7 @@ export function modelEndpoint(env,route){
 // Reuse its credential only on the exact same endpoint URL.
 export function modelReviewEndpoint(env,route){
  const generator=modelEndpoint(env,route);if(!generator)return null;
- if(generator.protocol==='deepseek-cited-v1')return generator;
+ if(generator.protocol==='deepseek-cited-v1'||generator.protocol===workersProtocol)return generator;
  if(generator.protocol==='groq-cited-v1')return {...generator,model:'openai/gpt-oss-20b'};
  const prefix=route==='general'?'MODEL_GENERAL_':'MODEL_PROFESSIONAL_';
  if(!env[prefix+'REVIEW_ID']&&!env[prefix+'REVIEW_URL']&&!env[prefix+'REVIEW_KEY'])return generator.protocol==='grounded-v2'?null:generator;
