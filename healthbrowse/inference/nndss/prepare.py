@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import os
+from datetime import date, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from urllib.parse import urlencode
@@ -19,6 +20,7 @@ API = f"https://data.cdc.gov/resource/{DATASET}.json"
 METADATA = f"https://data.cdc.gov/api/views/{DATASET}.json"
 LABELS = ["no_reported_cases", "low", "medium", "high"]
 SEED = 42
+FIRST_YEAR = 2014
 
 
 def fetch(url, params=None):
@@ -30,9 +32,14 @@ def fetch(url, params=None):
         return json.load(response)
 
 
-def download(weeks):
-    version = fetch(METADATA)["rowsUpdatedAt"]
-    query = {"$select": "label,states,year,week,m1,m1_flag", "$where": f"year >= '2014' AND week <= {weeks}",
+def mmwr_year_start(year):
+    # CDC weeks start on Sunday. Week 1 contains January 4.
+    jan4 = date(year, 1, 4)
+    return jan4 - timedelta(days=(jan4.weekday() + 1) % 7)
+
+
+def download_rows(where):
+    query = {"$select": "label,states,year,week,m1,m1_flag", "$where": where,
              "$order": "year,week,sort_order,:id", "$limit": 25000}
     pages = []
     offset = 0
@@ -43,12 +50,29 @@ def download(weeks):
         if len(page) < query["$limit"]:
             break
         offset += len(page)
-    if not pages or fetch(METADATA)["rowsUpdatedAt"] != version:
+    return pd.concat(pages, ignore_index=True) if pages else pd.DataFrame()
+
+
+def download(weeks):
+    version = fetch(METADATA)["rowsUpdatedAt"]
+    target = download_rows(f"year >= '{FIRST_YEAR}' AND week <= {weeks}")
+    if target.empty:
+        raise ValueError("Empty CDC snapshot.")
+    context = []
+    for year in sorted(target.loc[target.week.astype(int).eq(1), "year"].astype(int).unique()):
+        previous_year = int(year) - 1
+        last_week = (mmwr_year_start(int(year)) - mmwr_year_start(previous_year)).days // 7
+        if last_week > weeks or previous_year < FIRST_YEAR:
+            context.append(f"(year = '{previous_year}' AND week = {last_week})")
+    if context:
+        previous = download_rows(" OR ".join(context))
+        target = pd.concat([target, previous], ignore_index=True)
+    if fetch(METADATA)["rowsUpdatedAt"] != version:
         raise ValueError("Empty or changing CDC snapshot. Retry the download.")
-    return pd.concat(pages, ignore_index=True), version
+    return target, version
 
 
-def modeling_rows(raw):
+def modeling_rows(raw, weeks=53):
     frame = raw.rename(columns={"label": "disease", "states": "area"}).copy()
     numbers = pd.to_numeric(frame["m1"], errors="coerce")
     flags = frame["m1_flag"].fillna("").str.strip()
@@ -65,9 +89,16 @@ def modeling_rows(raw):
     frame = frame[key + ["count"]].drop_duplicates().sort_values(key).reset_index(drop=True)
     if frame.duplicated(key).any():
         raise ValueError("Conflicting observations for the same condition, area and MMWR week")
-    groups = frame.groupby(["disease", "area", "year"], sort=False)
-    frame["previous"] = groups["count"].shift().where(groups["week"].diff().eq(1))
-    return frame
+    years = frame.year.unique()
+    starts = {year: mmwr_year_start(int(year)).toordinal() for year in years}
+    lengths = {year: (mmwr_year_start(int(year) + 1).toordinal() - starts[year]) // 7 for year in years}
+    if ((frame.week < 1) | (frame.week > frame.year.map(lengths))).any():
+        raise ValueError("Invalid week number for the MMWR reporting year")
+    frame["week_start"] = frame.year.map(starts) + 7 * (frame.week - 1)
+    groups = frame.groupby(["disease", "area"], sort=False)
+    frame["previous"] = groups["count"].shift().where(groups["week_start"].diff().eq(7))
+    targets = frame.year.ge(FIRST_YEAR) & frame.week.le(weeks)
+    return frame.loc[targets].drop(columns="week_start").reset_index(drop=True)
 
 
 def make_splits(frame, sizes):
@@ -115,7 +146,7 @@ def main():
     if min(sizes) < 1 or not 1 <= args.weeks <= 53 or args.out.exists():
         parser.error("Use positive split sizes, 1–53 weeks and a new output directory")
     raw, version = download(args.weeks)
-    frame = modeling_rows(raw)
+    frame = modeling_rows(raw, weeks=args.weeks)
     splits, years, cutoffs = make_splits(frame, sizes)
     train, test = splits["train"], splits["test"]
     baseline = make_pipeline(TfidfVectorizer(ngram_range=(1, 2)), LogisticRegression(max_iter=500, class_weight="balanced"))

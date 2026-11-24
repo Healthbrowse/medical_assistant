@@ -14,13 +14,13 @@ Free-memory thresholds are checks for this short-input, single-GPU recipe. Actua
 
 ## Data and evaluation
 
-The source is CDC's [NNDSS Weekly Data](https://data.cdc.gov/d/x9gk-5huc). The default benchmark downloads weeks 1–4 of each available year from 2014 onward. The November 2026 snapshot returned 2022–2026. To include every week available, run `prepare.py --weeks 53`. CDC may revise historical records. Preserve the prepared files to reproduce a comparison.
+The source is CDC's [NNDSS Weekly Data](https://data.cdc.gov/d/x9gk-5huc). The default benchmark scores weeks 1–4 of each available year from 2014 onward. The loader also fetches the preceding year’s final reporting week when needed for week 1. Those extra rows supply history only. The November 2026 snapshot returned 2022–2026. To include every week available, run `prepare.py --weeks 53`. CDC may revise historical records. Preserve the prepared files to reproduce a comparison.
 
-Each input contains the condition, reporting area, MMWR year/week and the previous week's reported count when available within the same reporting year. Current counts and flags are excluded from the inputs. A numeric current count takes precedence over a dash. A missing count with a dash means no cases were reported. Other missing, unavailable and nonreportable values are excluded. The four labels are `no_reported_cases`, `low`, `medium` and `high`. Positive tier boundaries come from the training years alone. These tiers describe aggregate reports and have no patient-level diagnostic interpretation.
+Each input contains the condition, reporting area, MMWR year/week and the previous week's reported count when the same condition and area have a usable count exactly seven days earlier. This includes week 52 or 53 of the preceding MMWR year. Gaps retain the value `unknown`. Current counts and flags are excluded from the inputs. A numeric current count takes precedence over a dash. A missing count with a dash means no cases were reported. Other missing, unavailable and nonreportable values are excluded. The four labels are `no_reported_cases`, `low`, `medium` and `high`. Positive tier boundaries come from the training years alone. These tiers describe aggregate reports and have no patient-level diagnostic interpretation.
 
 The most recent year is the test split and the preceding year is validation. Models use the same frozen files. Evaluation uses the relative scores of four single-token choices mapped to the labels. The original MedGemma run excluded flag-only rows and used a different sample. Its published scores require reevaluation on these splits for a paired comparison.
 
-The checked-in [baseline snapshot](benchmark-snapshot.json) records the source version, split hashes, class supports and CPU baseline results. It contains no large-model scores.
+The checked-in [baseline snapshot](benchmark-snapshot.json) predates the year-boundary fix and records the source version, split hashes, class supports and CPU baseline results. It contains no large-model scores.
 
 ## Run on a CUDA host
 

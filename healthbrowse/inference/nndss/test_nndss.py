@@ -2,13 +2,48 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
-from prepare import make_splits, modeling_rows
+from prepare import download, make_splits, modeling_rows
 
 
 class WeeklyDataTest(unittest.TestCase):
+    def test_week_one_uses_only_the_adjacent_week_for_the_same_series(self):
+        columns = ["year", "week", "label", "states", "m1", "m1_flag"]
+        raw = pd.DataFrame([
+            (2024, 52, "A", "East", 7, ""),
+            (2025, 1, "A", "East", 3, ""),
+            (2025, 52, "A", "East", 40, ""),
+            (2025, 53, "A", "East", None, "-"),
+            (2026, 1, "A", "East", 9, ""),
+            (2025, 52, "B", "East", 12, ""),
+            (2026, 1, "B", "East", 2, ""),
+            (2025, 53, "A", "West", None, "U"),
+            (2026, 1, "A", "West", 5, ""),
+        ], columns=columns)
+        rows = modeling_rows(raw, weeks=4).set_index(["year", "disease", "area"])
+        self.assertEqual(rows["week"].tolist(), [1] * 4)
+        self.assertEqual(rows.loc[(2025, "a", "east"), "previous"], 7)
+        self.assertEqual(rows.loc[(2026, "a", "east"), "previous"], 0)
+        self.assertTrue(pd.isna(rows.loc[(2026, "b", "east"), "previous"]))
+        self.assertTrue(pd.isna(rows.loc[(2026, "a", "west"), "previous"]))
+
+    def test_download_includes_needed_prior_weeks_only(self):
+        target = pd.DataFrame({"year": ["2025", "2026"], "week": ["1", "1"]})
+        for weeks, clause in [(4, "(year = '2024' AND week = 52) OR (year = '2025' AND week = 53)"),
+                              (52, "(year = '2025' AND week = 53)"), (53, None)]:
+            with self.subTest(weeks=weeks), patch("prepare.fetch", return_value={"rowsUpdatedAt": 1}), \
+                    patch("prepare.download_rows", side_effect=[target, pd.DataFrame()]) as requests:
+                raw, version = download(weeks)
+                expected = [f"year >= '2014' AND week <= {weeks}"]
+                if clause:
+                    expected.append(clause)
+                self.assertEqual([c.args[0] for c in requests.call_args_list], expected)
+                self.assertEqual(version, 1)
+                pd.testing.assert_frame_equal(raw, target)
+
     def test_flags_gaps_and_temporal_cutoffs(self):
         raw = []
         for year in (2024, 2025, 2026):
