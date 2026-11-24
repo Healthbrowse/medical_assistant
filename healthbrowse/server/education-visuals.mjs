@@ -1,3 +1,4 @@
+import {heartIntent,heartFigures} from '../dist/heart-visual.js';
 import {curatedBrowserVisuals} from '../dist/browser-curated-images.js';
 import {publicTopicFigureResponse} from './public-figure.mjs';
 import {retrievalTerms} from '../dist/query-understanding.js';
@@ -24,6 +25,8 @@ export function educationalVisual(assets,input){
  if(input.attachments?.length||input.mode!=='search')return null;
  const terms= tokens(retrievalTerms(input.question,{topic:input.topic}));if(!terms.length)return null;
  if(/^mitochondri(?:a|on)$/i.test(String(input.topic).trim())&&!/\b(disease|disorder|deficien\w*|treat\w*)\b/i.test(input.question))return mitochondria;
+ const intent=heartIntent(input.question);
+ if(intent==='flow')return null; // The client draws only the passages cited in the final answer.
  const rows=catalog(assets);
  // This figure explicitly shows the bilirubin pathway within red-cell recycling.
  const bilirubin=terms.includes('bilirubin')?rows.find(f=>f.asset==='media/1905_Erythrocyte_Life_Cycle.jpg'):null;
@@ -38,17 +41,23 @@ export function educationalVisual(assets,input){
  // Prefer overview anatomy for broad organ questions, not an unrelated specialty image.
  const overview=terms.includes('pituitary')&&!pathology.test(input.question)&&!terms.some(t=>['anterior','posterior','hormone'].includes(t))?rows.find(f=>f.id==='m46699-fig-ch18_03_01'):
   terms.length===1&&terms[0]==='heart'?rows.find(f=>f.id==='m46676-fig-ch20_01_08'):null;
- const f=bilirubin||overview||ranked[0]?.f;if(!f)return null;
+ const f=Object.hasOwn(heartFigures,intent)?rows.find(row=>row.id===heartFigures[intent]):bilirubin||overview||ranked[0]?.f;if(!f)return null;
  const bundled=assets['/'+f.id+'.jpg'];
  const attribution=bundled?.base64 && bundled.type==='image/jpeg'
   ? 'OpenStax, Anatomy and Physiology 2e. CC BY 4.0. Source snapshot 11 March 2026. JPEG optimized for display.'
   : f.attribution;
- return {id:f.id,src:'/api/education-image?id='+encodeURIComponent(f.id),title:bilirubin&&input.role!=='Medical professional'?'How red blood cells are recycled':f.title,alt:f.alt,caption:f.caption,sourceUrl:f.sourceUrl,attribution,license:f.license,licenseUrl:'https://creativecommons.org/licenses/by/4.0/',context:bilirubin?'Bilirubin is part of the red blood cell recycling pathway shown here.':'Educational illustration from the cited textbook. It does not diagnose an individual.'};
+ return {id:f.id,src:'/api/education-image?id='+encodeURIComponent(f.id),title:bilirubin&&input.role!=='Medical professional'?'How red blood cells are recycled':f.title,alt:f.alt,caption:f.caption,sourceUrl:f.sourceUrl,attribution,license:f.license,licenseUrl:'https://creativecommons.org/licenses/by/4.0/',context:intent==='chambers'?'Find the two upper chambers (atria) and the two lower chambers (ventricles).':intent==='valves'?'Find the tricuspid, pulmonary, mitral and aortic valves.':bilirubin?'Bilirubin is part of the red blood cell recycling pathway shown here.':'Educational illustration from the cited textbook. It does not diagnose an individual.'};
 }
 // Prefer a verified catalog illustration before looking up a reusable public figure.
 export function medicalFigureResponse(request,assets,fetcher=fetch){
  if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});
- const topic=(new URL(request.url).searchParams.get('topic')||'').trim();
+ const params=new URL(request.url).searchParams;
+ const topic=(params.get('topic')||'').trim(),intent=params.get('intent');
+ if(intent!==null){
+  if(topic.toLowerCase()!=='heart'||!Object.hasOwn(heartFigures,intent))return Response.json({visual:null},{status:400});
+  const visual=educationalVisual(assets,{topic,question:'Show the '+intent+' of the heart',mode:'search'});
+  return Response.json({visual,visuals:visual?[visual]:[]},{headers:{'Cache-Control':'private, no-store'}});
+ }
  if(!topic||topic.length>120||/[<>\x00-\x1f]/.test(topic))return Response.json({visual:null},{status:400});
  const visuals=curatedBrowserVisuals(topic);
  if(!visuals.length){

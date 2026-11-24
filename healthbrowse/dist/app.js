@@ -1,3 +1,4 @@
+import {heartIntent,heartParagraphs} from './heart-visual.js';
 import {enrichResult} from './result-enrichment.js';
 import {classifyResponseMode,screenGeneralQuery} from './response-mode.js';
 import {educationalSubject,clarifyQuery,renderClarification,retrievalTerms,studyFollowUp} from './query-understanding.js';
@@ -233,7 +234,7 @@ function render(){
     card.append(citations);
     displayedEvidence=answerHandoff(direct,refs);
     if(!direct.safety && direct.kind!=='platform' && (direct.supported||direct.blocks?.length||direct.generation)){
-      enrichResult(header.querySelector('.primary-medical-response'),{readingParent:card,mode:'medical',topic,query:activeQuery,answer:direct,
+      enrichResult(header.querySelector('.primary-medical-response'),{readingParent:card,mode:'medical',topic,query:activeQuery,role:roles[role],answer:direct,
         articles:[...(live?.records||[]),...refs,...Object.values(medicalRecord(topic)?.links||{}).flat()],visual:synthesis?.key===synthesisKey(currentContext())?synthesis.visual:null,allowLookup:canSaveResearchQuestion(activeQuery),signal:imageView?.signal});
       card.append(verificationCallout());
     }
@@ -335,7 +336,7 @@ async function performSearch(input,chosenTopic,confirmed=false){
   if(priorMode==='general'){topic='';activeQuery='';unresolved=true;activeResearchReady=false;}
   input=prepared.query;queryNotice=prepared.notice||'';
   const narrativeTopic=generalMode(role)?publicQuestionTopic(correctSpelling(input),lookupIndex):null;
-  const clarification=narrativeTopic===''?missingSymptomTopic:clarifyQuery(input,{topic,context:!!activeQuery&&!unresolved});
+  const clarification=narrativeTopic===''?missingSymptomTopic:clarifyQuery(input,{topic,browser:true,context:!!activeQuery&&!unresolved});
   if(clarification){unresolved=true;copilot.sync();$('card').hidden=false;$('results').hidden=true;renderClarification($('card'),clarification,q=>search(q,null,true),draft=>{if(draft!==undefined)$('query').value=draft;$('query').focus()});$('notice').textContent='Choose a meaning or add the missing subject.';return;}
   $('card').hidden=false;$('copilot').hidden=false;
   const corrected=correctSpelling(input),code=codeQuery(input);
@@ -369,7 +370,8 @@ async function performSearch(input,chosenTopic,confirmed=false){
   if(narrativeTopic){exact=narrativeTopic;choices=[];}
   const followUpStudy=priorMode==='medical'&&activeResearchReady&&priorTopic&&!choices.length&&studyFollowUp(input);
   if(followUpStudy)exact=priorTopic;
-  const learningSubject=narrativeTopic||followUpStudy?'':educationalSubject(corrected);
+  const heartLesson=Object.hasOwn(heartParagraphs,heartIntent(corrected));
+  const learningSubject=narrativeTopic||followUpStudy?'':heartLesson?'heart':educationalSubject(corrected);
   if(!code&&!chosenTopic&&learningSubject){exact=learningSubject[0].toUpperCase()+learningSubject.slice(1);choices=[];}
   // A clear question is eligible even when it has no local disease-title match.
   // Multiple named subjects are preserved as one question for server retrieval.

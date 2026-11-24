@@ -137,7 +137,7 @@ export async function modelAPI(request,env,assets){
   const clinicalDecision=screened.action!=='allow'?screened:expanded.map(text=>assessSafety(text,context)).find(result=>result.action!=='allow');
   const buddyDecision=inputs.map(assessBuddySafety).find(result=>result.action!=='allow');
   const statuses=inputs.map(inspectQuery);
-  const clarification=documentMode?null:clarifyQuery(b.question,{topic:b.topic,context:!!b.topic});
+  const clarification=documentMode?null:clarifyQuery(b.question,{topic:b.topic,browser:b.mode==='search',context:!!b.topic});
   const outOfScope=!documentMode&&(outsideMedicalScope(b.question)||(evidenceOnly&&!clarification&&evidenceMode(b,assets)!=='medical'));
   // Log only policy outcomes, never query text, identity, tokens or medical details.
   const category=statuses.includes('emergency')?'emergency':statuses.includes('private')?'private':clinicalDecision?.category||buddyDecision?.category||(statuses.includes('unsafe')?'unsafe_context':outOfScope?'out_of_scope':'educational');
