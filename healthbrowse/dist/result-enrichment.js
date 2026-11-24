@@ -214,7 +214,33 @@ export function enrichResult(visualParent, {readingParent = visualParent, mode, 
   visualParent.append(slot);
   readingList(readingParent, reading);
 
+  let researchVisual = false;
   const intent = mode === 'medical' ? heartIntent(query) : null;
+  if (intent === 'flow' || Object.hasOwn(heartFigures, intent)) {
+    const pilot = element('a', 'Try this topic in the cardiology research pilot');
+    const params = new URLSearchParams({example: intent, role: roleIndex(role) === 1 ? 'Clinicians' : 'General'});
+    pilot.href = '/cardio-pilot.html?' + params;
+    const usePolicy = element('button', 'Try the research visual on this answer', 'act');
+    usePolicy.type = 'button';
+    usePolicy.onclick = async () => {
+      usePolicy.disabled = true;
+      try {
+        const {loadAssets, visualForAnswer, paintVisual} = await import('./cardio-artifacts.js');
+        const {corpus, policy} = await loadAssets();
+        if (signal?.aborted || !slot.isConnected) return;
+        const blocks = (answer.blocks || []).map(b => ({text: b.text, references: citedBy(b, normalizedArticles)}));
+        const response = visualForAnswer(query, roleIndex(role) === 1 ? 'Clinicians' : 'General', blocks, corpus, policy);
+        const result = element('div');
+        if (response.action === 'text') result.append(element('p', 'The research policy selected text only for the cited answer.'));
+        else await paintVisual(result, response, corpus);
+        if (!signal?.aborted && slot.isConnected) { researchVisual = true; slot.replaceChildren(result); }
+      } catch {
+        usePolicy.disabled = false;
+        usePolicy.textContent = 'Retry research visual';
+      }
+    };
+    readingParent.append(usePolicy, pilot);
+  }
   if (intent === 'flow') {
     const refs = (answer.blocks || []).flatMap(b => citedBy(b, normalizedArticles));
     if (renderBloodFlow(slot, citedHeartFlow(refs, roleIndex(role) === 1))) return;
@@ -233,7 +259,7 @@ export function enrichResult(visualParent, {readingParent = visualParent, mode, 
       const item = element('div');
       const first = figures.length === 0;
       if (!renderEducationalVisual(item, candidate, () => {
-        if (first && !fallback.parentNode) slot.append(fallback);
+        if (!researchVisual && first && !fallback.parentNode) slot.append(fallback);
       })) continue;
       figures.push(item.firstElementChild);
       seen.add(candidate.src);
@@ -258,6 +284,6 @@ export function enrichResult(visualParent, {readingParent = visualParent, mode, 
   slot.append(fallback);
   const endpoint = visualLookupEndpoint({mode, topic, query, articles: normalizedArticles, illustrationPageId, allowLookup});
   if (endpoint && !signal?.aborted) lookupIllustrations(endpoint).then(found => {
-    if (!signal?.aborted && slot.isConnected) showImages(found.filter(matchesIntent));
+    if (!researchVisual && !signal?.aborted && slot.isConnected) showImages(found.filter(matchesIntent));
   });
 }

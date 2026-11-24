@@ -1,0 +1,2103 @@
+{
+  "study": "ad1883763f63b745a08506e7f498e2fc79ca8c10a72338d533b81328229197e7",
+  "items": [
+    {
+      "id": "bare-organ-0-General",
+      "question": "Heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-organ-0-Clinicians",
+      "question": "Heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-organ-1-General",
+      "question": "The heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-organ-1-Clinicians",
+      "question": "The heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-organ-2-General",
+      "question": "Human heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-organ-2-Clinicians",
+      "question": "Human heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-organ-3-General",
+      "question": "The human heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-organ-3-Clinicians",
+      "question": "The human heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-adult-0-General",
+      "question": "Adult heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-adult-0-Clinicians",
+      "question": "Adult heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-adult-1-General",
+      "question": "Normal adult heart overview",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "bare-adult-1-Clinicians",
+      "question": "Normal adult heart overview",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "bare-adult-2-General",
+      "question": "Adult human heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-adult-2-Clinicians",
+      "question": "Adult human heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-adult-3-General",
+      "question": "The adult heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "bare-adult-3-Clinicians",
+      "question": "The adult heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "orientation-0-General",
+      "question": "Heart basics",
+      "role": "General",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "orientation-0-Clinicians",
+      "question": "Heart basics",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "orientation-1-General",
+      "question": "The heart overview",
+      "role": "General",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "orientation-1-Clinicians",
+      "question": "The heart overview",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "orientation-2-General",
+      "question": "Show the heart basics",
+      "role": "General",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "orientation-2-Clinicians",
+      "question": "Show the heart basics",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "orientation-3-General",
+      "question": "Describe the adult heart overview",
+      "role": "General",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "orientation-3-Clinicians",
+      "question": "Describe the adult heart overview",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "clarify"
+      ]
+    },
+    {
+      "id": "cross-section-0-General",
+      "question": "Show a cutaway of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "cross-section-0-Clinicians",
+      "question": "Show a cutaway of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "cross-section-1-General",
+      "question": "Draw the heart interior",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "cross-section-1-Clinicians",
+      "question": "Draw the heart interior",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "cross-section-2-General",
+      "question": "Heart cross section",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "cross-section-2-Clinicians",
+      "question": "Heart cross section",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "cross-section-3-General",
+      "question": "Show the internal layout of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "cross-section-3-Clinicians",
+      "question": "Show the internal layout of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "upper-chambers-0-General",
+      "question": "Show the upper chambers of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "upper-chambers-0-Clinicians",
+      "question": "Show the upper chambers of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "upper-chambers-1-General",
+      "question": "Where are the upper heart chambers?",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "upper-chambers-1-Clinicians",
+      "question": "Where are the upper heart chambers?",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "upper-chambers-2-General",
+      "question": "Identify the upper chambers of the human heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "upper-chambers-2-Clinicians",
+      "question": "Identify the upper chambers of the human heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "upper-chambers-3-General",
+      "question": "Label the upper heart chambers",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "upper-chambers-3-Clinicians",
+      "question": "Label the upper heart chambers",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "chamber-count-0-General",
+      "question": "What are the four chambers of the heart?",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "chamber-count-0-Clinicians",
+      "question": "What are the four chambers of the heart?",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "chamber-count-1-General",
+      "question": "Name the 4 heart chambers",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "chamber-count-1-Clinicians",
+      "question": "Name the 4 heart chambers",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "chamber-count-2-General",
+      "question": "Show the four human heart chambers",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "chamber-count-2-Clinicians",
+      "question": "Show the four human heart chambers",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "chamber-count-3-General",
+      "question": "Identify the four main heart chambers",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "chamber-count-3-Clinicians",
+      "question": "Identify the four main heart chambers",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "lower-chambers-0-General",
+      "question": "Show the lower heart chambers",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "lower-chambers-0-Clinicians",
+      "question": "Show the lower heart chambers",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "lower-chambers-1-General",
+      "question": "Label the lower chambers of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "lower-chambers-1-Clinicians",
+      "question": "Label the lower chambers of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "lower-chambers-2-General",
+      "question": "Identify the lower chambers of the human heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "lower-chambers-2-Clinicians",
+      "question": "Identify the lower chambers of the human heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "lower-chambers-3-General",
+      "question": "Where are the lower heart chambers?",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "lower-chambers-3-Clinicians",
+      "question": "Where are the lower heart chambers?",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "ventricles-0-General",
+      "question": "Show the ventricles of the human heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "ventricles-0-Clinicians",
+      "question": "Show the ventricles of the human heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "ventricles-1-General",
+      "question": "Label the heart ventricles",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "ventricles-1-Clinicians",
+      "question": "Label the heart ventricles",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "ventricles-2-General",
+      "question": "Where are the ventricles of the heart?",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "ventricles-2-Clinicians",
+      "question": "Where are the ventricles of the heart?",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "ventricles-3-General",
+      "question": "Identify the right and left ventricles of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "ventricles-3-Clinicians",
+      "question": "Identify the right and left ventricles of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-overview-0-General",
+      "question": "Show the valves of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-overview-0-Clinicians",
+      "question": "Show the valves of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-overview-1-General",
+      "question": "Where are the heart valves?",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-overview-1-Clinicians",
+      "question": "Where are the heart valves?",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-overview-2-General",
+      "question": "Draw the heart valves",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-overview-2-Clinicians",
+      "question": "Draw the heart valves",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-overview-3-General",
+      "question": "Heart valve locations",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-overview-3-Clinicians",
+      "question": "Heart valve locations",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-gates-0-General",
+      "question": "Show the one way gates of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-gates-0-Clinicians",
+      "question": "Show the one way gates of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-gates-1-General",
+      "question": "Illustrate the one way doors of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-gates-1-Clinicians",
+      "question": "Illustrate the one way doors of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-gates-2-General",
+      "question": "Label the one way gates in the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-gates-2-Clinicians",
+      "question": "Label the one way gates in the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-gates-3-General",
+      "question": "Heart one way doors diagram",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "valve-gates-3-Clinicians",
+      "question": "Heart one way doors diagram",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "mitral-0-General",
+      "question": "Show the mitral valve of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "mitral-0-Clinicians",
+      "question": "Show the mitral valve of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "mitral-1-General",
+      "question": "Locate the mitral valve in the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "mitral-1-Clinicians",
+      "question": "Locate the mitral valve in the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "mitral-2-General",
+      "question": "Where is the mitral valve of the heart?",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "mitral-2-Clinicians",
+      "question": "Where is the mitral valve of the heart?",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "mitral-3-General",
+      "question": "Label the mitral heart valve",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "mitral-3-Clinicians",
+      "question": "Label the mitral heart valve",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "tricuspid-0-General",
+      "question": "Show the tricuspid valve of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "tricuspid-0-Clinicians",
+      "question": "Show the tricuspid valve of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "tricuspid-1-General",
+      "question": "Identify the tricuspid valve in the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "tricuspid-1-Clinicians",
+      "question": "Identify the tricuspid valve in the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "tricuspid-2-General",
+      "question": "Where is the tricuspid valve of the heart?",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "tricuspid-2-Clinicians",
+      "question": "Where is the tricuspid valve of the heart?",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "tricuspid-3-General",
+      "question": "Draw the tricuspid heart valve",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "tricuspid-3-Clinicians",
+      "question": "Draw the tricuspid heart valve",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "semilunar-0-General",
+      "question": "Show the semilunar valves of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "semilunar-0-Clinicians",
+      "question": "Show the semilunar valves of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "semilunar-1-General",
+      "question": "Label the semilunar valves in the human heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "semilunar-1-Clinicians",
+      "question": "Label the semilunar valves in the human heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "semilunar-2-General",
+      "question": "Where are the semilunar valves of the heart?",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "semilunar-2-Clinicians",
+      "question": "Where are the semilunar valves of the heart?",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "semilunar-3-General",
+      "question": "Identify the semilunar heart valves",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "semilunar-3-Clinicians",
+      "question": "Identify the semilunar heart valves",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration"
+      ]
+    },
+    {
+      "id": "pumping-0-General",
+      "question": "How does the heart pump blood?",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "pumping-0-Clinicians",
+      "question": "How does the heart pump blood?",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "pumping-1-General",
+      "question": "Show how the human heart pumps blood",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "pumping-1-Clinicians",
+      "question": "Show how the human heart pumps blood",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "pumping-2-General",
+      "question": "Explain how the heart pumps blood",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "pumping-2-Clinicians",
+      "question": "Explain how the heart pumps blood",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "pumping-3-General",
+      "question": "Diagram the normal heart pumping blood",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "pumping-3-Clinicians",
+      "question": "Diagram the normal heart pumping blood",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "transit-0-General",
+      "question": "Trace blood flow through the human heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "transit-0-Clinicians",
+      "question": "Trace blood flow through the human heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "transit-1-General",
+      "question": "Map the journey of blood through the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "transit-1-Clinicians",
+      "question": "Map the journey of blood through the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "transit-2-General",
+      "question": "Describe the path of blood through the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "transit-2-Clinicians",
+      "question": "Describe the path of blood through the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "transit-3-General",
+      "question": "Show the passage of blood through the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "transit-3-Clinicians",
+      "question": "Show the passage of blood through the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "lung-circuit-0-General",
+      "question": "Trace the pulmonary circuit of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "lung-circuit-0-Clinicians",
+      "question": "Trace the pulmonary circuit of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "lung-circuit-1-General",
+      "question": "Show pulmonary blood flow through the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "lung-circuit-1-Clinicians",
+      "question": "Show pulmonary blood flow through the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "lung-circuit-2-General",
+      "question": "Diagram the pulmonary circulation of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "lung-circuit-2-Clinicians",
+      "question": "Diagram the pulmonary circulation of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "lung-circuit-3-General",
+      "question": "Describe the pulmonary route of blood from the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "lung-circuit-3-Clinicians",
+      "question": "Describe the pulmonary route of blood from the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "body-circuit-0-General",
+      "question": "Trace the systemic circuit of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "body-circuit-0-Clinicians",
+      "question": "Trace the systemic circuit of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "body-circuit-1-General",
+      "question": "Show systemic blood flow through the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "body-circuit-1-Clinicians",
+      "question": "Show systemic blood flow through the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "body-circuit-2-General",
+      "question": "Diagram the systemic circulation of the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "body-circuit-2-Clinicians",
+      "question": "Diagram the systemic circulation of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "body-circuit-3-General",
+      "question": "Describe the systemic route of blood from the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "body-circuit-3-Clinicians",
+      "question": "Describe the systemic route of blood from the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "sequence-0-General",
+      "question": "Show the sequence of blood flow through the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "sequence-0-Clinicians",
+      "question": "Show the sequence of blood flow through the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "sequence-1-General",
+      "question": "Outline the direction blood travels through the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "sequence-1-Clinicians",
+      "question": "Outline the direction blood travels through the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "sequence-2-General",
+      "question": "Trace how blood moves through the heart",
+      "role": "General",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "sequence-2-Clinicians",
+      "question": "Trace how blood moves through the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text",
+        "illustration",
+        "diagram"
+      ]
+    },
+    {
+      "id": "sequence-3-General",
+      "question": "Use arrows to show the route of blood through the heart",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "sequence-3-Clinicians",
+      "question": "Use arrows to show the route of blood through the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-anatomy-0-General",
+      "question": "Describe the heart chambers in words only",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-anatomy-0-Clinicians",
+      "question": "Describe the heart chambers in words only",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-anatomy-1-General",
+      "question": "What are the heart chambers, text only?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-anatomy-1-Clinicians",
+      "question": "What are the heart chambers, text only?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-anatomy-2-General",
+      "question": "Show the heart anatomy without a picture",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-anatomy-2-Clinicians",
+      "question": "Show the heart anatomy without a picture",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-anatomy-3-General",
+      "question": "Heart chambers, no diagrams",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-anatomy-3-Clinicians",
+      "question": "Heart chambers, no diagrams",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-valves-0-General",
+      "question": "Describe the heart valves without a visual",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-valves-0-Clinicians",
+      "question": "Describe the heart valves without a visual",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-valves-1-General",
+      "question": "Heart valves, text only",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-valves-1-Clinicians",
+      "question": "Heart valves, text only",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-valves-2-General",
+      "question": "Name the heart valves in words only",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-valves-2-Clinicians",
+      "question": "Name the heart valves in words only",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-valves-3-General",
+      "question": "Where are the heart valves, no pictures?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-valves-3-Clinicians",
+      "question": "Where are the heart valves, no pictures?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-flow-0-General",
+      "question": "Describe heart circulation in words only",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-flow-0-Clinicians",
+      "question": "Describe heart circulation in words only",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-flow-1-General",
+      "question": "How does the heart pump blood, text only?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-flow-1-Clinicians",
+      "question": "How does the heart pump blood, text only?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-flow-2-General",
+      "question": "Trace heart blood flow without a diagram",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-flow-2-Clinicians",
+      "question": "Trace heart blood flow without a diagram",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-flow-3-General",
+      "question": "Describe how the heart pumps blood, no visuals",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "verbal-flow-3-Clinicians",
+      "question": "Describe how the heart pumps blood, no visuals",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "valve-disease-0-General",
+      "question": "Show mitral valve prolapse",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "valve-disease-0-Clinicians",
+      "question": "Show mitral valve prolapse",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "valve-disease-1-General",
+      "question": "How does valve disease affect the heart?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "valve-disease-1-Clinicians",
+      "question": "How does valve disease affect the heart?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "valve-disease-2-General",
+      "question": "Draw a leaking heart valve",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "valve-disease-2-Clinicians",
+      "question": "Draw a leaking heart valve",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "valve-disease-3-General",
+      "question": "Show the heart after valve replacement",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "valve-disease-3-Clinicians",
+      "question": "Show the heart after valve replacement",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "fetal-0-General",
+      "question": "How does a fetal heart pump blood?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "fetal-0-Clinicians",
+      "question": "How does a fetal heart pump blood?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "fetal-1-General",
+      "question": "Show fetal circulation",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "fetal-1-Clinicians",
+      "question": "Show fetal circulation",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "fetal-2-General",
+      "question": "Describe the blood pathway before birth",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "fetal-2-Clinicians",
+      "question": "Describe the blood pathway before birth",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "fetal-3-General",
+      "question": "Draw the heart of a fetus",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "fetal-3-Clinicians",
+      "question": "Draw the heart of a fetus",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "coronary-0-General",
+      "question": "Trace the coronary circulation of the heart",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "coronary-0-Clinicians",
+      "question": "Trace the coronary circulation of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "coronary-1-General",
+      "question": "What are coronary artery branches?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "coronary-1-Clinicians",
+      "question": "What are coronary artery branches?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "coronary-2-General",
+      "question": "Draw the arteries that supply the heart",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "coronary-2-Clinicians",
+      "question": "Draw the arteries that supply the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "coronary-3-General",
+      "question": "How is blood supplied to the heart muscle?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "coronary-3-Clinicians",
+      "question": "How is blood supplied to the heart muscle?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "therapy-0-General",
+      "question": "What therapies are used for heart failure?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "therapy-0-Clinicians",
+      "question": "What therapies are used for heart failure?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "therapy-1-General",
+      "question": "Describe heart failure treatment",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "therapy-1-Clinicians",
+      "question": "Describe heart failure treatment",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "therapy-2-General",
+      "question": "What medicines are used after a heart attack?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "therapy-2-Clinicians",
+      "question": "What medicines are used after a heart attack?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "therapy-3-General",
+      "question": "Show treatment options for arrhythmia",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "therapy-3-Clinicians",
+      "question": "Show treatment options for arrhythmia",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "electrical-0-General",
+      "question": "Show the electrical conduction system of the heart",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "electrical-0-Clinicians",
+      "question": "Show the electrical conduction system of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "electrical-1-General",
+      "question": "How does the heart rhythm start?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "electrical-1-Clinicians",
+      "question": "How does the heart rhythm start?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "electrical-2-General",
+      "question": "Trace the electrical pathway of the heart",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "electrical-2-Clinicians",
+      "question": "Trace the electrical pathway of the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "electrical-3-General",
+      "question": "Draw the cardiac conduction circuit",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "electrical-3-Clinicians",
+      "question": "Draw the cardiac conduction circuit",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "device-0-General",
+      "question": "How does a heart lung machine pump blood?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "device-0-Clinicians",
+      "question": "How does a heart lung machine pump blood?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "device-1-General",
+      "question": "Show a ventricular assist device",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "device-1-Clinicians",
+      "question": "Show a ventricular assist device",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "device-2-General",
+      "question": "How is a mechanical heart valve constructed?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "device-2-Clinicians",
+      "question": "How is a mechanical heart valve constructed?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "device-3-General",
+      "question": "Draw a pacemaker lead",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "device-3-Clinicians",
+      "question": "Draw a pacemaker lead",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "reversed-0-General",
+      "question": "Does the left ventricle pump blood to the lungs?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "reversed-0-Clinicians",
+      "question": "Does the left ventricle pump blood to the lungs?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "reversed-1-General",
+      "question": "Does the right atrium pump into the aorta?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "reversed-1-Clinicians",
+      "question": "Does the right atrium pump into the aorta?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "reversed-2-General",
+      "question": "Does blood in the normal heart flow from ventricle to atrium?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "reversed-2-Clinicians",
+      "question": "Does blood in the normal heart flow from ventricle to atrium?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "reversed-3-General",
+      "question": "Can you confirm the pulmonary veins carry blood from the heart to the lungs?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "reversed-3-Clinicians",
+      "question": "Can you confirm the pulmonary veins carry blood from the heart to the lungs?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "nonmedical-0-General",
+      "question": "Draw a heart emoji",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "nonmedical-0-Clinicians",
+      "question": "Draw a heart emoji",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "nonmedical-1-General",
+      "question": "Explain the heart of a city",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "nonmedical-1-Clinicians",
+      "question": "Explain the heart of a city",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "nonmedical-2-General",
+      "question": "Show a heart shape for a card",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "nonmedical-2-Clinicians",
+      "question": "Show a heart shape for a card",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "nonmedical-3-General",
+      "question": "What is the heart of the matter?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "nonmedical-3-Clinicians",
+      "question": "What is the heart of the matter?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "performance-0-General",
+      "question": "How does exercise change heart rate?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "performance-0-Clinicians",
+      "question": "How does exercise change heart rate?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "performance-1-General",
+      "question": "Show how cardiac output changes during exercise",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "performance-1-Clinicians",
+      "question": "Show how cardiac output changes during exercise",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "performance-2-General",
+      "question": "What happens to heart rate at altitude?",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "performance-2-Clinicians",
+      "question": "What happens to heart rate at altitude?",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "performance-3-General",
+      "question": "Draw the effect of exercise on the heart",
+      "role": "General",
+      "eligible": [
+        "text"
+      ]
+    },
+    {
+      "id": "performance-3-Clinicians",
+      "question": "Draw the effect of exercise on the heart",
+      "role": "Clinicians",
+      "eligible": [
+        "text"
+      ]
+    }
+  ]
+}
