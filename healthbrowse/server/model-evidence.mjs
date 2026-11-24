@@ -16,9 +16,13 @@ import {passageCheck} from '../dist/search-experience.js';
 import {readingProfile} from '../dist/reading-profiles.js';
 const cache=new WeakMap();
 const words=s=>new Set(String(s).toLowerCase().match(/[a-z]{3,}/g)||[]);
-export function evidenceFor(assets,topic,role,question){
+export function medicalEvidenceIndex(assets){
  let data=cache.get(assets);
  if(!data){const feed=JSON.parse(assets['/medline-topics.json'].text);data={feed,index:medlineIndex(feed),archive:remapPassages(JSON.parse(assets['/clinical-passages.json'].text))};cache.set(assets,data)}
+ return data;
+}
+export function evidenceFor(assets,topic,role,question){
+ const data=medicalEvidenceIndex(assets);
  const record=data.index.find(topic),archive=data.archive[topic]||[];
  if(!record&&!archive.length)return null;
  const passages=orderedPassages([...medlinePassages(record,topic,data.feed),...archive],role,topic);

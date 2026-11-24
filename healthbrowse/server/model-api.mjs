@@ -1,3 +1,4 @@
+import {abortable} from '../dist/request-deadline.js';
 import {withModelFallback} from './model-failover.mjs';
 import {educationalVisual} from './education-visuals.mjs';
 import {learningDecks} from './learning-decks.mjs';
@@ -5,7 +6,7 @@ import {isBuddyOverview,buddyOverviewDecks} from './buddy-decks.mjs';
 import {buddyDeckIntent} from '../dist/buddy-deck-intent.js';
 import {educationEvidence,addEducation} from './education-evidence.mjs';
 import {clarifyQuery} from '../dist/query-understanding.js';
-import {retrieveEvidence,medicalTopicIndex,retrieveLiteraturePacket} from './live-evidence.mjs';
+import {retrieveEvidence,scopedLocalEvidence,medicalTopicIndex,retrieveLiteraturePacket} from './live-evidence.mjs';
 import {classifyResponseMode} from '../dist/response-mode.js';
 import {outsideMedicalScope,scopeAnswer,insufficientClinicalContext,medicalPersona} from '../dist/medical-contract.js';
 import {assessSafety,safetyAnswer,safetyPolicyVersion,securityFlagFor} from '../dist/safety-policy.js';
@@ -85,9 +86,9 @@ async function requestCompletion(config,messages,signal,maxTokens,schema,validat
  if(data.choices?.[0]?.finish_reason==='length'||typeof content!=='string')throw Error('Incomplete model response');
  return {response:res,value:JSON.parse(content.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,''))};
 }
-async function checkedCompletion(primary,backup,messages,signal,maxTokens,schema,validateModel=false,onFallback){
- const result=await withModelFallback(primary,backup,signal,35000,(config,attemptSignal)=>
-  requestCompletion(config,messages,attemptSignal,maxTokens,schema,validateModel||config===backup),onFallback);
+async function checkedCompletion(primary,backup,messages,signal,maxTokens,schema,validateModel=false,onFallback,attemptMs=35000){
+ const result=await abortable(withModelFallback(primary,backup,signal,attemptMs,(config,attemptSignal)=>
+  abortable(requestCompletion(config,messages,attemptSignal,maxTokens,schema,validateModel||config===backup),attemptSignal),onFallback),signal);
  const {response:res,config}=result;
  if(!res.ok){
   if(res.status===401||res.status===403)fail(503,'provider_access','The AI provider rejected access. The site owner must check the token and model access.');
@@ -175,8 +176,26 @@ export async function modelAPI(request,env,assets){
     b = {...b,topic:subject,question:'What is ' + subject + '?'};
    }
   }
+  const quickChat=b.mode==='chat' && !documentMode;
+  const budget=quickChat?24000:120000;
+  const started=Date.now();
+  const chatDeadline=quickChat?AbortSignal.timeout(budget):null;
   const local=documentMode?null:grounded?groundedEvidence(assets,b):usesCitedProtocol(config)||!config?citedEvidence(assets,b):evidenceFor(assets,b.topic,b.role,b.question);
-  const evidence=documentMode?documentEvidence(b.attachments,b):grounded?local:learningDecks(addEducation(await retrieveEvidence(b,local,env,request.signal,fetch,assets),educationEvidence(assets,b),b),b,local);
+  let evidence=documentMode?documentEvidence(b.attachments,b):local;
+  if(!documentMode&&!grounded){
+   const lookupDeadline=quickChat?AbortSignal.timeout(7000):null;
+   const lookupSignal=quickChat?AbortSignal.any([lookupDeadline,chatDeadline,...(request.signal?[request.signal]:[])]):request.signal;
+   try{
+    const pending=retrieveEvidence(b,local,env,lookupSignal,fetch,assets);
+    evidence=quickChat?await abortable(pending,lookupSignal):await pending;
+   }catch(error){
+    if(request.signal?.aborted)fail(499,'request_cancelled','The request was cancelled.');
+    if(!lookupDeadline?.aborted)throw error;
+    evidence={...scopedLocalEvidence(b,local),
+     retrieval:{providers:[{name:'Live medical sources',status:'unavailable'}]}};
+   }
+   evidence=learningDecks(addEducation(evidence,educationEvidence(assets,b),b),b,local);
+  }
   if(evidence&&!documentMode)evidence.visual=educationalVisual(assets,b);
   if(documentMode&&!evidence.sources.length)return reply({status:'unavailable',code:'document_evidence',error:'No usable passages were found in the attachments. Check the extracted text; embedded instructions and unsupported content are excluded.'},422);
   if(!evidence?.sources.length){
@@ -188,7 +207,7 @@ export async function modelAPI(request,env,assets){
   if(grounded&&documentMode)fail(503,'document_model_unavailable','The document review model is unavailable. Retrieved document passages are shown below.');
   if(!reviewer)fail(503,'reviewer_not_configured','The support reviewer is not configured. Showing source excerpts instead.');
   // The deadline includes both generation, review and one possible repair.
-  const started=Date.now(),deadline=AbortSignal.timeout(120000);
+  const deadline=chatDeadline||AbortSignal.timeout(budget);
   // Incoming Request.signal is absent on older Workers compatibility dates.
   const signal=request.signal?AbortSignal.any([request.signal,deadline]):deadline;
   if(usesCitedProtocol(config)){
@@ -201,14 +220,14 @@ export async function modelAPI(request,env,assets){
    };
    const prepared=prepareCited(b,evidence);
    phase='generation';
-   const draft=await checkedCompletion(primary,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema,!!b.buddyModel,recordFallback);
+   const draft=await checkedCompletion(primary,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema,!!b.buddyModel,recordFallback,quickChat?6500:35000);
    const check=prepareCitedReview(draft.value,prepared,b);
    phase='support_review';
    // Once Groq has taken over, review there too. A reviewer-only outage
    // retries the review of the same draft and evidence without regenerating it.
    const reviewAt=draft.config===backup?backup:reviewer;
    const review=check.claims.length
-    ?await checkedCompletion(reviewAt,backup,check.messages,signal,check.maxTokens,check.schema,!!b.buddyModel,recordFallback)
+    ?await checkedCompletion(reviewAt,backup,check.messages,signal,check.maxTokens,check.schema,!!b.buddyModel,recordFallback,quickChat?6500:35000)
     :null;
    phase='presentation';
    const approved=applyCitedReview(review?.value||{checks:[]},check,prepared,b);
@@ -220,7 +239,7 @@ export async function modelAPI(request,env,assets){
    // Do not start another whole generation/review cycle when the first cycle
    // already consumed more than the remaining budget (plus a small margin).
    // This is a conservative estimate, not a latency guarantee.
-   if(grounded&&attempt&&Date.now()-started+5000>=120000-(Date.now()-started))
+   if(grounded&&attempt&&Date.now()-started+5000>=budget-(Date.now()-started))
     fail(503,'repair_budget_exhausted','The draft failed checks and there is insufficient time to recheck a replacement. Showing source excerpts instead.');
    try{
     if(grounded){

@@ -11,3 +11,4 @@
 __pycache__/
 *.pyc
 /qa-results/
+/dist/buddy-deck-worker.js

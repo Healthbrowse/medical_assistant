@@ -13,8 +13,7 @@ import {personalDiagnosisNotice,generationSafetyRules,assessSafety,hasUnsafeInst
 import {assessBuddySafety,hasUnsafeBuddyOutput} from '../dist/buddy-policy.js';
 import {buddySecurityRules,buddyPersona} from './buddy-prompt.mjs';
 // One bounded generation request. Citation checks are not clinical validation.
-import {evidenceFor,audienceInstructionsFor} from './model-evidence.mjs';
-import {medlineIndex} from '../dist/medline.js';
+import {medicalEvidenceIndex,evidenceFor,audienceInstructionsFor} from './model-evidence.mjs';
 import {medlinePassages} from '../dist/disease-framework.js';
 import {authorityFor} from '../dist/authorities.js';
 const clean=s=>String(s||'').replace(/\s+/g,' ').trim();
@@ -23,8 +22,8 @@ const object=properties=>({type:'object',properties,required:Object.keys(propert
 const array=items=>({type:'array',items});
 export function citedEvidence(assets,input){
  const base=evidenceFor(assets,input.topic,input.role,input.question);if(!base)return null;
- const feed=JSON.parse(assets['/medline-topics.json'].text);
- const originals=medlinePassages(medlineIndex(feed).find(input.topic),input.topic,feed);
+ const {index,feed}=medicalEvidenceIndex(assets);
+ const originals=medlinePassages(index.find(input.topic),input.topic,feed);
  const extras=JSON.parse(assets['/grounded-sources.json']?.text||'{"passages":[]}').passages.filter(p=>p.topic===input.topic&&authorityFor(p.url)&&!hasUnsafeBuddyOutput(p.text)&&assessBuddySafety(p.text).action==='allow');
  const rows=[...base.sources.filter(s=>!s.historical).map(s=>{
   const original=originals.find(p=>clean(p.text)===clean(s.text))||{};
