@@ -1,13 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {setupBuddyLayout,shouldSendBuddyKey,resizeBuddyInput} from '../dist/buddy-layout.js';
+import {setupBuddyLayout,resizeBuddyInput} from '../dist/buddy-layout.js';
 import {createDictation} from '../dist/mobile-voice.js';
 
-test('mobile Enter keeps a newline; desktop Enter sends without breaking composition or Shift+Enter',()=>{
- for(const mobile of [true,false]){assert.equal(shouldSendBuddyKey({key:'Enter',isComposing:true},mobile),false);assert.equal(shouldSendBuddyKey({key:'Enter',shiftKey:true},mobile),false);assert.equal(shouldSendBuddyKey({key:'Tab'},mobile),false)}
- assert.equal(shouldSendBuddyKey({key:'Enter'},true),false);assert.equal(shouldSendBuddyKey({key:'Enter'},false),true);
- assert.equal(shouldSendBuddyKey({key:'Enter',ctrlKey:true},true),true);
-});
 test('the message input grows, stays bounded for long questions and shrinks after sending',()=>{
  const input={style:{},scrollHeight:96};resizeBuddyInput(input);assert.equal(input.style.height,'96px');
  input.scrollHeight=220;resizeBuddyInput(input);assert.equal(input.style.height,'144px');assert.equal(input.style.overflowY,'auto');
@@ -56,4 +51,26 @@ test('Buddy preserves existing form and new-chat controls when moving tools out 
  explore.onclick();f.dialog.dispatchEvent({type:'close'});assert.equal(f.inner.hidden,false);assert.equal(explore.getAttribute('aria-expanded'),'false');
  f.document.dispatchEvent({type:'healthbrowse-chat-updated',detail:{count:1}});assert.equal(f.inner.querySelector('.buddy-empty').hidden,true);
  f.document.dispatchEvent({type:'healthbrowse-chat-updated',detail:{count:0}});assert.equal(f.inner.querySelector('.buddy-empty').hidden,false);
+});
+
+test('Enter submits the Buddy form once and leaves Shift+Enter and composition to the textarea',t=>{
+ const {document,form}=fixture(t);
+ setupBuddyLayout();
+ const textarea=document.getElementById('question');
+ assert.equal(textarea.getAttribute('enterkeyhint'),'send');
+ let sends=0;
+ form.requestSubmit=()=>{sends++};
+ function press(key,modifiers={}){
+  const event={type:'keydown',key,...modifiers,defaultPrevented:false,preventDefault(){this.defaultPrevented=true}};
+  textarea.dispatchEvent(event);
+  return event.defaultPrevented;
+ }
+ assert.equal(press('Enter',{shiftKey:true}),false);
+ assert.equal(press('Enter',{isComposing:true}),false);
+ assert.equal(press('Enter',{keyCode:229}),false);
+ assert.equal(press('Tab'),false);
+ assert.equal(sends,0);
+ assert.equal(press('Enter'),true);
+ assert.equal(press('Enter',{repeat:true}),true);
+ assert.equal(sends,1);
 });

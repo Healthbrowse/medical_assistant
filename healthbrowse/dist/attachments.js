@@ -1,3 +1,4 @@
+import {buddyIcon} from './buddy-layout.js';
 import {documentLimits,validateDocuments,isDocumentReference} from './document-policy.js';
 let files=[],version=0;
 const emit=()=>{version++;document.dispatchEvent(new CustomEvent('healthbrowse-documents-changed'))};
@@ -6,7 +7,6 @@ export const attachmentKey=()=>files.length?String(version):'';
 export const clearAttachments=()=>{if(files.length){files=[];emit()}};
 const el=(tag,text='',className='')=>Object.assign(document.createElement(tag),{textContent:text,className});
 const button=(text,action,cls='')=>{const b=el('button',text,cls);b.type='button';b.onclick=action;return b};
-function clip(){const s=document.createElementNS('http://www.w3.org/2000/svg','svg');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('aria-hidden','true');const p=document.createElementNS(s.namespaceURI,'path');p.setAttribute('d','M21 11.5 12 20.5a6 6 0 0 1-8.5-8.5L13 2.5a4 4 0 0 1 5.7 5.7L9.2 17.7a2 2 0 0 1-2.8-2.8L15 6.3');s.append(p);return s}
 export function setupAttachments(){
  const $=id=>document.getElementById(id),hosts=[],triggers=[];
  const dialog=el('dialog','','attachment-dialog');dialog.setAttribute('aria-labelledby','attachmentTitle');
@@ -43,7 +43,7 @@ export function setupAttachments(){
  const container=$('ask'),input=$('question');
  const fileInput=el('input');fileInput.type='file';fileInput.accept='.pdf,.docx,.pptx,.txt,.md,.csv,.tsv';fileInput.hidden=true;
  fileInput.addEventListener('change',()=>{void choose(fileInput.files?.[0]);fileInput.value=''});
- const trigger=button('',()=>fileInput.click(),'attachment-trigger');trigger.append(clip());trigger.title='Attach a PDF, PowerPoint, Word, text or tabular dataset';trigger.setAttribute('aria-label','Attach a document for Buddy');
+ const trigger=button('',()=>fileInput.click(),'attachment-trigger');trigger.append(buddyIcon('add'));trigger.title='Attach a PDF, PowerPoint, Word, text or tabular dataset';trigger.setAttribute('aria-label','Attach a document for Buddy');
  container.insertBefore(trigger,input);container.append(fileInput);triggers.push(trigger);
  const host=el('div','','attachment-list');host.hidden=true;host.setAttribute('aria-label','Attached documents');container.before(host);hosts.push(host);
  document.addEventListener('healthbrowse-documents-changed',render);

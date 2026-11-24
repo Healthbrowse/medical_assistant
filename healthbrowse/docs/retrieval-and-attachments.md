@@ -2,7 +2,7 @@
 
 ## Product behavior
 
-Open Buddy and use the paperclip in the message composer to attach a PDF with selectable text, PowerPoint presentation (.pptx), Word document (.docx), plain text, Markdown, CSV or TSV. The main browser searches public sources. Buddy can review up to three files, each up to 10 MB, with a total limit of 100,000 reviewed characters and a limit of 60,000 per file. PDFs and presentations support up to 80 pages or slides. Scans require OCR before upload.
+Open Buddy and use the plus (+) button in the message composer to attach a PDF with selectable text, PowerPoint presentation (.pptx), Word document (.docx), plain text, Markdown, CSV or TSV. The main browser searches public sources. Buddy can review up to three files, each up to 10 MB, with a total limit of 100,000 reviewed characters and a limit of 60,000 per file. PDFs and presentations support up to 80 pages or slides. Scans require OCR before upload.
 
 Review and edit the extracted material before attaching it. Text extraction runs on the device. For a CSV or TSV, Buddy prepares a local profile of the data, including row counts, missing values, inconsistent row widths and duplicates. Only the aggregate profile is available to attach. Table values and header names stay on the device.
 
