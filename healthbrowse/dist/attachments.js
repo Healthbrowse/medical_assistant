@@ -40,11 +40,11 @@ export function setupAttachments(){
   catch{if(run===generation){title.textContent='Unable to read this file';body.replaceChildren(el('p','Use a readable, unlocked PDF (up to 80 pages), PPTX, DOCX, CSV, TSV, TXT or Markdown file under 10 MB and 60,000 characters. Scans and images need OCR first.'))}}
   finally{if(run===generation){reading=false;render()}}
  }
- const container=$('ask'),input=$('question');
+ const container=$('ask');
  const fileInput=el('input');fileInput.type='file';fileInput.accept='.pdf,.docx,.pptx,.txt,.md,.csv,.tsv';fileInput.hidden=true;
  fileInput.addEventListener('change',()=>{void choose(fileInput.files?.[0]);fileInput.value=''});
  const trigger=button('',()=>fileInput.click(),'attachment-trigger');trigger.append(buddyIcon('add'));trigger.title='Attach a PDF, PowerPoint, Word, text or tabular dataset';trigger.setAttribute('aria-label','Attach a document for Buddy');
- container.insertBefore(trigger,input);container.append(fileInput);triggers.push(trigger);
+ container.querySelector('.buddy-composer-actions').prepend(trigger);container.append(fileInput);triggers.push(trigger);
  const host=el('div','','attachment-list');host.hidden=true;host.setAttribute('aria-label','Attached documents');container.before(host);hosts.push(host);
  document.addEventListener('healthbrowse-documents-changed',render);
  document.addEventListener('healthbrowse-session-cleared',clearAttachments);

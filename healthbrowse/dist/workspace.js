@@ -106,7 +106,7 @@ export function setupCopilot(browserContext,actions={}){
   if(medical)for(const choice of questions(c)){const b=node('button',choice.label);b.type='button';b.disabled=busy;b.onclick=()=>ask(choice.prompt,true,choice.deck);$('buddyQuestions').append(b)}
   $('deckPicker').hidden=!medical;$('buddyResearch').hidden=!medical;
   const notice=document.querySelector('.buddy-pinned-notice');if(notice)notice.hidden=!medical;
-  $('ask').querySelector('label').textContent='Ask a follow-up question';$('ask').querySelector('button[type=submit]').textContent='↑';$('copilot').querySelector('.eyebrow').textContent='HEALTHBROWSE';
+  $('ask').querySelector('label').textContent='Ask a follow-up question';$('copilot').querySelector('.eyebrow').textContent='HEALTHBROWSE';
   for(const turn of packetViews.keys())if(!history.includes(turn))forgetPacket(turn);
   $('thread').replaceChildren();
   for(const t of history){const turn=node('div','');turn.className='turn';const question=node('p',t.question);question.className='buddy-user-message';question.setAttribute('aria-label','You');const response=node('div','');response.className='buddy-response';const author=node('span','Buddy');author.className='buddy-message-author';response.append(author);turn.append(question,response);
@@ -135,6 +135,7 @@ export function setupCopilot(browserContext,actions={}){
  }
  async function respond(q,fromSuggestion=false,guidedDeck=0){
   const browser=getContext();if(!browser||!q.trim())return;
+  const buddyModel=$('buddyModel')?.value;
   let c=conversationContext(browser);
   const fileMode=!!c.attachments?.length;
   const audit=!fileMode&&c.directAnswer&&isBrowserAuditQuestion(q);
@@ -195,7 +196,7 @@ export function setupCopilot(browserContext,actions={}){
    catch{if(modelRequest.signal.aborted)return;answer={text:'The research service is unavailable. Please try again.',blocks:[],citations:[]}}
   }else if(status==='ok'&&!help&&!audit){
    modelRequest?.abort();modelRequest=new AbortController();
-   const result=await requestSynthesis(c,q,{mode:'chat',deck:report?0:guidedDeck||active,history:history.slice(0,-1).filter(turn=>turn.topic===c.topic),signal:modelRequest.signal});
+   const result=await requestSynthesis(c,q,{mode:'chat',buddyModel,deck:report?0:guidedDeck||active,history:history.slice(0,-1).filter(turn=>turn.topic===c.topic),signal:modelRequest.signal});
    if(run!==sequence||identity!==scope)return;
    if(!fileMode&&!general&&!answer.safety&&['generated','sourced','unavailable'].includes(result.status)){
     const packet=evidencePacket(result.retrieval?.evidencePacket);

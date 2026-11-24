@@ -27,6 +27,15 @@ export function fallbackEndpoint(env){
  if(env.MODEL_PROVIDER!=='deepseek'||env.MODEL_FALLBACK_PROVIDER!=='groq'||!env.GROQ_API_KEY)return null;
  return {url:GROQ_CHAT_URL,key:env.GROQ_API_KEY,model:GROQ_MODEL,protocol:'groq-cited-v1',compact:false};
 }
+// Buddy accepts named choices only. Credentials and model endpoints stay on the server.
+export function buddyEndpoint(env,choice,route){
+ if(choice==='deepseek')return deepseekEndpoint(env,route);
+ if(choice==='groq'){
+  if(env.MODEL_PROVIDER==='groq')return modelEndpoint({...env,GROQ_MODEL},'general');
+  return fallbackEndpoint(env);
+ }
+ return modelEndpoint(env,route);
+}
 export function usesCitedProtocol(config){
  return config?.protocol==='groq-cited-v1'||config?.protocol==='deepseek-cited-v1';
 }

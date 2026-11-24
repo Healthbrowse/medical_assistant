@@ -198,3 +198,32 @@ test('General search uses the backup and withholds a draft if its review fails',
  assert.equal(unavailable.protocol,'source-excerpts-v1');
  assert.equal(unavailable.answer.generation,undefined);
 });
+
+test('Buddy sends the chosen model to the API and uses it for generation and citation review',async t=>{
+ const {requestSynthesis}=await import('../dist/model-client.js');
+ const cfg={...env,DB:database(1),MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'fixture-groq'};
+ const calls=[];
+ t.mock.method(globalThis,'fetch',async(url,options)=>{
+  if(url==='https://auth.example/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
+  const payload=JSON.parse(options.body),context=JSON.parse(payload.messages[1].content);
+  calls.push([url,payload.model,!!context.claims]);
+  const source=context.evidence?.find(s=>s.text.includes('hormones that affect growth'));
+  const answer=context.claims?{checks:context.claims.map(c=>({id:c.id,sources:c.sources,verdict:'supported'}))}
+   :{answer:[{text:source.text,sources:[source.id]}]};
+  return Response.json({model:payload.model,choices:[{finish_reason:'stop',message:{content:JSON.stringify(answer)}}]});
+ });
+ const fetcher=(path,opts)=>modelAPI(new Request('https://site.test'+path,opts),cfg,assets);
+ for(const [buddyModel,model,url] of [['groq','openai/gpt-oss-120b','https://api.groq.com/openai/v1/chat/completions'],['deepseek',DEEPSEEK_MODELS.general,HF_CHAT_URL]]){
+  const r=await requestSynthesis({...input,query:input.question},input.question,{
+   mode:'chat',deck:1,buddyModel,tokenProvider:async()=>'session-test-token',fetcher});
+  assert.equal(r.status,'generated');
+  assert.equal(r.answer.generation.model,model);
+  assert.equal(r.reviewModel,model);
+  assert.deepEqual(calls.splice(0),[[url,model,false],[url,model,true]]);
+ }
+ const search=await call({...input,buddyModel:'groq'},cfg);
+ assert.equal(search.status,400);
+ const invalid=await call({...input,mode:'chat',buddyModel:'unknown'},cfg);
+ assert.equal(invalid.status,400);
+ assert.deepEqual(calls,[]);
+});

@@ -9,7 +9,7 @@ export function createDictation({Recognition,onText,onStatus,onState=()=>{},sche
    recognition.onresult=event=>{if(active!==recognition)return;let text='';for(let i=event.resultIndex;i<event.results.length;i++)if(event.results[i].isFinal)text+=event.results[i][0].transcript+' ';if(text.trim())onText(text.trim());};
    recognition.onerror=()=>{if(active!==recognition)return;failed=true;onStatus('Voice input could not finish. Check microphone permission or type your question.');};
    recognition.onend=()=>{if(active!==recognition)return;active=null;onState(false);unschedule(timer);if(!failed)onStatus('Review your question, then tap Send.');};
-   recognition.start();onState(true);onStatus('Listening… Tap Stop voice when finished.');timer=schedule(stop,30000);return true;
+   recognition.start();onState(true);onStatus('Listening… Tap the microphone again to stop.');timer=schedule(stop,30000);return true;
   }catch{active=null;onState(false);onStatus('Voice typing could not start. You can still type your question.');return false}
  }};
 }

@@ -1,7 +1,7 @@
 // Presentation only: existing chat, source verification and account handlers retain ownership.
 const el=(tag,text='',className='')=>Object.assign(document.createElement(tag),{textContent:text,className});
 const $=id=>document.getElementById(id);
-const paths={add:'M12 5v14M5 12h14',explore:'M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4L18.4 5.6',history:'M3 11a9 9 0 1 1 2 7M3 4v7h7M12 7v6l4 2',more:'M5 12h.01M12 12h.01M19 12h.01',voice:'M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0zM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8'};
+const paths={send:'M12 20V4m-7 7 7-7 7 7',add:'M12 5v14M5 12h14',explore:'M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4L18.4 5.6',history:'M3 11a9 9 0 1 1 2 7M3 4v7h7M12 7v6l4 2',more:'M5 12h.01M12 12h.01M19 12h.01',voice:'M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0zM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8'};
 export function buddyIcon(name){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',paths[name]||paths.more);svg.append(path);return svg}
 function shouldSendBuddyKey(event){
  return event.key==='Enter' && !event.shiftKey && !event.isComposing && event.keyCode!==229;
@@ -22,14 +22,20 @@ export function setupBuddyLayout(){
  panes.more.append($('buddyResearch'),panel.querySelector('.copilot-actions'));
  inner.querySelector('.chat-toolbar')?.remove();
  const composer=el('div','','buddy-composer'),voiceTools=el('div','','buddy-voice-tools'),consent=el('div','','voice-consent');consent.hidden=true;
- const form=$('ask'),input=$('question'),send=form.querySelector('button');send.type='submit';send.setAttribute('aria-label','Send question');send.title='Send question';send.textContent='↑';
+ const form=$('ask'),input=$('question'),send=form.querySelector('button');send.type='submit';send.setAttribute('aria-label','Send question');send.title='Send question';send.textContent='';send.append(buddyIcon('send'));
  input.rows=1;input.placeholder='Ask Buddy a follow-up…';input.setAttribute('aria-label','Message Buddy');input.setAttribute('enterkeyhint','send');
  input.addEventListener('keydown',event=>{
   if(!shouldSendBuddyKey(event))return;
   event.preventDefault();
   if(!event.repeat)form.requestSubmit();
  });
- const footer=el('div','','buddy-composer-footer'),hint=el('span','Enter to send · Shift + Enter for a new line','buddy-key-hint');footer.append(voiceTools,hint);
+ const footer=el('div','','buddy-composer-footer'),hint=el('span','Enter to send · Shift + Enter for a new line','buddy-key-hint');footer.append(hint);
+ const actions=el('div','','buddy-composer-actions');
+ const model=el('select');model.id='buddyModel';model.setAttribute('aria-label','Buddy model');model.title='Choose a model for Buddy';
+ for(const [value,label] of [['deepseek','DeepSeek'],['groq','OpenGPT']]){
+  const option=el('option',label);option.value=value;model.append(option);
+ }
+ actions.append(model,voiceTools,send);form.append(actions);
  const progress=el('div','','buddy-progress');progress.append($('copilotHint'),$('buddyStop'));
  composer.append(consent,progress,form,footer);panel.append(composer);
  const greeting=el('section','','buddy-empty');const greetingTitle=el('h3','A little clarity, one question at a time.');greeting.append(Object.assign(el('img'),{src:'/buddy-avatar.svg',alt:'',width:64,height:64}),greetingTitle);

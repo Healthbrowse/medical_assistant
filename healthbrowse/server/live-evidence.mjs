@@ -160,10 +160,10 @@ export async function retrieveLiteraturePacket(input,env={},signal,fetcher=fetch
  const args=packetInputs(input,assets);
  if(!args)return emptyPacket('This question needs a public biomedical topic before a literature search can run.');
  if(env.RETRIEVAL_LIVE==='off')return emptyPacket('Live literature retrieval is disabled in this environment.');
- const key=JSON.stringify([env.MODEL_PROVIDER||'',args.terms,args.meshTerms.map(m=>m.id||m.label)]);
+ const key=JSON.stringify([env.MODEL_PROVIDER||'',input.buddyModel||'',args.terms,args.meshTerms.map(m=>m.id||m.label)]);
  const cached=!args.personal&&packetCache.get(key);
  if(cached&&Date.now()-cached.time<30*60*1000)return cached.packet;
- const plan=await planLiterature({...args,env,signal,fetcher});
+ const plan=await planLiterature({...args,env,buddyModel:input.buddyModel,signal,fetcher});
  if(!plan.queries.length)return emptyPacket('The search planner could not form an eligible public biomedical query.');
  const packet=await runLiteratureSearch({terms:args.terms,queries:plan.queries,assets,signal,fetcher,reserve:host=>providerBudget(env,host,90)});
  if(plan.planner==='deterministic')packet.evidence_gaps.push('Search used public keywords and indexed terms because the model planner was unavailable.');
@@ -187,7 +187,7 @@ function selectedPassages(packet){
 export async function retrieveEvidence(input,base,env={},signal,fetcher=fetch,assets){
  if(env.RETRIEVAL_LIVE==='off')return base;
  let live;
- if(env.MODEL_PROVIDER==='deepseek'){
+ if(env.MODEL_PROVIDER==='deepseek'||input.buddyModel){
   const packet=await retrieveLiteraturePacket(input,env,signal,fetcher,assets);
   live={sources:selectedPassages(packet),evidencePacket:packet,retrievedAt:new Date().toISOString(),providers:[{name:'Verified biomedical literature',status:packet.retrieved_sources.length?'available':packet.evidence_gaps.some(g=>/unavailable|could not be completed/.test(g))?'unavailable':'no_matches'}]};
  }else live=await collect(input,env,signal,fetcher,assets);

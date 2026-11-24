@@ -1,7 +1,7 @@
 import {inspectInput} from '../dist/clinical-engine.js';
 import {hasUnsafeBuddyOutput} from '../dist/buddy-policy.js';
 import {withModelFallback} from './model-failover.mjs';
-import {modelEndpoint,fallbackEndpoint} from './model-provider.mjs';
+import {buddyEndpoint,fallbackEndpoint} from './model-provider.mjs';
 import {matchesDeepSeekModel} from './deepseek-client.mjs';
 
 const maxQueries=3;
@@ -102,13 +102,13 @@ function readPlan(data) {
  return JSON.parse(message.content);
 }
 
-export async function planLiterature({terms,meshTerms=[],env={},signal,fetcher=fetch}) {
+export async function planLiterature({terms,meshTerms=[],env={},buddyModel,signal,fetcher=fetch}) {
  if(signal?.aborted)signal.throwIfAborted();
  if(!eligibleLiteratureTerms(terms))return {queries:[],planner:'blocked',model:null,reason:'no_public_search_terms'};
  const vocab=vocabulary(terms,meshTerms);
  const fallback=reason=>({queries:deterministicPlan(vocab),planner:'deterministic',model:null,reason});
- const config=modelEndpoint(env,'agent');
- const backup=fallbackEndpoint(env);
+ const config=buddyEndpoint(env,buddyModel,'agent');
+ const backup=buddyModel==='groq'?null:fallbackEndpoint(env);
  if(!config&&!backup)return fallback('planner_unconfigured');
  const timer=AbortSignal.timeout(8500),deadline=signal?AbortSignal.any([signal,timer]):timer;
  async function requestPlan(route,attemptSignal){

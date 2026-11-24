@@ -14,7 +14,7 @@ import {citedEvidence,prepareCited,presentCited,prepareCitedReview,applyCitedRev
 import {isReadingRole,normalizeReadingRole} from '../dist/reading-profiles.js';
 import {inspectQuery} from '../dist/clinical-engine.js';
 import {evidenceFor,generationMessages,validateDraft,reviewMessages,reviewPasses,presentDraft} from './model-evidence.mjs';
-import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,fallbackEndpoint,GROQ_MODEL} from './model-provider.mjs';
+import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,buddyEndpoint,fallbackEndpoint,GROQ_MODEL} from './model-provider.mjs';
 import {deepseekPayload,readDeepSeekResult as readStructuredResult} from './deepseek-client.mjs';
 import {compactGeneration,compactReviews,ContextLimit} from './model-context.mjs';
 import {documentEvidence} from './document-evidence.mjs';
@@ -77,9 +77,9 @@ async function requestCompletion(config,messages,signal,maxTokens,schema,validat
  if(data.choices?.[0]?.finish_reason==='length'||typeof content!=='string')throw Error('Incomplete model response');
  return {response:res,value:JSON.parse(content.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,''))};
 }
-async function checkedCompletion(primary,backup,messages,signal,maxTokens,schema){
+async function checkedCompletion(primary,backup,messages,signal,maxTokens,schema,validateModel=false){
  const result=await withModelFallback(primary,backup,signal,35000,(config,attemptSignal)=>
-  requestCompletion(config,messages,attemptSignal,maxTokens,schema,config===backup));
+  requestCompletion(config,messages,attemptSignal,maxTokens,schema,validateModel||config===backup));
  const {response:res,config}=result;
  if(!res.ok){
   if(res.status===401||res.status===403)fail(503,'provider_access','The AI provider rejected access. The site owner must check the token and model access.');
@@ -104,7 +104,9 @@ export async function modelAPI(request,env,assets){
   if(request.headers.get('origin')&&request.headers.get('origin')!==url.origin)fail(403,'origin','Cross-origin requests are not supported.');
   if(!request.headers.get('content-type')?.startsWith('application/json'))fail(415,'body','Use JSON.');
   let b;try{b=await boundedJSON(request.body,450000)}catch{fail(400,'body','Invalid or oversized question or document.')}
-  if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['topic','question','role','mode','deck','history','searchQuery','browserContext','attachments'].includes(k)))fail(400,'body','Unexpected input.');
+  if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['topic','question','role','mode','deck','history','searchQuery','browserContext','attachments','buddyModel'].includes(k)))fail(400,'body','Unexpected input.');
+  if(b.buddyModel!==undefined&&(b.mode!=='chat'||!['deepseek','groq'].includes(b.buddyModel)))
+   fail(400,'body','Choose a supported model for Buddy chat.');
   if(evidenceOnly){
    if(Object.keys(b).some(k=>!['topic','question','role','mode','deck'].includes(k))||
       (b.mode!==undefined&&b.mode!=='search')||(b.deck!==undefined&&b.deck!==0))fail(400,'body','Evidence retrieval accepts a search question, topic and reading mode.');
@@ -142,9 +144,10 @@ export async function modelAPI(request,env,assets){
   b.persona=medicalPersona(b.role);b.role=normalizeReadingRole(b.role);
   const help=b.mode==='chat'&&!documentMode?buddyHelpAnswer(b.question):null;
   if(help){phase='authentication';await identity(request,env);return reply({status:'platform',answer:help,decks:[]})}
-  const route=b.role==='Medical professional'?'professional':'general',backup=fallbackEndpoint(env);
-  const config=endpoint(env,route)||backup;
-  const reviewer=modelReviewEndpoint(env,route)||backup;
+  const route=b.role==='Medical professional'?'professional':'general';
+  const backup=b.buddyModel==='groq'?null:fallbackEndpoint(env);
+  const config=buddyEndpoint(env,b.buddyModel,route)||backup;
+  const reviewer=b.buddyModel?config:modelReviewEndpoint(env,route)||backup;
   phase='authentication';
   const user=await identity(request,env),grounded=config?.protocol==='grounded-v2';
   phase='quota';
@@ -170,7 +173,7 @@ export async function modelAPI(request,env,assets){
    return reply({status:'unavailable',code:interrupted?'evidence_unavailable':'no_evidence',error:interrupted?'The medical sources could not be reached. Please retry shortly; your question was accepted.':'No sufficiently relevant passage was retrieved for this question. Add a medical detail or inspect the sources; no answer has been invented.',retrieval:evidence?.retrieval,...(interrupted?{retryAfterSeconds:15}:{})},interrupted?503:200);
   }
   if(!grounded||documentMode){fallbackEvidence=evidence;fallbackInput=b;}
-  if(!config)fail(503,'model_not_configured','The AI service is not configured. Retrieved source passages are shown below.');
+  if(!config)fail(503,'model_not_configured',b.buddyModel?'The selected Buddy model is unavailable. Choose another model or read the cited excerpts.':'The AI service is not configured. Retrieved source passages are shown below.');
   if(grounded&&documentMode)fail(503,'document_model_unavailable','The document review model is unavailable. Retrieved document passages are shown below.');
   if(!reviewer)fail(503,'reviewer_not_configured','The support reviewer is not configured. Showing source excerpts instead.');
   // The deadline includes both generation, review and one possible repair.
@@ -180,19 +183,19 @@ export async function modelAPI(request,env,assets){
   if(usesCitedProtocol(config)){
    const prepared=prepareCited(b,evidence);
    phase='generation';
-   const draft=await checkedCompletion(config,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema);
+   const draft=await checkedCompletion(config,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema,!!b.buddyModel);
    const check=prepareCitedReview(draft.value,prepared,b);
    phase='support_review';
    // Once Groq has taken over, review there too. A reviewer-only outage
    // retries the review of the same draft and evidence without regenerating it.
    const reviewAt=draft.config===backup?backup:reviewer;
    const review=check.claims.length
-    ?await checkedCompletion(reviewAt,backup,check.messages,signal,check.maxTokens,check.schema)
+    ?await checkedCompletion(reviewAt,backup,check.messages,signal,check.maxTokens,check.schema,!!b.buddyModel)
     :null;
    phase='presentation';
    const approved=applyCitedReview(review?.value||{checks:[]},check,prepared,b);
    return reply({...presentCited(approved,prepared,b,draft.config.model),protocol:draft.config.protocol,
-    ...(backup?{reviewModel:review?.config.model||null}:{}),retrieval:evidence.retrieval});
+    ...(backup||b.buddyModel?{reviewModel:review?.config.model||null}:{}),retrieval:evidence.retrieval});
   }
   let reason='';
   for(let attempt=0;attempt<2;attempt++){
