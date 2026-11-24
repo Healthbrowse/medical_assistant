@@ -1,0 +1,278 @@
+{
+  "source": "CDC NNDSS x9gk-5huc",
+  "train_years": [
+    2022,
+    2023,
+    2024
+  ],
+  "validation_year": 2025,
+  "weeks_per_year": 4,
+  "source_updated_at": 1795030065,
+  "positive_training_cutoffs": [
+    2.0,
+    10.0
+  ],
+  "repository_commit": "7dc835d16da17a48e1ee30d15fb81d7b53f04fc8",
+  "carry_forward_reference": 0.7093946188340807,
+  "train_sha256": "ca7208c3d79abecee95e49d31020354e8321422cb86887ebda730a615f9ce21f",
+  "validation_sha256": "e2335b47f738f273956c56bbf636719dc7aee6f461ab1eb23b8075be10da585c",
+  "model": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+  "model_revision": "6a6f4aa4197940add57724a7707d069478df56b1",
+  "labels": [
+    "no_reported_cases",
+    "low",
+    "medium",
+    "high"
+  ],
+  "seed": 42,
+  "epochs": 1,
+  "batch_size": 32,
+  "micro_batch_size": 8,
+  "optimizer_steps": 128,
+  "learning_rate": 0.0002,
+  "training_rows": 4096,
+  "training_support": {
+    "no_reported_cases": 3727,
+    "medium": 113,
+    "low": 147,
+    "high": 109
+  },
+  "validation_rows": 256,
+  "validation_support": {
+    "medium": 5,
+    "high": 14,
+    "no_reported_cases": 224,
+    "low": 13
+  },
+  "class_weights": {
+    "no_reported_cases": 0.27475181110812985,
+    "low": 6.965986394557823,
+    "medium": 9.061946902654867,
+    "high": 9.394495412844037
+  },
+  "adapter": {
+    "accuracy": 0.89453125,
+    "macro_f1": 0.5534141447011607,
+    "per_class": {
+      "no_reported_cases": {
+        "f1": 0.9612756264236902,
+        "support": 224
+      },
+      "low": {
+        "f1": 0.16666666666666666,
+        "support": 13
+      },
+      "medium": {
+        "f1": 0.2857142857142857,
+        "support": 5
+      },
+      "high": {
+        "f1": 0.8,
+        "support": 14
+      }
+    },
+    "confusion_matrix": [
+      [
+        211,
+        8,
+        1,
+        4
+      ],
+      [
+        4,
+        2,
+        6,
+        1
+      ],
+      [
+        0,
+        1,
+        2,
+        2
+      ],
+      [
+        0,
+        0,
+        0,
+        14
+      ]
+    ],
+    "predicted_counts": {
+      "medium": 9,
+      "high": 21,
+      "no_reported_cases": 215,
+      "low": 11
+    },
+    "positive_exact": 18,
+    "positive_detected": 28,
+    "false_positive_count": 13
+  },
+  "carry_forward": {
+    "accuracy": 0.93359375,
+    "macro_f1": 0.7093946188340807,
+    "per_class": {
+      "no_reported_cases": {
+        "f1": 0.9775784753363229,
+        "support": 224
+      },
+      "low": {
+        "f1": 0.48,
+        "support": 13
+      },
+      "medium": {
+        "f1": 0.5,
+        "support": 5
+      },
+      "high": {
+        "f1": 0.88,
+        "support": 14
+      }
+    },
+    "confusion_matrix": [
+      [
+        218,
+        5,
+        1,
+        0
+      ],
+      [
+        4,
+        6,
+        3,
+        0
+      ],
+      [
+        0,
+        1,
+        4,
+        0
+      ],
+      [
+        0,
+        0,
+        3,
+        11
+      ]
+    ],
+    "predicted_counts": {
+      "medium": 11,
+      "no_reported_cases": 222,
+      "low": 12,
+      "high": 11
+    },
+    "positive_exact": 21,
+    "positive_detected": 28,
+    "false_positive_count": 6
+  },
+  "logistic_regression": {
+    "accuracy": 0.75,
+    "macro_f1": 0.4477500379804527,
+    "per_class": {
+      "no_reported_cases": {
+        "f1": 0.8734491315136477,
+        "support": 224
+      },
+      "low": {
+        "f1": 0.16326530612244897,
+        "support": 13
+      },
+      "medium": {
+        "f1": 0.24,
+        "support": 5
+      },
+      "high": {
+        "f1": 0.5142857142857142,
+        "support": 14
+      }
+    },
+    "confusion_matrix": [
+      [
+        176,
+        28,
+        10,
+        10
+      ],
+      [
+        3,
+        4,
+        4,
+        2
+      ],
+      [
+        0,
+        2,
+        3,
+        0
+      ],
+      [
+        0,
+        2,
+        3,
+        9
+      ]
+    ],
+    "predicted_counts": {
+      "medium": 20,
+      "no_reported_cases": 179,
+      "low": 36,
+      "high": 21
+    },
+    "positive_exact": 16,
+    "positive_detected": 29,
+    "false_positive_count": 48
+  },
+  "majority": {
+    "accuracy": 0.875,
+    "macro_f1": 0.23333333333333334,
+    "per_class": {
+      "no_reported_cases": {
+        "f1": 0.9333333333333333,
+        "support": 224
+      },
+      "low": {
+        "f1": 0.0,
+        "support": 13
+      },
+      "medium": {
+        "f1": 0.0,
+        "support": 5
+      },
+      "high": {
+        "f1": 0.0,
+        "support": 14
+      }
+    },
+    "confusion_matrix": [
+      [
+        224,
+        0,
+        0,
+        0
+      ],
+      [
+        13,
+        0,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0,
+        0
+      ],
+      [
+        14,
+        0,
+        0,
+        0
+      ]
+    ],
+    "predicted_counts": {
+      "no_reported_cases": 256
+    },
+    "positive_exact": 0,
+    "positive_detected": 0,
+    "false_positive_count": 0
+  }
+}
