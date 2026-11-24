@@ -6,7 +6,6 @@ import {getAttachments,attachmentKey} from './attachments.js';
 import {auditBrowserAnswer,generalBuddyAnswer} from './buddy-audit.js';
 import {screenGeneralQuery,classifyResponseMode} from './response-mode.js';
 import {clarifyQuery,renderClarification,retrievalTerms,usesActiveTopic,isMedicalSectionFollowUp} from './query-understanding.js';
-import {shouldSendBuddyKey} from './buddy-layout.js';
 import {withAudienceDisclaimer} from './medical-contract.js';
 import {notifySafety} from './safety-notification.js';
 import {safetyAnswer} from './safety-policy.js';
@@ -251,7 +250,6 @@ export function setupCopilot(browserContext,actions={}){
  }
  deckNames.forEach((name,i)=>$('deckSelect').append(new Option((i+1)+' · '+name,String(i+1))));
  $('deckSelect').onchange=()=>{active=Number($('deckSelect').value);sync()};
- $('question').onkeydown=e=>{if(shouldSendBuddyKey(e,window.matchMedia('(max-width:760px)').matches)){e.preventDefault();$('ask').requestSubmit()}};
  $('ask').onsubmit=e=>{e.preventDefault();ask($('question').value)};
   $('buddyStop').onclick=()=>{sequence++;modelRequest?.abort();busy=false;if(history.at(-1))history.at(-1).modelNotice='Additional lookup stopped. The available cited response is shown below.';sync()};
   $('clearChat').onclick=()=>{sequence++;modelRequest?.abort();busy=false;$('scopeQuestion').replaceChildren();history=[];publicTurns=[];privateConversation=false;generalConversation=null;conversationTopic=getContext()?.topic||'';sync()};

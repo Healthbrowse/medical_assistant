@@ -57,7 +57,7 @@ export function setupMobileWorkspace({buddy,verify}){
  function startVoice(){consent.hidden=true;voiceApproved=true;dictation.start()}
  function requestVoice(){if(!buddy.show())return;showChat({focus:false});if(!(window.SpeechRecognition||window.webkitSpeechRecognition)){voiceStatus.textContent='Voice typing is unavailable. Use your keyboard microphone or type your question.';$('question').focus();return}if(voiceApproved)startVoice();else consent.hidden=false;}
  consent.append(n('p','Your browser may send audio to its speech service. Use a public question and omit personal or confidential details. Review the text before sending.'),b('Start voice input',startVoice),b('Cancel',()=>consent.hidden=true));
- const voiceButton=b('',requestVoice,'buddy-voice-button');voiceButton.append(buddyIcon('voice'),n('span','Voice'));voiceButton.setAttribute('aria-label','Dictate a question');voiceButton.setAttribute('aria-pressed','false');
+ const voiceButton=b('',requestVoice,'buddy-voice-button');voiceButton.append(buddyIcon('voice'));voiceButton.title='Dictate a question';voiceButton.setAttribute('aria-label','Dictate a question');voiceButton.setAttribute('aria-pressed','false');
  const stopVoice=b('Stop voice',()=>dictation.stop(),'buddy-stop-voice');stopVoice.hidden=true;voiceTools.append(voiceButton,stopVoice);
  more.prepend(b('Read the latest answer aloud',()=>{showChat({focus:false});const text=$('thread').lastElementChild?.querySelector('.buddy-response')?.innerText;if(text)reader.read(text);else voiceStatus.textContent='Ask a question first to read an answer aloud.'},'buddy-read-latest'));
  composer.append(voiceStatus);

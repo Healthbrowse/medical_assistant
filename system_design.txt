@@ -103,7 +103,7 @@ focused follow-up uses the relevant topic and recent conversation context.
 A medical topic overview can return six decks with citations and indicate
 where evidence is missing. The browser result remains a direct answer.
 
-The paperclip is inside Buddy. The client extracts text from a text-based
+Buddy’s plus (+) button opens the file picker. The client extracts text from a text-based
 PDF, DOCX, PPTX, TXT or Markdown file, or builds an aggregate profile for a
 CSV or TSV. The reader previews the content before attaching it. A scanned
 PDF needs OCR before this flow. The original file stays in the tab. When

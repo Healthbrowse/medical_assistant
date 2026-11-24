@@ -71,6 +71,7 @@
 #buddyDialog .buddy-composer-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px}
 #buddyDialog .buddy-voice-tools{margin:0;display:flex;gap:6px;align-items:center}
 #buddyDialog .buddy-voice-tools button{display:flex;align-items:center;gap:6px;min-height:44px;padding:8px;border:0;border-radius:10px;background:transparent;color:var(--dim);font:500 12px/1.5 system-ui;cursor:pointer}
+#buddyDialog .buddy-voice-button{width:44px;justify-content:center}
 #buddyDialog .buddy-voice-tools button:hover{background:var(--panel);color:var(--ink)}
 #buddyDialog .buddy-voice-tools button[aria-pressed=true],#buddyDialog .buddy-voice-tools .buddy-stop-voice{color:var(--danger)}
 #buddyDialog .buddy-key-hint{font:400 10px/1.5 system-ui;color:var(--dim);text-align:right}
@@ -105,7 +106,6 @@
  .mobile-ready #buddyDialog .buddy-composer-footer{margin-top:0}
  .mobile-ready #buddyDialog .buddy-composer #question{font-size:16px;min-height:48px}
  .mobile-ready #buddyDialog .buddy-voice-tools button{min-height:44px;padding:6px 8px}
- .mobile-ready #buddyDialog .buddy-voice-tools .buddy-voice-button{min-width:64px}
  .mobile-ready #buddyDialog .buddy-back{font-size:13px}
  .mobile-ready.keyboard-open #buddyDialog .buddy-toolbar,.mobile-ready.keyboard-open #buddyDialog .buddy-composer-footer{display:none}
  .mobile-ready.keyboard-open #buddyDialog .buddy-composer:has(.buddy-stop-voice:not([hidden])) .buddy-composer-footer{display:flex}
