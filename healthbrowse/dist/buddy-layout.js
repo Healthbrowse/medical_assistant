@@ -36,14 +36,19 @@ export function setupBuddyLayout(modelNames){
  const model=el('select');model.id='buddyModel';model.setAttribute('aria-label','Buddy model');
  const deepseek=el('option'),groq=el('option',modelNames?.groq||'GPT-OSS (model ID unavailable)');
  deepseek.value='deepseek';groq.value='groq';
- model.append(deepseek,groq);
+ const workers=modelNames?.workers?el('option'):null;
+ if(workers)workers.value='workers-ai';
+ const options=workers?[workers,deepseek,groq]:[deepseek,groq];
+ model.append(...options);
+ model.value=workers&&modelNames.preferred==='workers-ai'?'workers-ai':'deepseek';
  function showSelection(){
-  shown.textContent=model.value==='groq'?groq.textContent:deepseek.textContent;
+  shown.textContent=options.find(option=>option.value===model.value).textContent;
   model.title=shown.textContent;
  }
  function setModelRole(role){
   const route=role==='Medical professional'?'professional':'general';
   deepseek.textContent=modelNames?.[route]||'DeepSeek (model ID unavailable)';
+  if(workers)workers.textContent=modelNames.workers[route];
   showSelection();
  }
  setModelRole('General reader');

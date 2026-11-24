@@ -3,6 +3,7 @@ import {hasUnsafeBuddyOutput} from '../dist/buddy-policy.js';
 import {withModelFallback} from './model-failover.mjs';
 import {buddyEndpoint,fallbackEndpoint} from './model-provider.mjs';
 import {matchesDeepSeekModel} from './deepseek-client.mjs';
+import {workersProtocol,runWorkersCompletion} from './workers-ai.mjs';
 
 const maxQueries=3;
 const searchTool='plan_literature_search';
@@ -119,7 +120,10 @@ export async function planLiterature({terms,meshTerms=[],env={},buddyModel,signa
   const send=extras=>fetcher(route.url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+route.key},
    signal:attemptSignal,redirect:'manual',body:JSON.stringify({model:route.model,stream:false,messages,...extras})});
   let response;
-  if(route.protocol===protocol){
+  if(route.protocol===workersProtocol){
+   messages[0].content+=' Return your selection as a JSON object using the supplied schema.';
+   response=await runWorkersCompletion(route,messages,900,selectionSchema,attemptSignal);
+  }else if(route.protocol===protocol){
    response=await send({max_tokens:900,tools:[{type:'function',function:{name:searchTool,description:'Select public search terms from the supplied lists.',parameters:selectionSchema}}],tool_choice:'auto'});
    if(response.status===400||response.status===422){
     await response.body?.cancel();
@@ -138,7 +142,8 @@ export async function planLiterature({terms,meshTerms=[],env={},buddyModel,signa
   if(!response.ok){if(!response.bodyUsed)await response.body?.cancel();return fallback('planner_unavailable');}
   if(!matchesDeepSeekModel(data.model,used.model))return fallback('planner_unavailable');
   const proposal=readPlan(data);
-  return {queries:materialize(proposal,vocab),planner:used.protocol===protocol?'deepseek':'groq',model:used.model};
+  const planner=used.protocol===workersProtocol?'workers-ai':used.protocol===protocol?'deepseek':'groq';
+  return {queries:materialize(proposal,vocab),planner,model:used.model};
  }catch{
   if(signal?.aborted)signal.throwIfAborted();
   return fallback('planner_unavailable');

@@ -8,7 +8,25 @@ The DeepSeek deployment profile uses three Hugging Face checkpoints. General and
 | Clinician search and Buddy | `deepseek-ai/DeepSeek-R1-Distill-Qwen-32B` | Clinical synthesis, evidence breakdown, limitations and support review |
 | Biomedical literature retrieval | `deepseek-ai/DeepSeek-V3.2` | Select targeted searches from public terms, indexed MeSH headings and relevant clinical modifiers |
 
-## Activate the server profile
+## Cloudflare Workers AI on the free plan
+
+| Workload | Workers AI model |
+| --- | --- |
+| General Browser and Buddy, including citation review | `@cf/google/gemma-4-26b-a4b-it` |
+| Clinician Browser and Buddy, including citation review | `@cf/qwen/qwen3.8-27b` |
+| Literature query planning from public terms | `@cf/google/gemma-4-26b-a4b-it` |
+
+The Worker uses the native `AI` binding declared in `healthbrowse/wrangler.jsonc`. On Workers Free, Cloudflare includes 10,000 Neurons per day across models. Planning, drafting and reviewing can each consume part of that allowance. These models need no Hugging Face token, DeepSeek API credit or separate GPU. [Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/)
+
+1. Deploy the approved revision to a preview Worker using the repository's Wrangler configuration. In **Workers & Pages → your Worker → Settings → Bindings**, check for a **Workers AI** binding named `AI`. [Workers AI bindings](https://developers.cloudflare.com/workers-ai/configuration/bindings/)
+2. For a Buddy-only pilot, keep `MODEL_PROVIDER=deepseek`. The binding adds a Gemma or Qwen choice to Buddy according to the reading role. The main Browser still uses its existing DeepSeek profile.
+3. For a Browser pilot, set the preview Worker's runtime variable `MODEL_PROVIDER=workers-ai`. Set `MODEL_FALLBACK_PROVIDER=groq` and keep the `GROQ_API_KEY` secret. Keep the existing `HF_TOKEN` and any `DEEPSEEK_*` role settings for the DeepSeek choice. Use `MODEL_PROVIDER=deepseek` to restore DeepSeek as the Browser default.
+4. Open `/api/ai/status`. Check for `provider: "workers-ai"`, `primaryConfigured: true` in both reading roles, the model IDs above and a configured Groq fallback. Then submit a new signed-in medical Browser search in each role. In **Network → answer → Preview**, check for `protocol: "workers-ai-cited-v1"` and the actual `model` and `reviewModel`. Buddy exposes the selected role model, DeepSeek and GPT-OSS in its picker.
+5. Compare public questions about type 2 diabetes, leukemia and heart failure in both roles against the Groq baseline. Open the cited passages and check that they support the statements and figures in each answer. Check all six decks in a Buddy overview and confirm that evidence gaps are labeled. Use the same evidence for a model comparison, and inspect the evidence packet if results differ between live searches.
+
+An eligible infrastructure failure during generation or review, including the free-plan quota response (HTTP 429), switches to Groq when configured. The answer reports `modelFallback.phase`, the primary and fallback models, and the reason. If synthesis cannot complete, the medical workflow can still serve cited source excerpts. Activate the profile in production after reviewing pilot responses.
+
+## Activate the DeepSeek profile
 
 Set `MODEL_PROVIDER=deepseek` in the server runtime. Supply `HF_TOKEN` through the runtime secret manager using a fine-grained Hugging Face token with **Make calls to Inference Providers** permission. All three routes use the same token at `https://router.huggingface.co/v1/chat/completions`. Keep real credentials out of Git, browser bundles and logs. [Hugging Face authentication and provider routing](https://huggingface.co/docs/inference-providers/en/index)
 

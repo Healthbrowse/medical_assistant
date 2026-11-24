@@ -2,6 +2,7 @@ import {topicIndex,resolveSearch} from '../dist/discovery.js';
 import {inspectInput,inspectQuery} from '../dist/clinical-engine.js';
 import {decode,plainText} from './retrieval-text.mjs';
 import {planLiterature} from './literature-plan.mjs';
+import {usesRoleModels} from './model-provider.mjs';
 import {runLiteratureSearch} from './literature-search.mjs';
 export {plainText} from './retrieval-text.mjs';
 import {contextCareQuestion,publicQuestionTopic} from '../dist/query-input.js';
@@ -167,7 +168,7 @@ export async function retrieveLiteraturePacket(input,env={},signal,fetcher=fetch
  if(!plan.queries.length)return emptyPacket('The search planner could not form an eligible public biomedical query.');
  const packet=await runLiteratureSearch({terms:args.terms,queries:plan.queries,assets,signal,fetcher,reserve:host=>providerBudget(env,host,90)});
  if(plan.planner==='deterministic')packet.evidence_gaps.push('Search used public keywords and indexed terms because the model planner was unavailable.');
- if(!args.personal&&['deepseek','groq'].includes(plan.planner)&&packet.retrieved_sources.length){
+ if(!args.personal&&['deepseek','groq','workers-ai'].includes(plan.planner)&&packet.retrieved_sources.length){
   packetCache.set(key,{packet,time:Date.now()});while(packetCache.size>30)packetCache.delete(packetCache.keys().next().value);
  }
  return packet;
@@ -187,7 +188,7 @@ function selectedPassages(packet){
 export async function retrieveEvidence(input,base,env={},signal,fetcher=fetch,assets){
  if(env.RETRIEVAL_LIVE==='off')return base;
  let live;
- if(env.MODEL_PROVIDER==='deepseek'||input.buddyModel){
+ if(usesRoleModels(env)||input.buddyModel){
   const packet=await retrieveLiteraturePacket(input,env,signal,fetcher,assets);
   live={sources:selectedPassages(packet),evidencePacket:packet,retrievedAt:new Date().toISOString(),providers:[{name:'Verified biomedical literature',status:packet.retrieved_sources.length?'available':packet.evidence_gaps.some(g=>/unavailable|could not be completed/.test(g))?'unavailable':'no_matches'}]};
  }else live=await collect(input,env,signal,fetcher,assets);

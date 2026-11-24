@@ -2,6 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {withModelFallback} from '../server/model-failover.mjs';
 
+test('Workers AI fails over on model access errors and preserves content refusals',async()=>{
+ const primary={ai:{}},backup={};
+ for(const [status,body,shouldSwitch] of [
+  [410,{code:5028},true],[403,{code:5035},true],[403,{code:3041},true],
+  [403,{code:5035,message:'content policy refusal'},false],[403,{code:0},false]
+ ]){
+  const result=await withModelFallback(primary,backup,new AbortController().signal,1000,async config=>({
+   response:config===primary?Response.json(body,{status}):Response.json({})
+  }));
+  assert.equal(result.config,shouldSwitch?backup:primary);
+ }
+});
+
 test('provider timeout or network failure can switch, cancellation and content refusals cannot',async()=>{
  const primary={},backup={};
  for(const condition of ['timeout','network','rate-limit','permission','blocked','blocked-permission','cancel']){

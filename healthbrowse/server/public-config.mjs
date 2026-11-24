@@ -1,10 +1,12 @@
 import {deepseekModelId,GROQ_MODEL} from './model-provider.mjs';
+import {offersWorkersModels,workersModels} from './workers-ai.mjs';
 
 export function buddyModelNames(env){
   return {
     general:deepseekModelId(env,'general'),
     professional:deepseekModelId(env,'professional'),
-    groq:GROQ_MODEL
+    groq:GROQ_MODEL,
+    ...(offersWorkersModels(env)?{workers:{general:workersModels.general,professional:workersModels.professional},preferred:env.MODEL_PROVIDER}:{})
   };
 }
 

@@ -11,6 +11,7 @@ export function matchesDeepSeekModel(reported,requested){
  if(reported===undefined||reported===null)return true;
  if(typeof reported!=='string'||typeof requested!=='string')return false;
  const name=reported.split(':')[0].toLowerCase(),expected=requested.toLowerCase();
+ if(expected.startsWith('@cf/'))return name===expected||name===expected.slice(4)||name===expected.split('/').pop();
  // The HF router can pass through OpenRouter's published ID for the same V3.2 weights.
  return name===expected||name===expected.split('/').pop()||
   (expected==='deepseek-ai/deepseek-v3.2'&&name==='deepseek/deepseek-v3.2');

@@ -14,7 +14,8 @@ import {citedEvidence,prepareCited,presentCited,prepareCitedReview,applyCitedRev
 import {isReadingRole,normalizeReadingRole} from '../dist/reading-profiles.js';
 import {inspectQuery} from '../dist/clinical-engine.js';
 import {evidenceFor,generationMessages,validateDraft,reviewMessages,reviewPasses,presentDraft} from './model-evidence.mjs';
-import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,buddyEndpoint,fallbackEndpoint,deepseekModelId,GROQ_MODEL} from './model-provider.mjs';
+import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,usesRoleModels,buddyEndpoint,fallbackEndpoint,deepseekModelId,GROQ_MODEL} from './model-provider.mjs';
+import {workersModels,workersProtocol,runWorkersCompletion,offersWorkersModels} from './workers-ai.mjs';
 import {deepseekPayload,readDeepSeekResult as readStructuredResult} from './deepseek-client.mjs';
 import {compactGeneration,compactReviews,ContextLimit} from './model-context.mjs';
 import {documentEvidence} from './document-evidence.mjs';
@@ -30,15 +31,15 @@ export function retryDelay(value,now=Date.now()){
  return Number.isFinite(seconds)&&seconds>=0&&seconds<=604800?Math.ceil(seconds):undefined;
 }
 export function modelStatus(env){
- const deepseek=env.MODEL_PROVIDER==='deepseek';
+ const roleModels=usesRoleModels(env);
  function routeStatus(route){
   const primary=endpoint(env,route);
   const config=primary||fallbackEndpoint(env);
-  return {configured:!!config,...(deepseek?{primaryConfigured:!!primary}:{}),...(deepseek&&config?{model:config.model}:{})};
+  return {configured:!!config,...(roleModels?{primaryConfigured:!!primary}:{}),...(roleModels&&config?{model:config.model}:{})};
  }
  return {general:routeStatus('general'),professional:routeStatus('professional'),
-  ...(deepseek?{provider:'deepseek',agent:routeStatus('agent'),...(env.MODEL_FALLBACK_PROVIDER==='groq'?{fallback:{provider:'groq',configured:!!fallbackEndpoint(env),model:GROQ_MODEL}}:{})}:{}),
-  validation:deepseek||env.MODEL_PROVIDER==='groq'?'Server-resolved citations; AI interpretation is not independently clinically validated':'Automated support review; independent clinical validation pending'};
+  ...(roleModels?{provider:env.MODEL_PROVIDER,agent:routeStatus('agent'),...(env.MODEL_FALLBACK_PROVIDER==='groq'?{fallback:{provider:'groq',configured:!!fallbackEndpoint(env),model:GROQ_MODEL}}:{})}:{}),
+  validation:roleModels||env.MODEL_PROVIDER==='groq'?'Server-resolved citations; AI interpretation is not independently clinically validated':'Automated support review; independent clinical validation pending'};
 }
 function evidenceMode(input,assets){
  const index=medicalTopicIndex(assets);
@@ -67,6 +68,12 @@ async function reserve(env,user){
  if(!result.meta?.changes)fail(429,'rate_limited','Your request limit has been reached. The cited sources remain available.',Math.ceil((60000-Date.now()%60000)/1000));
 }
 async function requestCompletion(config,messages,signal,maxTokens,schema,validateBackup){
+ if(config.protocol===workersProtocol){
+  const response=await runWorkersCompletion(config,messages,maxTokens,schema,signal);
+  if(!response.ok)return {response};
+  const data=await boundedJSON(response.body,120000);
+  return {response,value:readStructuredResult(data,config.model,schema)};
+ }
  const deepseek=config.protocol==='deepseek-cited-v1';
  const payload=deepseek?deepseekPayload(config.model,messages,maxTokens,schema):config.protocol==='groq-cited-v1'&&schema?{model:config.model,messages,temperature:0,max_completion_tokens:maxTokens,stream:false,reasoning_effort:'low',include_reasoning:false,response_format:{type:'json_schema',json_schema:{name:'healthbrowse_answer',strict:true,schema}}}:{model:config.model,messages,temperature:0,max_tokens:maxTokens,stream:false,response_format:schema?{type:'json_schema',json_schema:{name:'healthbrowse',strict:true,schema}}:{type:'json_object'}};
  const res=await fetch(config.url,{method:'POST',headers:{Authorization:'Bearer '+config.key,'Content-Type':'application/json'},redirect:'manual',signal,
@@ -107,7 +114,8 @@ export async function modelAPI(request,env,assets){
   if(!request.headers.get('content-type')?.startsWith('application/json'))fail(415,'body','Use JSON.');
   let b;try{b=await boundedJSON(request.body,450000)}catch{fail(400,'body','Invalid or oversized question or document.')}
   if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['topic','question','role','mode','deck','history','searchQuery','browserContext','attachments','buddyModel'].includes(k)))fail(400,'body','Unexpected input.');
-  if(b.buddyModel!==undefined&&(b.mode!=='chat'||!['deepseek','groq'].includes(b.buddyModel)))
+  const supportedBuddyModels=offersWorkersModels(env)?['deepseek','groq','workers-ai']:['deepseek','groq'];
+  if(b.buddyModel!==undefined&&(b.mode!=='chat'||!supportedBuddyModels.includes(b.buddyModel)))
    fail(400,'body','Choose a supported model for Buddy chat.');
   if(evidenceOnly){
    if(Object.keys(b).some(k=>!['topic','question','role','mode','deck'].includes(k))||
@@ -186,7 +194,9 @@ export async function modelAPI(request,env,assets){
   if(usesCitedProtocol(config)){
    // A generation failover carries through review, so an answer switches once at most.
    const recordFallback=detail=>{
-    routing.modelFallback={phase,primaryModel:deepseekModelId(env,route),fallbackModel:backup.model,...detail};
+    const provider=b.buddyModel||env.MODEL_PROVIDER;
+    const primaryModel=provider==='workers-ai'?workersModels[route]:deepseekModelId(env,route);
+    routing.modelFallback={phase,primaryModel,fallbackModel:backup.model,...detail};
     console.warn(JSON.stringify({event:'ai_model_fallback',...routing.modelFallback}));
    };
    const prepared=prepareCited(b,evidence);
@@ -252,7 +262,7 @@ export async function modelAPI(request,env,assets){
   // Never log questions, tokens, provider bodies, identities or error messages.
   if(error.code==='provider_busy')console.warn(JSON.stringify({event:'ai_provider_limited',phase,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})}));
   if(!(error instanceof Failure))console.error(JSON.stringify({event:'ai_request_failed',phase,kind:['TypeError','SyntaxError','TimeoutError','AbortError'].includes(error?.name)?error.name:'Error'}));
-  if(fallbackEvidence?.sources.length&&fallbackInput&&(isBuddyOverview(fallbackInput)||fallbackEvidence.documentMode||env.MODEL_PROVIDER==='deepseek'||env.RETRIEVAL_LIVE!=='off')){
+  if(fallbackEvidence?.sources.length&&fallbackInput&&(isBuddyOverview(fallbackInput)||fallbackEvidence.documentMode||usesRoleModels(env)||env.RETRIEVAL_LIVE!=='off')){
    const prepared=prepareCited(fallbackInput,fallbackEvidence);const result=presentCited({answer:[]},prepared,fallbackInput,'');
    const message=error instanceof Failure?error.message:'AI synthesis could not finish. Retrieved source excerpts remain available.';
    return reply({...result,protocol:'source-excerpts-v1',decks:buddyOverviewDecks(fallbackInput,fallbackEvidence),status:'sourced',code:error.code||'model_unavailable',message,retrieval:fallbackEvidence.retrieval,...routing,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})});

@@ -4,6 +4,8 @@ import {readFileSync} from 'node:fs';
 import {deepseekPayload,readDeepSeekResult} from '../server/deepseek-client.mjs';
 import {modelEndpoint,DEEPSEEK_MODELS,HF_CHAT_URL} from '../server/model-provider.mjs';
 import {modelStatus,modelAPI} from '../server/model-api.mjs';
+import {buddyModelNames} from '../server/public-config.mjs';
+import {workersModels} from '../server/workers-ai.mjs';
 
 const env={MODEL_PROVIDER:'deepseek',HF_TOKEN:'server-hf-only',RETRIEVAL_LIVE:'off',SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public'};
 const assets=Object.fromEntries(['medline-topics','clinical-passages','grounded-sources'].map(name=>['/'+name+'.json',{text:readFileSync(new URL('../dist/'+name+'.json',import.meta.url),'utf8')}]));
@@ -25,6 +27,92 @@ test('three DeepSeek roles are pinned to exact models and the fixed Hugging Face
  assert.equal(modelEndpoint({...env,MODEL_PROVIDER:'groq'},'agent'),null);
  assert.equal(modelStatus(env).agent.model,DEEPSEEK_MODELS.agent);
  assert.ok(!JSON.stringify(modelStatus(env)).includes(env.HF_TOKEN));
+});
+
+test('Workers AI serves both Browser roles and Buddy, with a verified Groq fallback',async t=>{
+ let role='General',failure,groqDown=false;
+ const calls=[];
+ function completion(model,payload){
+  const data=JSON.parse(payload.messages[1].content);
+  const stage=data.claims?'support_review':'generation';
+  calls.push([model,stage]);
+  const isWorkers=model.startsWith('@cf/');
+  if(isWorkers&&stage===failure)return Response.json({code:3036},{status:429});
+  if(!isWorkers&&groqDown)return new Response(null,{status:503});
+  const clinical=role==='Clinicians';
+  let result;
+  if(data.claims){
+   result={checks:data.claims.map(c=>({id:c.id,verdict:'supported',sources:c.sources,...(clinical?{quotes:[c.text]}:{})}))};
+  }else{
+   const s=data.evidence[0];
+   const sentence=s.text.split(/(?<=[.!?])\s/)[0];
+   result={answer:[{text:sentence,sources:[s.id],...(clinical?{section:'synthesis'}:{})}]};
+   if(data.deckEvidence)result.deckClaims=[];
+  }
+  return Response.json({model:model.replace(/^@cf\//,''),choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]});
+ }
+ const AI={async run(model,payload,options){
+  assert.equal(options.returnRawResponse,true);assert.ok(options.signal instanceof AbortSignal);
+  assert.equal(payload.response_format.type,'json_schema');assert.ok(payload.max_completion_tokens>0);
+  assert.equal(payload.reasoning_effort,model===workersModels.professional?'low':undefined);
+  assert.equal(JSON.stringify(payload).includes(env.HF_TOKEN),false);
+  return completion(model,payload);
+ }};
+ const config={...env,MODEL_PROVIDER:'workers-ai',AI,DB:database(1),MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'fixture-groq'};
+ const groq='openai/gpt-oss-120b';
+ t.mock.method(globalThis,'fetch',async(url,opts)=>{
+  if(url==='https://auth.example/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
+  if(url===HF_CHAT_URL){
+   assert.equal(opts.headers.Authorization,'Bearer '+env.HF_TOKEN);
+  }else{
+   assert.equal(url,'https://api.groq.com/openai/v1/chat/completions');
+   assert.equal(opts.headers.Authorization,'Bearer fixture-groq');
+  }
+  const payload=JSON.parse(opts.body);return completion(payload.model,payload);
+ });
+ const status=modelStatus(config);
+ assert.deepEqual(status.general,{configured:true,primaryConfigured:true,model:workersModels.general});
+ assert.equal(status.professional.model,workersModels.professional);assert.equal(status.provider,'workers-ai');
+ assert.equal(status.agent.model,workersModels.agent);assert.equal(status.fallback.model,groq);
+ assert.equal(buddyModelNames(config).preferred,'workers-ai');
+ const ask=async(mode='search',extra={},options=config)=>(await call({...input,role,mode,...extra},options)).json();
+ for(const audience of ['General','Clinicians']){
+  role=audience;
+  const model=role==='Clinicians'?workersModels.professional:workersModels.general;
+  for(const mode of ['search','chat']){
+   const result=await ask(mode);
+   assert.equal(result.protocol,'workers-ai-cited-v1');assert.equal(result.model,model);
+   assert.equal(result.reviewModel,model);assert.equal(result.answer.generation.model,model);
+   assert.ok(result.answer.blocks.some(b=>b.references?.length));
+   assert.equal(result.decks.length,mode==='chat'?6:0);assert.equal(result.modelFallback,undefined);
+   assert.deepEqual(calls.splice(0),[[model,'generation'],[model,'support_review']]);
+  }
+  for(const topic of ['Type 2 Diabetes','Leukemia','Heart Failure']){
+   const result=await ask('search',{topic,question:'What is '+topic+'?'});
+   assert.equal(result.model,model,topic);
+   assert.ok(result.answer.blocks.some(block=>block.references?.length),topic);
+   assert.deepEqual(calls.splice(0),[[model,'generation'],[model,'support_review']]);
+  }
+ }
+ for(const stage of ['generation','support_review']){
+  failure=stage;
+  const result=await ask();
+  assert.equal(result.model,stage==='generation'?groq:workersModels.professional);
+  assert.equal(result.reviewModel,groq);
+  assert.deepEqual(result.modelFallback,{phase:stage,primaryModel:workersModels.professional,fallbackModel:groq,reason:'upstream_http',httpStatus:429});
+  assert.equal(calls.filter(([model])=>model===groq).length,stage==='generation'?2:1);calls.length=0;
+ }
+ groqDown=true;failure='generation';
+ const excerpts=await ask();
+ assert.equal(excerpts.protocol,'source-excerpts-v1');assert.equal(excerpts.answer.generation,undefined);
+ groqDown=false;failure=undefined;
+ const missing=await ask('search',{}, {...config,AI:undefined});
+ assert.equal(missing.model,groq);assert.equal(missing.modelFallback.reason,'primary_unconfigured');
+ assert.equal(missing.modelFallback.primaryModel,workersModels.professional);
+ const pilot=await ask('chat',{buddyModel:'workers-ai'},{...config,MODEL_PROVIDER:'deepseek'});
+ assert.equal(pilot.model,workersModels.professional);
+ const explicitDeepSeek=await ask('chat',{buddyModel:'deepseek'});assert.equal(explicitDeepSeek.model,DEEPSEEK_MODELS.professional);
+ const explicitGroq=await ask('chat',{buddyModel:'groq'});assert.equal(explicitGroq.model,groq);
 });
 
 test('portable completion accepts only schema-conformant final JSON from the requested model',()=>{

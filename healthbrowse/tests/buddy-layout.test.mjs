@@ -67,6 +67,17 @@ test('the picker shows the role-specific model ID and keeps the selected provide
  assert.equal(select.children[0].textContent,names.general);assert.equal(select.title,names.groq);
 });
 
+test('Workers AI picker follows the reading role and retains an explicit DeepSeek selection',t=>{
+ const {form}=fixture(t);
+ const names={general:'DeepSeek 8B',professional:'DeepSeek 32B',groq:'GPT-OSS',preferred:'workers-ai',workers:{general:'@cf/google/gemma-4-26b-a4b-it',professional:'@cf/qwen/qwen3.8-27b'}};
+ const layout=setupBuddyLayout(names),select=form.querySelector('#buddyModel');
+ assert.deepEqual(select.children.map(option=>option.value),['workers-ai','deepseek','groq']);
+ assert.equal(select.value,'workers-ai');assert.equal(select.title,names.workers.general);
+ layout.setModelRole('Medical professional');assert.equal(select.title,names.workers.professional);
+ select.value='deepseek';select.dispatchEvent({type:'change'});
+ layout.setModelRole('General reader');assert.equal(select.title,names.general);
+});
+
 test('Enter submits the Buddy form once and leaves Shift+Enter and composition to the textarea',t=>{
  const {document,form}=fixture(t);
  setupBuddyLayout();
