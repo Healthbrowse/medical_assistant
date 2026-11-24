@@ -128,3 +128,73 @@ test('standalone evidence endpoint enforces scope, sessions, quotas and document
  assert.deepEqual(clarification.retrieved_sources,[]);assert.match(clarification.evidence_gaps[0],/more than one/);
  assert.equal(calls,3);
 });
+
+test('clinical failover preserves six decks and verifies the same retrieved evidence',async t=>{
+ const options={...env,DB:database(1),MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'test-groq'};
+ const groq='https://api.groq.com/openai/v1/chat/completions';
+ const backupModel='openai/gpt-oss-120b';
+ const calls=[];
+ let rejectedStage='draft',groqDown=false;
+ t.mock.method(globalThis,'fetch',async(url,opts)=>{
+  if(url==='https://auth.example/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
+  const body=JSON.parse(opts.body),data=JSON.parse(body.messages[1].content);
+  const stage=data.claims?'review':'draft',isGroq=url===groq;
+  assert.equal(url,isGroq?groq:HF_CHAT_URL);
+  assert.equal(body.model,isGroq?backupModel:DEEPSEEK_MODELS.professional);
+  assert.equal(opts.headers.Authorization,isGroq?'Bearer test-groq':'Bearer server-hf-only');
+  calls.push((isGroq?'groq':'hf')+'-'+stage);
+  if(!isGroq&&stage===rejectedStage)return Response.json({error:{code:'model_not_supported'}},{status:400});
+  if(isGroq&&groqDown)return new Response(null,{status:503});
+  const source=data.evidence?.find(s=>s.text.includes('hormones that affect growth'));
+  const deck=data.deckEvidence?.find(d=>d.deck===2)?.passages[0];
+  const output=data.claims?{checks:data.claims.map(c=>({id:c.id,sources:c.sources,quotes:[c.text],verdict:'supported'}))}
+   :{answer:[{text:source.text,sources:[source.id],section:'synthesis'}],
+     deckClaims:[{deck:2,text:deck.text,sources:[deck.id]}]};
+  return Response.json({model:body.model,choices:[{finish_reason:'stop',message:{content:JSON.stringify(output)}}]});
+ });
+ const ask=async()=> (await call({...input,mode:'chat',role:'Clinicians'},options)).json();
+ for(const stage of ['draft','review','neither']){
+  rejectedStage=stage;
+  const result=await ask();
+  assert.equal(result.status,'generated');
+  assert.equal(result.answer.generation.model,stage==='draft'?backupModel:DEEPSEEK_MODELS.professional);
+  assert.equal(result.reviewModel,stage==='neither'?DEEPSEEK_MODELS.professional:backupModel);
+  assert.deepEqual(result.decks.map(d=>d.deck),[1,2,3,4,5,6]);
+  assert.match(result.decks[1].blocks[0].verification,/AI summary/);
+  assert.deepEqual(calls.splice(0),stage==='draft'?['hf-draft','groq-draft','groq-review']:
+   stage==='review'?['hf-draft','hf-review','groq-review']:['hf-draft','hf-review']);
+ }
+ rejectedStage='draft';groqDown=true;
+ const excerpt=await ask();
+ assert.equal(excerpt.protocol,'source-excerpts-v1');
+ assert.equal(excerpt.answer.generation,undefined);
+ assert.equal(excerpt.decks.length,6);
+ assert.deepEqual(calls.splice(0),['hf-draft','groq-draft']);
+ assert.equal((await call(input,{...options,DB:database(0)})).status,429);
+ assert.equal(calls.length,0);
+});
+
+test('General search uses the backup and withholds a draft if its review fails',async t=>{
+ const config={...env,DB:database(1),MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'test-only'};
+ let reviewUnavailable=false;
+ t.mock.method(globalThis,'fetch',async(url,request)=>{
+  if(url==='https://auth.example/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
+  if(url===HF_CHAT_URL)throw new TypeError('network unavailable');
+  assert.equal(url,'https://api.groq.com/openai/v1/chat/completions');
+  const body=JSON.parse(request.body),data=JSON.parse(body.messages[1].content);
+  if(data.claims&&reviewUnavailable)return new Response(null,{status:503});
+  const source=data.evidence?.find(s=>s.text.includes('hormones that affect growth'));
+  const content=data.claims?{checks:data.claims.map(c=>({id:c.id,sources:c.sources,verdict:'supported'}))}
+   :{answer:[{text:source.text,sources:[source.id]}]};
+  return Response.json({model:body.model,choices:[{finish_reason:'stop',message:{content:JSON.stringify(content)}}]});
+ });
+ const accepted=await (await call(input,config)).json();
+ assert.equal(accepted.status,'generated');
+ assert.equal(accepted.protocol,'groq-cited-v1');
+ assert.equal(accepted.answer.generation.model,'openai/gpt-oss-120b');
+ assert.deepEqual(accepted.decks,[]);
+ reviewUnavailable=true;
+ const unavailable=await (await call(input,config)).json();
+ assert.equal(unavailable.protocol,'source-excerpts-v1');
+ assert.equal(unavailable.answer.generation,undefined);
+});

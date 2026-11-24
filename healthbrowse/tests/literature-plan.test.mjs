@@ -60,3 +60,23 @@ test('private inputs, command syntax, blocked research and cancellations do not 
  }
  const signal=AbortSignal.abort();await assert.rejects(()=>planLiterature({...args,fetcher,signal}),{name:'AbortError'});assert.equal(calls,0);
 });
+
+test('a planner outage uses GPT-OSS 120B with the same restricted vocabulary',async()=>{
+ const seen=[];
+ const options={...args,env:{...env,MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'planner-test'}};
+ const result=await planLiterature({...options,fetcher:async(url,request)=>{
+  seen.push(url);
+  if(url===HF_CHAT_URL)return new Response(null,{status:503});
+  assert.equal(request.headers.Authorization,'Bearer planner-test');
+  const body=JSON.parse(request.body);
+  assert.equal(body.model,'openai/gpt-oss-120b');
+  assert.equal(body.response_format.json_schema.strict,true);
+  assert.deepEqual(Object.keys(JSON.parse(body.messages[1].content)).sort(),['focus','mesh','words']);
+  return Response.json({model:body.model,choices:[{finish_reason:'stop',message:{content:'{"searches":[]}'}}]});
+ }});
+ assert.deepEqual(seen,[HF_CHAT_URL,'https://api.groq.com/openai/v1/chat/completions']);
+ assert.equal(result.planner,'groq');
+ assert.deepEqual(result.queries,['hypertension exercise outcomes']);
+ const down=await planLiterature({...options,fetcher:async()=>new Response(null,{status:503})});
+ assert.equal(down.planner,'deterministic');
+});

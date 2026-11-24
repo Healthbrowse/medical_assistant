@@ -1,6 +1,7 @@
 import {inspectInput} from '../dist/clinical-engine.js';
 import {hasUnsafeBuddyOutput} from '../dist/buddy-policy.js';
-import {modelEndpoint} from './model-provider.mjs';
+import {withModelFallback} from './model-failover.mjs';
+import {modelEndpoint,fallbackEndpoint} from './model-provider.mjs';
 import {matchesDeepSeekModel} from './deepseek-client.mjs';
 
 const maxQueries=3;
@@ -107,27 +108,37 @@ export async function planLiterature({terms,meshTerms=[],env={},signal,fetcher=f
  const vocab=vocabulary(terms,meshTerms);
  const fallback=reason=>({queries:deterministicPlan(vocab),planner:'deterministic',model:null,reason});
  const config=modelEndpoint(env,'agent');
- if(!config||config.protocol!==protocol)return fallback('planner_unconfigured');
+ const backup=fallbackEndpoint(env);
+ if(!config&&!backup)return fallback('planner_unconfigured');
  const timer=AbortSignal.timeout(8500),deadline=signal?AbortSignal.any([signal,timer]):timer;
- const payload={model:config.model,stream:false,max_tokens:900,messages:[
-  {role:'system',content:instructions},
-  {role:'user',content:JSON.stringify({words:vocab.words,mesh:vocab.mesh,focus:vocab.facets})}
- ]};
- const send=extras=>fetcher(config.url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+config.key},
-  signal:deadline,redirect:'manual',body:JSON.stringify({...payload,...extras})});
- try{
-  let response=await send({tools:[{type:'function',function:{name:searchTool,description:'Select public search terms from the supplied lists.',parameters:selectionSchema}}],tool_choice:'auto'});
-  if(response.status===400||response.status===422){
-   // Some exact-model hosts expose JSON completions without native tool calls.
-   await response.body?.cancel();
-   payload.messages[0]={role:'system',content:instructions+' Return a JSON object with searches, each containing terms (integer array), mesh (integer array), and focus (integer).'};
-   response=await send({response_format:{type:'json_object'}});
+ async function requestPlan(route,attemptSignal){
+  const messages=[
+   {role:'system',content:instructions},
+   {role:'user',content:JSON.stringify({words:vocab.words,mesh:vocab.mesh,focus:vocab.facets})}
+  ];
+  const send=extras=>fetcher(route.url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+route.key},
+   signal:attemptSignal,redirect:'manual',body:JSON.stringify({model:route.model,stream:false,messages,...extras})});
+  let response;
+  if(route.protocol===protocol){
+   response=await send({max_tokens:900,tools:[{type:'function',function:{name:searchTool,description:'Select public search terms from the supplied lists.',parameters:selectionSchema}}],tool_choice:'auto'});
+   if(response.status===400||response.status===422){
+    await response.body?.cancel();
+    messages[0].content+=' Return a JSON object with searches, each containing terms (integer array), mesh (integer array), and focus (integer).';
+    response=await send({max_tokens:900,response_format:{type:'json_object'}});
+   }
+  }else{
+   messages[0].content+=' Return the selection as a JSON object using the supplied schema.';
+   response=await send({max_completion_tokens:900,reasoning_effort:'low',include_reasoning:false,
+    response_format:{type:'json_schema',json_schema:{name:'literature_plan',strict:true,schema:selectionSchema}}});
   }
-  if(!response.ok){await response.body?.cancel();return fallback('planner_unavailable');}
-  const data=await boundedJSON(response);
-  if(!matchesDeepSeekModel(data.model,config.model))return fallback('planner_unavailable');
+  return {response,value:response.ok?await boundedJSON(response):null};
+ }
+ try{
+  const {config:used,response,value:data}=await withModelFallback(config,backup,deadline,4000,requestPlan);
+  if(!response.ok){if(!response.bodyUsed)await response.body?.cancel();return fallback('planner_unavailable');}
+  if(!matchesDeepSeekModel(data.model,used.model))return fallback('planner_unavailable');
   const proposal=readPlan(data);
-  return {queries:materialize(proposal,vocab),planner:'deepseek',model:config.model};
+  return {queries:materialize(proposal,vocab),planner:used.protocol===protocol?'deepseek':'groq',model:used.model};
  }catch{
   if(signal?.aborted)signal.throwIfAborted();
   return fallback('planner_unavailable');

@@ -23,6 +23,10 @@ function deepseekEndpoint(env,route){
  // and credentials are fixed together; legacy URLs and keys are never consulted.
  return {url:HF_CHAT_URL,key:env.HF_TOKEN,model,protocol:'deepseek-cited-v1',compact:false};
 }
+export function fallbackEndpoint(env){
+ if(env.MODEL_PROVIDER!=='deepseek'||env.MODEL_FALLBACK_PROVIDER!=='groq'||!env.GROQ_API_KEY)return null;
+ return {url:GROQ_CHAT_URL,key:env.GROQ_API_KEY,model:GROQ_MODEL,protocol:'groq-cited-v1',compact:false};
+}
 export function usesCitedProtocol(config){
  return config?.protocol==='groq-cited-v1'||config?.protocol==='deepseek-cited-v1';
 }
