@@ -1,3 +1,4 @@
+import {withModelFallback} from './model-failover.mjs';
 import {educationalVisual} from './education-visuals.mjs';
 import {learningDecks} from './learning-decks.mjs';
 import {isBuddyOverview,buddyOverviewDecks} from './buddy-decks.mjs';
@@ -13,8 +14,8 @@ import {citedEvidence,prepareCited,presentCited,prepareCitedReview,applyCitedRev
 import {isReadingRole,normalizeReadingRole} from '../dist/reading-profiles.js';
 import {inspectQuery} from '../dist/clinical-engine.js';
 import {evidenceFor,generationMessages,validateDraft,reviewMessages,reviewPasses,presentDraft} from './model-evidence.mjs';
-import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol} from './model-provider.mjs';
-import {deepseekPayload,readDeepSeekResult} from './deepseek-client.mjs';
+import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,fallbackEndpoint,GROQ_MODEL} from './model-provider.mjs';
+import {deepseekPayload,readDeepSeekResult as readStructuredResult} from './deepseek-client.mjs';
 import {compactGeneration,compactReviews,ContextLimit} from './model-context.mjs';
 import {documentEvidence} from './document-evidence.mjs';
 import {validateDocuments} from '../dist/document-policy.js';
@@ -31,11 +32,11 @@ export function retryDelay(value,now=Date.now()){
 export function modelStatus(env){
  const deepseek=env.MODEL_PROVIDER==='deepseek';
  function routeStatus(route){
-  const config=endpoint(env,route);
+  const config=endpoint(env,route)||fallbackEndpoint(env);
   return {configured:!!config,...(deepseek&&config?{model:config.model}:{})};
  }
  return {general:routeStatus('general'),professional:routeStatus('professional'),
-  ...(deepseek?{provider:'deepseek',agent:routeStatus('agent')}:{}),
+  ...(deepseek?{provider:'deepseek',agent:routeStatus('agent'),...(env.MODEL_FALLBACK_PROVIDER==='groq'?{fallback:{provider:'groq',configured:!!fallbackEndpoint(env),model:GROQ_MODEL}}:{})}:{}),
   validation:deepseek||env.MODEL_PROVIDER==='groq'?'Server-resolved citations; AI interpretation is not independently clinically validated':'Automated support review; independent clinical validation pending'};
 }
 function evidenceMode(input,assets){
@@ -64,12 +65,22 @@ async function reserve(env,user){
  WHERE hb_model_limits.bucket<>excluded.bucket OR hb_model_limits.requests<6`).bind(user,bucket).run();
  if(!result.meta?.changes)fail(429,'rate_limited','Your request limit has been reached. The cited sources remain available.',Math.ceil((60000-Date.now()%60000)/1000));
 }
-async function complete(config,messages,signal,maxTokens=6000,schema){
+async function requestCompletion(config,messages,signal,maxTokens,schema,validateBackup){
  const deepseek=config.protocol==='deepseek-cited-v1';
  const payload=deepseek?deepseekPayload(config.model,messages,maxTokens,schema):config.protocol==='groq-cited-v1'&&schema?{model:config.model,messages,temperature:0,max_completion_tokens:maxTokens,stream:false,reasoning_effort:'low',include_reasoning:false,response_format:{type:'json_schema',json_schema:{name:'healthbrowse_answer',strict:true,schema}}}:{model:config.model,messages,temperature:0,max_tokens:maxTokens,stream:false,response_format:schema?{type:'json_schema',json_schema:{name:'healthbrowse',strict:true,schema}}:{type:'json_object'}};
  const res=await fetch(config.url,{method:'POST',headers:{Authorization:'Bearer '+config.key,'Content-Type':'application/json'},redirect:'manual',signal,
   body:JSON.stringify(payload)});
- // Configuration/credit failures are not hallucinations; do not repeat billable requests.
+ if(!res.ok)return {response:res};
+ const data=await boundedJSON(res.body,120000);
+ if(deepseek||validateBackup)return {response:res,value:readStructuredResult(data,config.model,schema)};
+ const content=data.choices?.[0]?.message?.content;
+ if(data.choices?.[0]?.finish_reason==='length'||typeof content!=='string')throw Error('Incomplete model response');
+ return {response:res,value:JSON.parse(content.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,''))};
+}
+async function checkedCompletion(primary,backup,messages,signal,maxTokens,schema){
+ const result=await withModelFallback(primary,backup,signal,35000,(config,attemptSignal)=>
+  requestCompletion(config,messages,attemptSignal,maxTokens,schema,config===backup));
+ const {response:res,config}=result;
  if(!res.ok){
   if(res.status===401||res.status===403)fail(503,'provider_access','The AI provider rejected access. The site owner must check the token and model access.');
   if(res.status===402)fail(503,'provider_credits','AI provider credits are unavailable. Showing source excerpts instead.');
@@ -77,11 +88,10 @@ async function complete(config,messages,signal,maxTokens=6000,schema){
   if(res.status===400||res.status===404||res.status===422)fail(503,'provider_configuration','The AI provider could not accept this model request. Showing source excerpts instead.');
   fail(503,'provider_unavailable','The AI provider is temporarily unavailable. Showing source excerpts instead.');
  }
- const data=await boundedJSON(res.body,120000);
- if(deepseek)return readDeepSeekResult(data,config.model,schema);
- const content=data.choices?.[0]?.message?.content;
- if(data.choices?.[0]?.finish_reason==='length'||typeof content!=='string')throw Error('Incomplete model response');
- return JSON.parse(content.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,''));
+ return result;
+}
+async function complete(config,messages,signal,maxTokens=6000,schema){
+ return (await checkedCompletion(config,null,messages,signal,maxTokens,schema)).value;
 }
 export async function modelAPI(request,env,assets){
  const url=new URL(request.url);
@@ -132,8 +142,9 @@ export async function modelAPI(request,env,assets){
   b.persona=medicalPersona(b.role);b.role=normalizeReadingRole(b.role);
   const help=b.mode==='chat'&&!documentMode?buddyHelpAnswer(b.question):null;
   if(help){phase='authentication';await identity(request,env);return reply({status:'platform',answer:help,decks:[]})}
-  const route=b.role==='Medical professional'?'professional':'general',config=endpoint(env,route);
-  const reviewer=modelReviewEndpoint(env,route);
+  const route=b.role==='Medical professional'?'professional':'general',backup=fallbackEndpoint(env);
+  const config=endpoint(env,route)||backup;
+  const reviewer=modelReviewEndpoint(env,route)||backup;
   phase='authentication';
   const user=await identity(request,env),grounded=config?.protocol==='grounded-v2';
   phase='quota';
@@ -169,12 +180,19 @@ export async function modelAPI(request,env,assets){
   if(usesCitedProtocol(config)){
    const prepared=prepareCited(b,evidence);
    phase='generation';
-   const raw=await complete(config,prepared.messages,signal,prepared.maxTokens,prepared.schema);
-   const check=prepareCitedReview(raw,prepared,b);
+   const draft=await checkedCompletion(config,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema);
+   const check=prepareCitedReview(draft.value,prepared,b);
    phase='support_review';
-   const review=check.claims.length?await complete(reviewer,check.messages,signal,check.maxTokens,check.schema):{checks:[]};
+   // Once Groq has taken over, review there too. A reviewer-only outage
+   // retries the review of the same draft and evidence without regenerating it.
+   const reviewAt=draft.config===backup?backup:reviewer;
+   const review=check.claims.length
+    ?await checkedCompletion(reviewAt,backup,check.messages,signal,check.maxTokens,check.schema)
+    :null;
    phase='presentation';
-   return reply({...presentCited(applyCitedReview(review,check,prepared,b),prepared,b,config.model),protocol:config.protocol,retrieval:evidence.retrieval});
+   const approved=applyCitedReview(review?.value||{checks:[]},check,prepared,b);
+   return reply({...presentCited(approved,prepared,b,draft.config.model),protocol:draft.config.protocol,
+    ...(backup?{reviewModel:review?.config.model||null}:{}),retrieval:evidence.retrieval});
   }
   let reason='';
   for(let attempt=0;attempt<2;attempt++){

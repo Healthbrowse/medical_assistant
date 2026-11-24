@@ -166,8 +166,8 @@ export async function retrieveLiteraturePacket(input,env={},signal,fetcher=fetch
  const plan=await planLiterature({...args,env,signal,fetcher});
  if(!plan.queries.length)return emptyPacket('The search planner could not form an eligible public biomedical query.');
  const packet=await runLiteratureSearch({terms:args.terms,queries:plan.queries,assets,signal,fetcher,reserve:host=>providerBudget(env,host,90)});
- if(plan.planner!=='deepseek')packet.evidence_gaps.push('Search used public keywords and indexed terms because the V3.2 planner was unavailable.');
- if(!args.personal&&plan.planner==='deepseek'&&packet.retrieved_sources.length){
+ if(plan.planner==='deterministic')packet.evidence_gaps.push('Search used public keywords and indexed terms because the model planner was unavailable.');
+ if(!args.personal&&['deepseek','groq'].includes(plan.planner)&&packet.retrieved_sources.length){
   packetCache.set(key,{packet,time:Date.now()});while(packetCache.size>30)packetCache.delete(packetCache.keys().next().value);
  }
  return packet;
