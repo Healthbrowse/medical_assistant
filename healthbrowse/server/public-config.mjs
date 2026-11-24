@@ -1,3 +1,13 @@
+import {deepseekModelId,GROQ_MODEL} from './model-provider.mjs';
+
+export function buddyModelNames(env){
+  return {
+    general:deepseekModelId(env,'general'),
+    professional:deepseekModelId(env,'professional'),
+    groq:GROQ_MODEL
+  };
+}
+
 // Reject accidentally supplied secret/service-role keys before returning any browser config.
 export function browserConfig(env){
   const key=env.SUPABASE_ANON_KEY||'';

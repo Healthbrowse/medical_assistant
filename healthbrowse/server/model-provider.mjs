@@ -15,10 +15,14 @@ const deepseekChoices={
  professional:[DEEPSEEK_MODELS.professional,modelFamily+'DeepSeek-R1-Distill-Qwen-14B',lightweight],
  agent:[DEEPSEEK_MODELS.agent]
 };
-function deepseekEndpoint(env,route){
+export function deepseekModelId(env,route){
  const option={general:env.DEEPSEEK_GENERAL_MODEL,professional:env.DEEPSEEK_CLINICIAN_MODEL}[route];
  const model=option||DEEPSEEK_MODELS[route];
- if(!env.HF_TOKEN||!deepseekChoices[route].includes(model))return null;
+ return deepseekChoices[route]?.includes(model)?model:null;
+}
+function deepseekEndpoint(env,route){
+ const model=deepseekModelId(env,route);
+ if(!env.HF_TOKEN||!model)return null;
  // Hugging Face routes the canonical model ID to an available provider. Transport
  // and credentials are fixed together; legacy URLs and keys are never consulted.
  return {url:HF_CHAT_URL,key:env.HF_TOKEN,model,protocol:'deepseek-cited-v1',compact:false};

@@ -15,7 +15,7 @@
     "server/model-cited.mjs": "e036780260dc71037403cb80249c5ad42b1b3477a024ccb829c9975d41e421ac",
     "server/model-grounded.mjs": "71db5ecde62caf7d1a6d22c7ff7bf5f7d69cc8d339e141ec5ec5590e97317445",
     "server/model-api.mjs": "d55dac2be52a018bf28e41ddd1a70d7812592f651463327191091aaf3a5f373b",
-    "server/model-provider.mjs": "ed3fd1f9b222988f928c34258d573028cdfcd2d6eb12e7f685193a54cb180a5c",
+    "server/model-provider.mjs": "2bbfced4d14047c1ca9dc7716f48a24366e8cb2997da7af1a9c4200998541880",
     "server/model-failover.mjs": "d6332e8a2392e161295345eb27f31779014cd3d2359e333bbb8989412de662af",
     "server/model-evidence.mjs": "b00303206497d2687e0f353c2c8f584ad845d53e83a6df678aa13b549b809ca3",
     "server/model-context.mjs": "6335b14cb94cac334ce96673617ecc30587e69e1812bac7e9fbda57a27c61d0b",
