@@ -21,6 +21,7 @@ test('medical result discovers credited reusable figures via the exact subject p
  const lookup=async (href,options)=>{
   const url=new URL(href);calls.push(url);
   assert.equal(options.redirect,'manual');assert.ok(options.signal);
+  assert.match(options.headers['User-Agent'],/HealthBrowse\/.*https:\/\/github\.com\/Healthbrowse\/medical_assistant/);
   if(url.hostname==='en.wikipedia.org'){
    assert.equal(url.searchParams.get('titles'),topic);
    return result({pages:[{ns:0,pageid:425,title:topic,pageimage:names[0],
@@ -36,8 +37,12 @@ test('medical result discovers credited reusable figures via the exact subject p
  assert.equal(data.visual.licenseUrl,'https://creativecommons.org/licenses/by/4.0');
  assert.equal(data.visual.src,'/api/browser/public-figure?id=commons-57000&asset=1');
  assert.match(data.visual.sourceUrl,/Thalassemia_blood_film/);
- const image=await publicFigureResponse(new Request('https://app.test'+data.visual.src),async href=>{
-  assert.equal(href,files[0].imageinfo[0].thumburl);return new Response(Uint8Array.of(137,80,78,71,13,10,26,10));
+ const image=await publicFigureResponse(new Request('https://app.test'+data.visual.src),async (href,options)=>{
+  assert.equal(href,files[0].imageinfo[0].thumburl);
+  if(!options.headers?.['User-Agent']?.includes('https://github.com/Healthbrowse/medical_assistant')){
+   return new Response('Please set a user-agent',{status:403});
+  }
+  return new Response(Uint8Array.of(137,80,78,71,13,10,26,10));
  });
  assert.equal(image.headers.get('Content-Type'),'image/png');
 });

@@ -10,6 +10,7 @@ const waterDiagram={
    alt:'Illustration of water stored and exchanged among the air, land, ocean and human water systems.',
    caption:'The diagram follows water above and below the surface and shows where human activities change its movement.'}
 };
+const figureUserAgent='HealthBrowse/1.0 (https://github.com/Healthbrowse/medical_assistant; educational illustration lookup)';
 const safeHeaders={'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'};
 const clean=s=>String(s||'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/\s+/g,' ').trim();
 function httpUrl(value,host,path){
@@ -24,7 +25,7 @@ async function bytes(response,limit){
 async function metadata(host,params,fetcher,signal){
  const url=new URL('https://'+host+'/w/api.php');
  url.search=new URLSearchParams({action:'query',format:'json',formatversion:'2',...params});
- const response=await fetcher(url.href,{signal,redirect:'manual',headers:{Accept:'application/json','User-Agent':'HealthBrowse/1.0 (https://github.com/abby2395/medical_chatbot; educational illustration lookup)'}});
+ const response=await fetcher(url.href,{signal,redirect:'manual',headers:{Accept:'application/json','User-Agent':figureUserAgent}});
  return JSON.parse(new TextDecoder().decode(await bytes(response,300000))).query || {};
 }
 const commonsParams = {
@@ -178,7 +179,7 @@ export async function publicFigureResponse(request,fetcher=fetch,assets={}){
    const body=request.method==='HEAD'?null:Uint8Array.from(atob(bundled.text),c=>c.charCodeAt(0));
    return new Response(body,{headers:{...safeHeaders,'Content-Type':'image/jpeg','Cache-Control':'public, max-age=86400'}});
   }
-  const source=await fetcher(entry.data.image,{redirect:'manual',signal:AbortSignal.any([request.signal,AbortSignal.timeout(16000)])});
+  const source=await fetcher(entry.data.image,{headers:{'User-Agent':figureUserAgent},redirect:'manual',signal:AbortSignal.any([request.signal,AbortSignal.timeout(16000)])});
   const data=await bytes(source,4000000);
   let type='';
   if(data[0]===255&&data[1]===216&&data[2]===255)type='image/jpeg';
