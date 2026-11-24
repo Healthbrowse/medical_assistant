@@ -1,0 +1,86 @@
+{
+  "dataset": "x9gk-5huc",
+  "source": "https://data.cdc.gov/resource/x9gk-5huc.json",
+  "rows_updated_at": 1795030065,
+  "weeks_per_year": 4,
+  "downloaded_rows": 162120,
+  "usable_rows": 155464,
+  "years": {
+    "train": [
+      2022,
+      2023,
+      2024
+    ],
+    "validation": 2025,
+    "test": 2026
+  },
+  "seed": 42,
+  "positive_training_cutoffs": [
+    2.0,
+    10.0
+  ],
+  "labels": [
+    "no_reported_cases",
+    "low",
+    "medium",
+    "high"
+  ],
+  "splits": {
+    "train": {
+      "rows": 4096,
+      "sha256": "1554aabb7c187e66c533feb92453fc590cfa6665099eb8872c43058c3cb09f29"
+    },
+    "validation": {
+      "rows": 256,
+      "sha256": "dee8199ab939e62f91d5c8f628c5e03265478ba36563718ff458170a61fd5b12"
+    },
+    "test": {
+      "rows": 1000,
+      "sha256": "e9081dfc66f8b6dc38150c0f283cf615ca91fa872958f5bb7170999637c8de46"
+    }
+  },
+  "majority_baseline": {
+    "accuracy": 0.893,
+    "macro_f1": 0.2358689910195457,
+    "per_class": {
+      "no_reported_cases": {
+        "f1": 0.9434759640781828,
+        "support": 893
+      },
+      "low": {
+        "f1": 0.0,
+        "support": 34
+      },
+      "medium": {
+        "f1": 0.0,
+        "support": 36
+      },
+      "high": {
+        "f1": 0.0,
+        "support": 37
+      }
+    }
+  },
+  "tfidf_logistic_regression": {
+    "accuracy": 0.809,
+    "macro_f1": 0.5048182445786763,
+    "per_class": {
+      "no_reported_cases": {
+        "f1": 0.9047044632086851,
+        "support": 893
+      },
+      "low": {
+        "f1": 0.2251655629139073,
+        "support": 34
+      },
+      "medium": {
+        "f1": 0.37254901960784315,
+        "support": 36
+      },
+      "high": {
+        "f1": 0.5168539325842697,
+        "support": 37
+      }
+    }
+  }
+}
