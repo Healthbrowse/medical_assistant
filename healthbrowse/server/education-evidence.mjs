@@ -5,7 +5,9 @@ import {retrievalTerms} from '../dist/query-understanding.js';
 import {sourcePassages} from './live-evidence.mjs';
 const cache=new WeakMap();
 const revision='b0058a743bdd2cc08196abaaa7d5469970c0d80c';
-const tokens=text=>String(text||'').toLowerCase().match(/[a-z][a-z-]*/g)||[];
+// Match “type-2” and “type 2” as one subtype without dropping the number.
+const tokens=text=>(String(text||'').toLowerCase().match(/\btype[ -]+\d+\b|[a-z][a-z-]*/g)||[])
+ .map(word=>word.replace(/[ -]+(?=\d)/g,' '));
 const stem=w=>w.length>4?w.replace(/ies$/,'y').replace(/s$/,''):w;
 export function educationEvidence(assets,input){
  if(!assets['/education-sources.json'])return [];

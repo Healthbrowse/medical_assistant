@@ -5,8 +5,8 @@
   "generation_cases": 12,
   "source_hashes": {
     "dist/query-understanding.js": "2c00941b262d122d8000879b09a8f5b709a22f1e8970390d4e85defa9d1833fb",
-    "server/live-evidence.mjs": "8aac71504b1f6debb529998876f27daea5e4119e622e30f8abcb7386cba0e8ff",
-    "server/education-evidence.mjs": "aec2cfb7b77c8713799f96b233625438aafe861c0c24aa080e5a304465da928c",
+    "server/live-evidence.mjs": "53f922d18981484db262eb891dfb2475b7929f426a33c0e10558ed3bf22f48a3",
+    "server/education-evidence.mjs": "7e1cbfefefa53d00703aa3b71f35ef2494b23da8225806dc2a2497dcb7749528",
     "dist/education-sources.json": "11c427009b19fb765a32e4590b7f7055c2da94fa614db0b575ea4c9630a83437",
     "dist/medical-retrieval.js": "2fff624f1f59aff217c9ca477a9c29dde0aed64d5886bbf023188eade1409740",
     "dist/faq-spec.js": "63b1c8806e09745a0bae8c817fe82e881869f50cd692ccdc2050d40c20db73bf",

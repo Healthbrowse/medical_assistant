@@ -35,6 +35,9 @@ export function citedEvidence(assets,input){
   if(/who is at risk/i.test(s.heading)&&/most common|over age/i.test(s.text))deck=1;
   if(/why do i need to worry/i.test(s.heading)&&/failure|stroke|heart attack/i.test(s.text))deck=6;
   const decks=[deck];
+  // A definition section can contain a separate paragraph about long-term complications.
+  if(/^what (?:is|are) /i.test(s.heading) && /^over time\b/i.test(s.text)
+     && /\b(?:can|may) (?:cause|lead to) (?:\w+ ){0,3}(?:problems|complications|damage)\b/i.test(s.text))decks.push(6);
   // Preserve full subtype-qualified course passages, not unrelated staging text.
   if(/(?:acute leukemia is fast growing|symptoms.*(?:come on quickly|develop slowly))/i.test(s.text))decks.push(6);
   for(const d of decks){

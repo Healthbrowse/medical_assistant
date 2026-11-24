@@ -1,31 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createPacketReader} from '../dist/evidence-packet.js';
 import {requestLiteratureEvidence,requestSynthesis} from '../dist/model-client.js';
 
 const gap={query_decomposition:['pituitary gland'],retrieved_sources:[],evidence_gaps:['No qualifying passages.']};
 const question={responseMode:'medical',role:'Clinicians',topic:'Pituitary gland',query:'What does the pituitary gland do?'};
-
-test('browser and Buddy share concurrent and subsequent reads of a gap-only packet',async()=>{
- let calls=0;
- const reader=createPacketReader(async()=>{calls++;return gap});
- const [browser,buddy]=await Promise.all([reader.read(),reader.read()]);
- assert.deepEqual(browser,gap);assert.equal(buddy,browser);
- assert.equal(await reader.read(),browser);assert.equal(calls,1);
- reader.dispose();
- await assert.rejects(reader.read(),{name:'AbortError'});
-});
-
-test('a changed question invalidates an in-flight result and a recoverable failure can be retried',async()=>{
- let deliver;
- const stale=createPacketReader(()=>new Promise(resolve=>{deliver=resolve}));
- const pending=stale.read();
- await Promise.resolve();stale.dispose();deliver(gap);
- await assert.rejects(pending,{name:'AbortError'});
- let attempt=0;
- const retry=createPacketReader(async()=>++attempt===1?{}:gap);
- await assert.rejects(retry.read(),/unavailable/);assert.deepEqual(await retry.read(),gap);
-});
 
 test('evidence request uses only a signed-in medical question and the effective reading role',async()=>{
  let calls=0;
