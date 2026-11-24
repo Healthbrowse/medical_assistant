@@ -29,9 +29,9 @@ Use the existing `SUPABASE_URL` and `SUPABASE_ANON_KEY` for authentication. The 
 4. The audience model receives eligible retrieved passages and applicable local material. A second call to that same model reviews source support. The server checks citation IDs and resolves the reader-facing citations against its own records. Buddy uses the active question and deck as context. Document questions use the user's selected attachment passages and page, slide or section citations.
 5. Successful browser synthesis returns the cited answer to the question. General readers see a plain-language explanation. Clinicians see Clinical Synthesis, Evidence Breakdown, and Limitations & Contraindications. A provider failure can return linked source excerpts labeled `source-excerpts-v1`. The report identifies insufficient or conflicting evidence when it affects the question.
 
-## Inspect or export a literature packet
+## Inspect a literature packet through the API
 
-In the browser and Buddy, expand **Literature evidence (JSON)** on a medical search to see the packet and download JSON. A synthesis response from `POST /api/ai/answer` can also include the packet at `retrieval.evidencePacket`.
+Readers can open citations alongside their answers. A synthesis response from `POST /api/ai/answer` can also include the packet at `retrieval.evidencePacket`.
 
 For retrieval alone, send a same-origin, authenticated `POST /api/ai/evidence` with a Supabase bearer access token, `Content-Type: application/json`, and a body such as the following.
 

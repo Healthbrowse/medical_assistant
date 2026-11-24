@@ -28,7 +28,15 @@ export function medlineIndex(data) {
   }
   const searchIndex=topicIndex((data.topics||[]).map(record=>({name:record.title,aliases:(record.aliases||[]).filter(a=>aliases.get(norm(a))===record)})));
   function namedTopic(query){const choices=resolveSearch(query,searchIndex).choices;if(choices.length!==1)return null;const record=names.get(norm(choices[0]));return record?{topic:record.title,record}:null;}
-  return {resolveQuestion:query=>related().resolve(query)||namedTopic(query),find(name){const key=norm(name);if(names.has(key))return names.get(key);if(aliases.has(key))return aliases.get(key);return namedTopic(name)?.record||related().resolve(name)?.record||null;}};
+  function findExact(name) {
+    const key=norm(name);
+    return names.get(key)||aliases.get(key)||null;
+  }
+  return {findExact,resolveQuestion:query=>related().resolve(query)||namedTopic(query),find(name){
+    const record=findExact(name);
+    if(record||aliases.has(norm(name)))return record;
+    return namedTopic(name)?.record||related().resolve(name)?.record||null;
+  }};
 }
 
 export async function loadMedline() {

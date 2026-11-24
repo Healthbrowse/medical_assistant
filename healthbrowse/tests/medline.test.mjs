@@ -32,3 +32,11 @@ test('link metadata is segregated from text extracted from public-domain summary
     assert.ok(Object.values(r.links).every(l=>!new URL(l.url).pathname.startsWith('/ency/')));
   }
 });
+
+test('an exact Buddy lookup accepts publisher aliases and declines related or ambiguous topics',()=>{
+ assert.equal(index.findExact('Type-2 diabetes')?.title,'Diabetes Type 2');
+ assert.equal(index.findExact('Pituitary gland'),null);
+ const ambiguous=medlineIndex({topics:[{title:'First',aliases:['Shared']},{title:'Second',aliases:['Shared']}]});
+ assert.equal(ambiguous.findExact('Shared'),null);
+ assert.equal(ambiguous.find('Shared'),null);
+});

@@ -5,7 +5,12 @@ export function learningDecks(evidence,input,local){
  const normalize=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
  const subject=normalize(retrievalTerms(input.question,{topic:input.topic,context:input.mode==='chat'}));
  // A disease page reached through an organ/substance alias does not make the query a disease question.
- if(local?.sources?.some(s=>normalize(s.title?.split(' · ')[0])===subject))return evidence;
+ // A publisher can put the preferred synonym in its definition heading (e.g.
+ // “What is type 2 diabetes?” on the “Diabetes Type 2” topic page).
+ if(subject && local?.sources?.some(s=>
+  normalize(s.title?.split(' · ')[0])===subject ||
+  normalize(s.heading?.match(/^what (?:is|are) (.+)\?$/i)?.[1])===subject
+ ))return evidence;
  // Browser answers use retrieved passages directly. Keep numeric areas for
  // existing Buddy threads that refer to a selected area.
  if(input.mode==='search')return {...evidence,learningMode:true};

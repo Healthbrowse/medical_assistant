@@ -11,8 +11,7 @@ import {answerReferences,answerMarkdown} from './answer-export.js';
 import {createQuerySuggestions,attachQueryCompletion} from './query-completion.js';
 import {readingProfile,readingRoles,normalizeReadingRole} from './reading-profiles.js';
 import {searchUI} from './search-startup.js';
-import {createPacketReader,evidencePacket,packetDisclosure} from './evidence-packet.js';
-import {requestSynthesis,requestLiteratureEvidence,synthesisKey} from './model-client.js';
+import {requestSynthesis,synthesisKey} from './model-client.js';
 import {renderAnswer,renderClinicalSynthesis} from './answer-view.js';
 import {generalMode,searchAnswer,fetchJSON} from './search-experience.js';
 import {buddyLearningQuestions} from './learning-questions.js';
@@ -45,39 +44,18 @@ let passages={},allowedTopics=new Map(),activeQuery='',lookupIndex,queryNotice='
 let medlineLookup=medlineIndex({topics:[]}),codes=null,carePanel=null,careTopic=null,unresolved=false;
 let feed={topics:[]};
 function medicalRecord(name){return medlineLookup.find(name)}
-function textRecords(name=topic){
+function textRecords(name=topic,record){
   if(!name||(name===topic&&unresolved))return [];
-  const record=medicalRecord(name);
+  record??=medicalRecord(name);
   return orderedPassages([...medlinePassages(record,name,feed),...(Object.hasOwn(passages,name)?passages[name]:[])],role,name);
 }
 let activeResearchReady=false;
 let responseMode='medical',generalResult=null,displayedEvidence=null;
 let synthesis=null,synthesisController=null,aiRequested=false;
-let browserPacket=null;
-function resetBrowserPacket(){
- browserPacket?.reader.dispose();browserPacket?.view.remove();browserPacket=null;
-}
-function medicalPacketControl(){
- const target={topic,role:roles[role],query:activeQuery,responseMode};
- const key=synthesisKey(target);
- if(key!==browserPacket?.key){
-  resetBrowserPacket();
-  const reader=createPacketReader(async signal=>{
-   const state=synthesis?.key===key?synthesis:null;
-   const result=state?.pending?await state.pending:state;
-   signal.throwIfAborted();
-   if(['blocked','clarification','platform'].includes(result?.status))
-    throw new Error('Literature evidence is unavailable for this request.');
-   return evidencePacket(result?.retrieval?.evidencePacket)||requestLiteratureEvidence(target,{signal});
-  });
-  browserPacket={key,reader,view:packetDisclosure(reader)};
- }
- return browserPacket;
-}
 function refreshSynthesis(context){
  const key=synthesisKey(context);if(!context||!aiRequested||synthesis?.key===key)return;
  synthesisController?.abort();const controller=new AbortController();synthesisController=controller;synthesis={key,status:'loading'};
- const pending=requestSynthesis(context,context.query||context.topic,{signal:controller.signal});synthesis.pending=pending;
+ const pending=requestSynthesis(context,context.query||context.topic,{signal:controller.signal});
  void pending.then(result=>{
   if(controller!==synthesisController||key!==synthesisKey(currentContext()))return;
   synthesis={key,...result};$('notice').textContent=result.status==='generated'?'Your answer is ready.':result.status==='sourced'?'Retrieved sources are ready. The AI explanation could not finish.':result.message||'Choose an option to continue.';if(result.status==='blocked')notifySafety({status:'blocked',safety:result.answer?.safety});render();
@@ -93,7 +71,6 @@ function currentContext(){
   const currentAnswer=['generated','sourced'].includes(synthesis?.status)&&synthesis.key===synthesisKey({topic,role:roles[role],query:activeQuery});
   const learningMode=currentAnswer&&!!synthesis.learningMode;
   return {...selection,aliases:[...(medicalRecord(topic)?.aliases||[]),...(taxonomy?.entities.find(e=>e.name===topic)?.aliases||[])],
-    packetReader:browserPacket?.key===synthesisKey(selection)?browserPacket.reader:null,
     learningMode,deckQuestions:learningMode?buddyLearningQuestions(roles[role]):null,
     ...displayedEvidence,
     passages:textRecords(),records:[...resources,...(live?.records||[]),...(codes?.rows||[]).map(r=>({...r,kind:'terminology',title:r.label}))],
@@ -115,16 +92,17 @@ const resourceGuide=el('details',undefined,'source-directory research-resource-g
 for(const r of researchResources){const row=el('section');row.append(el('strong',r.status));reference(row,r.name,r.url);row.append(el('p',r.use));resourceGuide.append(row)}
 $('clinicalNotice').after(resourceGuide);
 document.addEventListener('healthbrowse-session-cleared',()=>{
- resetBrowserPacket();synthesisController?.abort();synthesisController=null;synthesis=null;aiRequested=false;
+ synthesisController?.abort();synthesisController=null;synthesis=null;aiRequested=false;
 });
-window.addEventListener('pagehide',resetBrowserPacket);
 window.addEventListener('pageshow',event=>{if(event.persisted&&catalog)render()});
 const chats=createChatHistory(currentContext);
 const copilot=setupCopilot(currentContext,{
   classify:(q,c)=>classifyResponseMode(q,{index:lookupIndex,topic:c.topic,previousMode:c.responseMode}),
   passagesForTopic:name=>{
     const exact=allowedTopics.get(name.toLowerCase());
-    return exact?textRecords(exact):[];
+    if(exact)return textRecords(exact);
+    const record=medlineLookup.findExact(name);
+    return record?textRecords(name,record):[];
   },
   personalTopic:(q,current)=>publicQuestionTopic(correctSpelling(q),lookupIndex,current),
   onChat:(c,section)=>recordTopic(c.topic,'chat',section),onTurn:turn=>chats.saveTurn(turn),scopeChoice,confirm:(q,name)=>switchPrompt($('scopeQuestion'),q,name,()=>search(q,name,true)),
@@ -133,7 +111,7 @@ const copilot=setupCopilot(currentContext,{
 });
 const research=createResearchDesk(currentContext,(n,focus)=>copilot.activate(n,focus));
 chats.setHandlers({newChat:()=>copilot.clear(),restore:async data=>{
-  clearAttachments();resetBrowserPacket();
+  clearAttachments();
   displayedEvidence=null;generalResult=null;responseMode='medical';queryNotice='';
   role=Math.max(0,roles.indexOf(normalizeReadingRole(data.chat.readingMode)));
   if(Object.hasOwn(catalog,data.chat.topic)||allowedTopics.has(data.chat.topic.toLowerCase())){
@@ -201,8 +179,8 @@ function render(){
   $('roleHint').textContent=readingProfile(role).guide;
   if(responseMode==='general'){renderGeneral();return;}
   $('clinicalNotice').hidden=false;$('buddyResearch').hidden=false;
-  if(synthesis?.status==='clarification'){resetBrowserPacket();renderClarification($('card'),synthesis.clarification,q=>search(q,null,true),draft=>{if(draft!==undefined)$('query').value=draft;$('query').focus()});$('notice').textContent='Choose a meaning or add the missing subject.';return;}
-  if(synthesis?.status==='blocked'){resetBrowserPacket();const message=el('div',undefined,'overview-note search-answer');message.setAttribute('role','alert');message.append(el('h2',synthesis.answer.title||'A safer way to proceed'));renderAnswer(message,synthesis.answer,renderCheck);$('card').replaceChildren(message);mobile.update({topic:'',role:roles[role],responses:[]});buddy.sync(true,false);return;}
+  if(synthesis?.status==='clarification'){renderClarification($('card'),synthesis.clarification,q=>search(q,null,true),draft=>{if(draft!==undefined)$('query').value=draft;$('query').focus()});$('notice').textContent='Choose a meaning or add the missing subject.';return;}
+  if(synthesis?.status==='blocked'){const message=el('div',undefined,'overview-note search-answer');message.setAttribute('role','alert');message.append(el('h2',synthesis.answer.title||'A safer way to proceed'));renderAnswer(message,synthesis.answer,renderCheck);$('card').replaceChildren(message);mobile.update({topic:'',role:roles[role],responses:[]});buddy.sync(true,false);return;}
   const general=generalMode(role),card=$('card');
   document.body.classList.add('buddy-enabled');$('copilot-heading').textContent='Buddy';
   card.setAttribute('aria-label',general?'Medical answer':'Clinical report');
@@ -252,7 +230,6 @@ function render(){
     citations.append(button('Copy answer',async()=>{try{
       await navigator.clipboard.writeText(answerMarkdown({topic,role:roles[role],answer:direct}));copyStatus.textContent='Answer copied.';
     }catch{copyStatus.textContent='Clipboard unavailable. Select the answer text to copy it.'}}),copyStatus);
-    if(synthesis?.status!=='platform')citations.append(medicalPacketControl().view);
     card.append(citations);
     displayedEvidence=answerHandoff(direct,refs);
     if(!direct.safety && direct.kind!=='platform' && (direct.supported||direct.blocks?.length||direct.generation)){
@@ -314,7 +291,6 @@ async function performSearch(input,chosenTopic,confirmed=false){
   // A publication lookup can time out while the same browser answer stays on screen.
   // Keep image freshness tied to replacing the question rather than that service's deadline.
   imageView?.abort();imageView=new AbortController();
-  resetBrowserPacket();
   synthesisController?.abort();synthesisController=null;synthesis=null;aiRequested=false;
   queryNotice='';
   $('searchSwitch').replaceChildren();$('scopeQuestion').replaceChildren();
@@ -473,7 +449,7 @@ depts=taxonomy.departments.map(d=>d.name);assignments=Object.fromEntries(taxonom
 $('readingMode').disabled=false;
 $('readingMode').addEventListener('change',event=>{
   const next=roles.indexOf(event.target.value);if(next<0||next===role)return;
-  resetBrowserPacket();role=next;try{sessionStorage.setItem('hb-reader',JSON.stringify(roles[role]))}catch{}
+  role=next;try{sessionStorage.setItem('hb-reader',JSON.stringify(roles[role]))}catch{}
   render();
 });
 render();

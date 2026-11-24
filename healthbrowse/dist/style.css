@@ -70,5 +70,3 @@ header{gap:14px;flex-wrap:wrap}nav{flex-wrap:wrap}header nav{margin-left:auto}.f
   .verification-callout {grid-template-columns: minmax(0,1fr)}
   .verification-callout .verification-button {grid-column: 1; grid-row: auto; justify-self: start}
 }
-
-.literature-packet pre{max-height:22rem;max-width:100%;padding:.75rem;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.875rem;line-height:1.5;border:1px solid var(--line);border-radius:.5rem;color:var(--ink);background:var(--panel)}
