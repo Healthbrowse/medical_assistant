@@ -1,0 +1,200 @@
+{
+  "study": "ad1883763f63b745a08506e7f498e2fc79ca8c10a72338d533b81328229197e7",
+  "provenance": "synthetic-design-reward",
+  "questions": 120,
+  "families": 30,
+  "trainFamilies": [
+    "bare-organ",
+    "bare-adult",
+    "cross-section",
+    "upper-chambers",
+    "chamber-count",
+    "valve-overview",
+    "valve-gates",
+    "mitral",
+    "pumping",
+    "transit",
+    "lung-circuit",
+    "verbal-anatomy",
+    "verbal-valves",
+    "valve-disease",
+    "fetal",
+    "coronary",
+    "therapy",
+    "nonmedical"
+  ],
+  "testFamilies": [
+    "orientation",
+    "lower-chambers",
+    "ventricles",
+    "tricuspid",
+    "semilunar",
+    "body-circuit",
+    "sequence",
+    "verbal-flow",
+    "electrical",
+    "device",
+    "reversed",
+    "performance"
+  ],
+  "roles": {
+    "General": {
+      "designTargets": {
+        "fixed": {
+          "decisions": 48,
+          "matched": 29,
+          "accuracy": 0.6041666666666666,
+          "unwantedVisuals": 1,
+          "missedVisuals": 14,
+          "byAction": {
+            "text": {
+              "count": 20,
+              "matched": 19
+            },
+            "clarify": {
+              "count": 4,
+              "matched": 0
+            },
+            "illustration": {
+              "count": 16,
+              "matched": 8
+            },
+            "diagram": {
+              "count": 8,
+              "matched": 2
+            }
+          }
+        },
+        "samePlannerRules": {
+          "decisions": 48,
+          "matched": 47,
+          "accuracy": 0.9791666666666666,
+          "unwantedVisuals": 0,
+          "missedVisuals": 1,
+          "byAction": {
+            "text": {
+              "count": 20,
+              "matched": 20
+            },
+            "clarify": {
+              "count": 4,
+              "matched": 4
+            },
+            "illustration": {
+              "count": 16,
+              "matched": 16
+            },
+            "diagram": {
+              "count": 8,
+              "matched": 7
+            }
+          }
+        },
+        "candidate": {
+          "decisions": 48,
+          "matched": 47,
+          "accuracy": 0.9791666666666666,
+          "unwantedVisuals": 0,
+          "missedVisuals": 1,
+          "byAction": {
+            "text": {
+              "count": 20,
+              "matched": 20
+            },
+            "clarify": {
+              "count": 4,
+              "matched": 4
+            },
+            "illustration": {
+              "count": 16,
+              "matched": 16
+            },
+            "diagram": {
+              "count": 8,
+              "matched": 7
+            }
+          }
+        }
+      }
+    },
+    "Clinicians": {
+      "designTargets": {
+        "fixed": {
+          "decisions": 48,
+          "matched": 29,
+          "accuracy": 0.6041666666666666,
+          "unwantedVisuals": 1,
+          "missedVisuals": 14,
+          "byAction": {
+            "text": {
+              "count": 20,
+              "matched": 19
+            },
+            "clarify": {
+              "count": 4,
+              "matched": 0
+            },
+            "illustration": {
+              "count": 16,
+              "matched": 8
+            },
+            "diagram": {
+              "count": 8,
+              "matched": 2
+            }
+          }
+        },
+        "samePlannerRules": {
+          "decisions": 48,
+          "matched": 47,
+          "accuracy": 0.9791666666666666,
+          "unwantedVisuals": 0,
+          "missedVisuals": 1,
+          "byAction": {
+            "text": {
+              "count": 20,
+              "matched": 20
+            },
+            "clarify": {
+              "count": 4,
+              "matched": 4
+            },
+            "illustration": {
+              "count": 16,
+              "matched": 16
+            },
+            "diagram": {
+              "count": 8,
+              "matched": 7
+            }
+          }
+        },
+        "candidate": {
+          "decisions": 48,
+          "matched": 47,
+          "accuracy": 0.9791666666666666,
+          "unwantedVisuals": 0,
+          "missedVisuals": 1,
+          "byAction": {
+            "text": {
+              "count": 20,
+              "matched": 20
+            },
+            "clarify": {
+              "count": 4,
+              "matched": 4
+            },
+            "illustration": {
+              "count": 16,
+              "matched": 16
+            },
+            "diagram": {
+              "count": 8,
+              "matched": 7
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Cardiology research pilot · HealthBrowse</title>
+<link rel="stylesheet" href="/theme.css"><link rel="stylesheet" href="/cardio-pilot.css"><link rel="stylesheet" href="/result-enrichment.css">
+<script type="module" src="/cardio-pilot.js"></script>
+</head>
+<body><main>
+<header><a href="/">HealthBrowse</a><h1>Cardiology research pilot</h1>
+<p>Explore normal adult heart anatomy with cited passages, figures and flow diagrams. <span id="training"></span></p></header>
+<form id="search"><label for="question">Your question</label><input id="question" maxlength="500" required placeholder="How does the heart pump blood?">
+<label for="audience">Audience</label><select id="audience"><option>General</option><option>Clinicians</option></select>
+<button type="submit">Show answer</button></form>
+<p id="message" role="status"></p><section id="answer" aria-label="Research answer"></section>
+<details id="study"><summary>Reviewer session</summary>
+<p>Start a private 24-response session or load an assignment file. Progress is saved on this browser. Export your ratings to include them in training or evaluation.</p>
+<button id="begin" type="button">Start review</button>
+<label for="assignment">Assignment file</label><input type="file" id="assignment" accept=".json,application/json">
+<form id="rating" hidden><h2 id="counter"></h2><p id="reviewQuestion"></p>
+<div id="reviewAnswer"></div>
+<fieldset><legend>Rate this response</legend>
+<label>Does it address the question? <select name="relevance" required><option value="">Choose</option><option value="1">Yes</option><option value="0">No</option></select></label>
+<label>Are its factual claims supported, or is its clarification or abstention appropriate? <select name="support" required><option value="">Choose</option><option value="1">Yes</option><option value="0">No</option></select></label>
+<label>Does the visual agree with the text, or is omitting a visual appropriate? <select name="agreement" required><option value="">Choose</option><option value="1">Yes</option><option value="0">No</option></select></label>
+</fieldset><button type="submit">Save and continue</button></form>
+<button id="export" type="button" hidden>Export ratings</button><p id="reviewStatus" role="status"></p></details>
+</main></body></html>

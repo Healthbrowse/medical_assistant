@@ -1,0 +1,27 @@
+{
+  "model": "Xenova/siglip-base-patch16-224",
+  "revision": "4649052661e53c7000355844105f8a1792088239",
+  "prompts": {
+    "chambers": "an anatomical illustration of the four chambers inside the human heart",
+    "valves": "an anatomical illustration of four heart valves seen from above",
+    "flow": "a diagram showing the direction of blood flow through the human heart"
+  },
+  "sha256": {
+    "m46676-fig-ch20_01_08": "49e4fefe5870b50a27628782d6a44259c7ca0a022182df63b6ce5b7d908d2c6a",
+    "m46676-fig-ch20_01_11": "1f1f749de495fb33360e056b9d4e770c6025c07ea20cdfdab156681c68f5101a"
+  },
+  "scores": {
+    "chambers": {
+      "m46676-fig-ch20_01_08": 0.108503,
+      "m46676-fig-ch20_01_11": 0.12337
+    },
+    "valves": {
+      "m46676-fig-ch20_01_08": 0.089743,
+      "m46676-fig-ch20_01_11": 0.122331
+    },
+    "flow": {
+      "m46676-fig-ch20_01_08": 0.102717,
+      "m46676-fig-ch20_01_11": 0.092644
+    }
+  }
+}

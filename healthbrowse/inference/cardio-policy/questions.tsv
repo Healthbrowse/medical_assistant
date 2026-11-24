@@ -1,0 +1,31 @@
+# Split, family, design target, four authored paraphrases. Targets are engineering expectations.
+train	bare-organ	clarify	Heart	The heart	Human heart	The human heart
+train	bare-adult	clarify	Adult heart	Normal adult heart overview	Adult human heart	The adult heart
+test	orientation	clarify	Heart basics	The heart overview	Show the heart basics	Describe the adult heart overview
+train	cross-section	illustration	Show a cutaway of the heart	Draw the heart interior	Heart cross section	Show the internal layout of the heart
+train	upper-chambers	illustration	Show the upper chambers of the heart	Where are the upper heart chambers?	Identify the upper chambers of the human heart	Label the upper heart chambers
+train	chamber-count	illustration	What are the four chambers of the heart?	Name the 4 heart chambers	Show the four human heart chambers	Identify the four main heart chambers
+test	lower-chambers	illustration	Show the lower heart chambers	Label the lower chambers of the heart	Identify the lower chambers of the human heart	Where are the lower heart chambers?
+test	ventricles	illustration	Show the ventricles of the human heart	Label the heart ventricles	Where are the ventricles of the heart?	Identify the right and left ventricles of the heart
+train	valve-overview	illustration	Show the valves of the heart	Where are the heart valves?	Draw the heart valves	Heart valve locations
+train	valve-gates	illustration	Show the one way gates of the heart	Illustrate the one way doors of the heart	Label the one way gates in the heart	Heart one way doors diagram
+train	mitral	illustration	Show the mitral valve of the heart	Locate the mitral valve in the heart	Where is the mitral valve of the heart?	Label the mitral heart valve
+test	tricuspid	illustration	Show the tricuspid valve of the heart	Identify the tricuspid valve in the heart	Where is the tricuspid valve of the heart?	Draw the tricuspid heart valve
+test	semilunar	illustration	Show the semilunar valves of the heart	Label the semilunar valves in the human heart	Where are the semilunar valves of the heart?	Identify the semilunar heart valves
+train	pumping	diagram	How does the heart pump blood?	Show how the human heart pumps blood	Explain how the heart pumps blood	Diagram the normal heart pumping blood
+train	transit	diagram	Trace blood flow through the human heart	Map the journey of blood through the heart	Describe the path of blood through the heart	Show the passage of blood through the heart
+train	lung-circuit	diagram	Trace the pulmonary circuit of the heart	Show pulmonary blood flow through the heart	Diagram the pulmonary circulation of the heart	Describe the pulmonary route of blood from the heart
+test	body-circuit	diagram	Trace the systemic circuit of the heart	Show systemic blood flow through the heart	Diagram the systemic circulation of the heart	Describe the systemic route of blood from the heart
+test	sequence	diagram	Show the sequence of blood flow through the heart	Outline the direction blood travels through the heart	Trace how blood moves through the heart	Use arrows to show the route of blood through the heart
+train	verbal-anatomy	text	Describe the heart chambers in words only	What are the heart chambers, text only?	Show the heart anatomy without a picture	Heart chambers, no diagrams
+train	verbal-valves	text	Describe the heart valves without a visual	Heart valves, text only	Name the heart valves in words only	Where are the heart valves, no pictures?
+test	verbal-flow	text	Describe heart circulation in words only	How does the heart pump blood, text only?	Trace heart blood flow without a diagram	Describe how the heart pumps blood, no visuals
+train	valve-disease	text	Show mitral valve prolapse	How does valve disease affect the heart?	Draw a leaking heart valve	Show the heart after valve replacement
+train	fetal	text	How does a fetal heart pump blood?	Show fetal circulation	Describe the blood pathway before birth	Draw the heart of a fetus
+train	coronary	text	Trace the coronary circulation of the heart	What are coronary artery branches?	Draw the arteries that supply the heart	How is blood supplied to the heart muscle?
+train	therapy	text	What therapies are used for heart failure?	Describe heart failure treatment	What medicines are used after a heart attack?	Show treatment options for arrhythmia
+test	electrical	text	Show the electrical conduction system of the heart	How does the heart rhythm start?	Trace the electrical pathway of the heart	Draw the cardiac conduction circuit
+test	device	text	How does a heart lung machine pump blood?	Show a ventricular assist device	How is a mechanical heart valve constructed?	Draw a pacemaker lead
+test	reversed	text	Does the left ventricle pump blood to the lungs?	Does the right atrium pump into the aorta?	Does blood in the normal heart flow from ventricle to atrium?	Can you confirm the pulmonary veins carry blood from the heart to the lungs?
+train	nonmedical	text	Draw a heart emoji	Explain the heart of a city	Show a heart shape for a card	What is the heart of the matter?
+test	performance	text	How does exercise change heart rate?	Show how cardiac output changes during exercise	What happens to heart rate at altitude?	Draw the effect of exercise on the heart
