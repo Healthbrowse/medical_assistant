@@ -8,7 +8,7 @@ import {domainAnswer} from './search-experience.js';
 // as the individual domain. Carry the original source wording into its citation.
 function localDiseaseBlocks(context, deck) {
   const answer = domainAnswer(context, deck, {detail: false});
-  return answer.blocks.map((block, index) => {
+  return answer.blocks.filter(block => !block.check?.provenance?.historical).map((block, index) => {
     const source = block.citation;
     const passage = context.passages.find(p =>
       (p.sourceRecord || p.url) === source.url &&
@@ -61,18 +61,29 @@ function citedBlocks(blocks) {
   });
 }
 
-export function renderBuddyDecks(parent, decks, renderCheck) {
+// Never transfer a disease excerpt into a learning deck that happens to share its number.
+export function mergeBuddyDecks(incoming, previous) {
+  if (!incoming?.length) return previous;
+  return incoming.map((deck, index) => {
+    const old = previous?.[index];
+    if (old?.deck === deck.deck && old.title === deck.title && !citedBlocks(deck.blocks).length && citedBlocks(old.blocks).length) return old;
+    return deck;
+  });
+}
+
+export function renderBuddyDecks(parent, decks, renderCheck, pending = false) {
   if (!Array.isArray(decks) || decks.length !== 6) return;
   const group = document.createElement('section');
   group.className = 'buddy-decks';
   const heading = document.createElement('h3');
-  heading.textContent = 'Six decks';
+  const covered = decks.filter(deck => citedBlocks(deck.blocks).length);
+  heading.textContent = covered.length ? 'Six decks · ' + covered.length + ' with sources' : 'Six decks';
   group.append(heading);
 
   for (const deck of decks) {
     const detail = document.createElement('details');
     detail.className = 'buddy-deck';
-    detail.open = deck.deck === 1;
+    detail.open = deck.deck === (covered[0]?.deck ?? 1);
     const summary = document.createElement('summary');
     const number = document.createElement('span');
     number.className = 'buddy-deck-number';
@@ -88,7 +99,7 @@ export function renderBuddyDecks(parent, decks, renderCheck) {
     } else {
       const gap = document.createElement('p');
       gap.className = 'buddy-deck-gap';
-      gap.textContent = 'No supporting passage was found for this deck.';
+      gap.textContent = pending ? 'Looking for a supporting passage…' : 'No supporting passage was found for this deck.';
       content.append(gap);
     }
     detail.append(summary, content);

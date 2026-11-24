@@ -11,8 +11,8 @@ const env={MODEL_PROVIDER:'deepseek',HF_TOKEN:'server-hf-only',RETRIEVAL_LIVE:'o
 const assets=Object.fromEntries(['medline-topics','clinical-passages','grounded-sources'].map(name=>['/'+name+'.json',{text:readFileSync(new URL('../dist/'+name+'.json',import.meta.url),'utf8')}]));
 const input={question:'What is the main function of the pituitary gland?',topic:'Pituitary gland',role:'General',mode:'search',deck:0};
 const database=changes=>({prepare:()=>({bind:()=>({run:async()=>({meta:{changes}})})})});
-function call(body,config,path='/api/ai/answer',auth='Bearer session-test-token'){
- return modelAPI(new Request('https://site.test'+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:auth},body:JSON.stringify(body)}),config,assets);
+function call(body,config,path='/api/ai/answer',auth='Bearer session-test-token',catalog=assets){
+ return modelAPI(new Request('https://site.test'+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:auth},body:JSON.stringify(body)}),config,catalog);
 }
 test('three DeepSeek roles are pinned to exact models and the fixed Hugging Face router',()=>{
  for(const [role,id] of Object.entries(DEEPSEEK_MODELS)){
@@ -334,4 +334,28 @@ test('Buddy sends the chosen model to the API and uses it for generation and cit
  const invalid=await call({...input,mode:'chat',buddyModel:'unknown'},cfg);
  assert.equal(invalid.status,400);
  assert.deepEqual(calls,[]);
+});
+
+test('Buddy serves cited local decks for both roles when live literature retrieval stalls',async t=>{
+ const nativeTimeout=AbortSignal.timeout;
+ const stalled=new Promise(()=>{});
+ let liveLookups=0;
+ t.mock.method(AbortSignal,'timeout',ms=>nativeTimeout.call(AbortSignal,ms===7000?30:ms));
+ t.mock.method(globalThis,'fetch',async(url,opts)=>{
+  if(url==='https://auth.example/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
+  if(url===HF_CHAT_URL && opts.body.includes('deckEvidence'))return new Response(null,{status:503});
+  liveLookups++;
+  return stalled;
+ });
+ const config={...env,RETRIEVAL_LIVE:'on',DB:database(1)};
+ const catalog={...assets,'/education-sources.json':{text:readFileSync(new URL('../dist/education-sources.json',import.meta.url),'utf8')}};
+ for(const role of ['General','Clinicians']){
+  const body={role,mode:'chat',deck:0,topic:'Type 2 Diabetes',question:'What is type 2 diabetes?'};
+  const result=await (await call(body,config,undefined,undefined,catalog)).json();
+  assert.equal(result.status,'sourced');
+  assert.ok(result.retrieval.providers.some(p=>p.status==='unavailable'));
+  assert.equal(result.decks.length,6);
+  assert.ok(result.decks.every(d=>d.blocks.some(b=>b.references?.length)));
+ }
+ assert.ok(liveLookups>=2);
 });

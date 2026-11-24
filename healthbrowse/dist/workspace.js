@@ -1,7 +1,8 @@
 import {buddyLearningQuestions} from './learning-questions.js';
 import {buddyDeckIntent} from './buddy-deck-intent.js';
 import {invitationTopic,invitationChoices,invitationReply} from './buddy-invitation.js';
-import {localBuddyDecks,renderBuddyDecks} from './buddy-decks.js';
+import {loadBuddySnapshot} from './buddy-snapshot.js';
+import {localBuddyDecks,mergeBuddyDecks,renderBuddyDecks} from './buddy-decks.js';
 import {getAttachments,attachmentKey} from './attachments.js';
 import {auditBrowserAnswer,generalBuddyAnswer} from './buddy-audit.js';
 import {screenGeneralQuery,classifyResponseMode} from './response-mode.js';
@@ -103,8 +104,8 @@ export function setupCopilot(browserContext,actions={}){
     // Enrichment updates a turn in place while the reader may have a deck open.
     const previous=deckViews.get(t);
     const expanded=previous&&[...previous.querySelectorAll('.buddy-deck')].map(item=>item.open);
-    renderBuddyDecks(response,t.buddyDecks,renderCheck);
-    if(expanded)response.querySelectorAll('.buddy-deck').forEach((item,i)=>item.open=expanded[i]??false);
+    renderBuddyDecks(response,t.buddyDecks,renderCheck,busy && t === history.at(-1));
+    if(expanded && (previous.querySelector('.buddy-deck .inline-citations a') || expanded.some((open,i)=>open && i>0) || !expanded.some(Boolean)))response.querySelectorAll('.buddy-deck').forEach((item,i)=>item.open=expanded[i]??false);
     deckViews.set(t,response);
    }
    if(t.frameworkVersion!==frameworkVersion)response.append(node('small','Saved using the previous framework. Section numbers refer to that version.'));
@@ -172,6 +173,40 @@ export function setupCopilot(browserContext,actions={}){
   if(status==='ok'){active=answer.deck||active;if(!help&&!audit&&!general&&!fileMode)turn.modelNotice='Checking for additional evidence. You can read the cited response below.'}
   history=[...history.slice(-9),turn];if(fromSuggestion&&saveable)publicTurns=[...publicTurns.slice(-9),turn];
   sync();$('thread').lastElementChild?.scrollIntoView({block:'nearest'});
+  let catalogAnswer = false;
+  const presetDeck = guidedDeck && questions(c)[guidedDeck-1]?.prompt === q;
+  const publicDeckRequest = (report || presetDeck) && status === 'ok' && !privateConversation
+   && !fileMode && !help && !audit && !general && !answer.safety && canSaveResearchQuestion(c.topic,c.query);
+  if (publicDeckRequest) {
+   const previous = history.slice(0,-1).findLast(item => item.topic === c.topic && item.buddyDecks?.length === 6);
+   const cachedDeck = guidedDeck && previous?.buddyDecks[guidedDeck-1];
+   const snapshot = cachedDeck?.blocks?.length && cachedDeck.title === (c.deckQuestions?.[guidedDeck-1] || domainTitle(guidedDeck,c.role))
+    ? {decks:previous.buddyDecks,learningMode:!!c.learningMode}
+    : await loadBuddySnapshot(c.topic,c.role);
+   if (run !== sequence || identity !== scope) return;
+   if (snapshot?.decks?.some(d => d.blocks.length)) {
+    if (report) {
+     if (snapshot.learningMode) learningTopic=c.topic;
+     answer={...answer,buddyDecks:mergeBuddyDecks(snapshot.decks,answer.buddyDecks)};
+     catalogAnswer=intent.explicit && snapshot.decks.every(d=>d.blocks.length);
+     if (catalogAnswer) answer={deck:active,style:readingProfile(c.role).style,text:'Cited passages for '+c.topic+'.',
+      buddyDecks:answer.buddyDecks,blocks:[],citations:[],checks:[],supported:true};
+    } else {
+     const selected=snapshot.decks[guidedDeck-1];
+     const requestedTitle=c.deckQuestions?.[guidedDeck-1] || domainTitle(guidedDeck,c.role);
+     if(selected?.title === requestedTitle && selected.blocks.length){
+      const blocks=selected.blocks;
+      answer={deck:guidedDeck,style:readingProfile(c.role).style,blocks,citations:blocks.flatMap(b=>b.references),
+       text:blocks.map(b=>b.text).join('\n\n'),supported:true,modelNotice:'From the cited sources.'};
+      if(clinicalQuestion)answer.clinicalSynthesis=true;
+      catalogAnswer=true;
+     }
+    }
+    Object.assign(turn,answer);
+    if(catalogAnswer)delete turn.modelNotice;
+    sync();
+   }
+  }
   let researchAnswer=null;
   if(status==='ok'&&!report&&!help&&!general&&!audit&&!guidedDeck&&!prepared.ephemeral&&!fileMode&&(!clinicalQuestion||isRecordListing(q))){try{researchAnswer=await actions.research?.(q)}catch{}if(run!==sequence||identity!==scope)return}
   if(researchAnswer)answer=researchAnswer;
@@ -179,16 +214,17 @@ export function setupCopilot(browserContext,actions={}){
    modelRequest?.abort();modelRequest=new AbortController();
    try{answer=await generalBuddyAnswer(q,c.responseMode==='general'?c.topic:'',modelRequest.signal)}
    catch{if(modelRequest.signal.aborted)return;answer={text:'The research service is unavailable. Please try again.',blocks:[],citations:[]}}
-  }else if(status==='ok'&&!help&&!audit){
+  }else if(status==='ok'&&!help&&!audit&&!catalogAnswer){
    modelRequest?.abort();modelRequest=new AbortController();
-   const result=await requestSynthesis(c,q,{mode:'chat',buddyModel,deck:report?0:guidedDeck||active,history:history.slice(0,-1).filter(turn=>turn.topic===c.topic),signal:modelRequest.signal});
+   const modelQuestion=presetDeck && !fileMode ? c.topic + ' — ' + q : q;
+   const result=await requestSynthesis(c,modelQuestion,{mode:'chat',buddyModel,deck:report?0:guidedDeck||active,history:history.slice(0,-1).filter(turn=>turn.topic===c.topic),signal:modelRequest.signal});
    if(run!==sequence||identity!==scope)return;
    if(result.status==='blocked')notifySafety({status:'blocked',safety:result.answer?.safety});
    if(result.status==='clarification'){renderClarification($('scopeQuestion'),result.clarification,query=>void ask(query),draft=>{if(draft!==undefined)$('question').value=draft;$('question').focus()});answer={text:result.clarification.text,blocks:[],citations:[],checks:[],supported:false};}
    else if(['generated','sourced','blocked','platform'].includes(result.status)){
     const grounded=['sourced','generated'].includes(result.status);
     if(grounded&&!general&&!fileMode&&result.learningMode)learningTopic=c.topic;
-    const decks=report&&grounded?(result.decks?.length===6?result.decks:answer.buddyDecks):null;
+    const decks=report&&grounded?mergeBuddyDecks(result.decks,answer.buddyDecks):null;
     answer=decks?{...result.answer,deck:active,buddyDecks:decks}:result.answer;
     if(clinicalQuestion&&!report&&grounded)answer={...answer,clinicalSynthesis:true};
    }else answer={...answer,...(clinicalQuestion&&!report&&!answer.safety?{clinicalSynthesis:true}:{}),...(fileMode?{text:'Buddy could not complete the document review.'}:{}),modelNotice:result.message,code:result.code,retryAt:result.retryAt};

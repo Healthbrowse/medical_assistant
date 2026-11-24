@@ -30,3 +30,20 @@ for (const role of ['General reader', 'Medical professional']) {
     assert.deepEqual(calls, [['chat', 0, role], ['chat', 3, role], ['search', 0, role]]);
   });
 }
+
+test('Buddy skips the status request and releases the composer when a response body stalls', async t => {
+  t.mock.timers.enable({apis:['setTimeout']});
+  const bodyStarted = Promise.withResolvers();
+  const urls = [];
+  const pending = requestSynthesis({topic:'Diabetes',role:'General'}, 'What is diabetes?', {
+    mode:'chat', tokenProvider:async () => 'fixture',
+    fetcher:async url => {
+      urls.push(url);
+      return {ok:true, json() { bodyStarted.resolve(); return new Promise(() => {}); }};
+    }
+  });
+  await bodyStarted.promise;
+  t.mock.timers.tick(35001);
+  assert.equal((await pending).status, 'unavailable');
+  assert.deepEqual(urls, ['/api/ai/answer']);
+});

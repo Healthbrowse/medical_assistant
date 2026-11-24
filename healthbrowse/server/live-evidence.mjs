@@ -185,6 +185,15 @@ function selectedPassages(packet){
   },{verifiedText:true}));
  });
 }
+export function scopedLocalEvidence(input,base){
+ // Keep an unrelated active browser topic out of a new, explicit Buddy question.
+ const q=String(input.question||''),followup=usesActiveTopic(q)||(input.role==='General reader'&&contextCareQuestion(q));
+ const subjectWords=retrievalTerms(input.topic).split(' '),questionWords=new Set(retrievalTerms(q).split(' '));
+ const newSubject=input.mode==='chat'&&!followup&&questionWords.size>0&&subjectWords.every(w=>!questionWords.has(w))&&!/^(?:symptoms?|treatment|causes?|diagnosis|tests?)\W*$/i.test(q);
+ if(!newSubject && base)return base;
+ return {topic:input.topic,role:input.role,style:readingProfile(input.role).style,sources:[],
+  domains:domains.slice(0,6).map((d,i)=>({id:i+1,title:d.title,question:faqQuestions[i],scope:d.scope}))};
+}
 export async function retrieveEvidence(input,base,env={},signal,fetcher=fetch,assets){
  if(env.RETRIEVAL_LIVE==='off')return base;
  let live;
@@ -193,14 +202,10 @@ export async function retrieveEvidence(input,base,env={},signal,fetcher=fetch,as
   live={sources:selectedPassages(packet),evidencePacket:packet,retrievedAt:new Date().toISOString(),providers:[{name:'Verified biomedical literature',status:packet.retrieved_sources.length?'available':packet.evidence_gaps.some(g=>/unavailable|could not be completed/.test(g))?'unavailable':'no_matches'}]};
  }else live=await collect(input,env,signal,fetcher,assets);
  const sources=[],seen=new Set();
- // Keep an unrelated active browser topic out of a new, explicit Buddy question.
- const q=String(input.question||''),followup=usesActiveTopic(q)||(input.role==='General reader'&&contextCareQuestion(q));
- const subjectWords=retrievalTerms(input.topic).split(' '),questionWords=new Set(retrievalTerms(q).split(' '));
- const newSubject=input.mode==='chat'&&!followup&&questionWords.size>0&&subjectWords.every(w=>!questionWords.has(w))&&!/^(?:symptoms?|treatment|causes?|diagnosis|tests?)\W*$/i.test(q);
- if(newSubject)base=null;
+ base=scopedLocalEvidence(input,base);
  // Live retrieval is not training data and never accepts client-supplied passages.
  for(const source of [...live.sources,...(base?.sources||[])]){const key=source.deck+'|'+source.url+'|'+source.text;if(seen.has(key))continue;seen.add(key);sources.push({...source,id:'S'+(sources.length+1)})}
- return {...(base||{topic:input.topic,role:input.role,style:readingProfile(input.role).style,domains:domains.slice(0,6).map((d,i)=>({id:i+1,title:d.title,question:faqQuestions[i],scope:d.scope}))}),sources,
+ return {...base,sources,
   snapshot:live.retrievedAt||base?.snapshot,retrieval:{providers:live.providers,...(live.evidencePacket?{evidencePacket:live.evidencePacket}:{}),cached:!!live.cached,sourceCount:new Set(live.sources.map(s=>s.url)).size}};
 }
 export function clearRetrievalCache(){cache.clear();packetCache.clear();pending.clear()}

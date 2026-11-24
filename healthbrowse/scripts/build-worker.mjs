@@ -1,6 +1,7 @@
 import {readFile,readdir,writeFile,mkdir,copyFile} from 'node:fs/promises';
 import {build} from 'esbuild';
 const mimes={html:'text/html',js:'text/javascript',css:'text/css',json:'application/json',svg:'image/svg+xml',webmanifest:'application/manifest+json',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',ico:'image/x-icon'};
+await build({entryPoints:['client/buddy-deck-worker.mjs'],outfile:'dist/buddy-deck-worker.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true});
 const assets={};
 for(const entry of await readdir('dist',{withFileTypes:true})){
   const ext=entry.name.split('.').pop(),type=mimes[ext];
