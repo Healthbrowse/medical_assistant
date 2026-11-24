@@ -21,25 +21,35 @@ async function retryableResponse(response) {
   reader.releaseLock();
  }
  if (/safety|moderation|content[_ -]?(?:policy|filter)|refusal/i.test(detail)) return false;
+ // HF also returns 403 when a valid token lacks inference-provider permission.
+ if (status === 403 && /(?:permissions?|authori[sz]ation).{0,150}(?:call|use|access).{0,60}inference providers?/i.test(detail)) return true;
  return /model[_ -](?:not[_ -](?:found|supported|available)|unavailable|decommissioned)|(?:no|unsupported) (?:inference )?provider|model.{0,180}(?:is not supported|isn't supported|not available|does not exist|is not deployed|is not a chat model)/i.test(detail);
 }
 
 // run returns {response, value}. It reads successful bodies under the same
 // abort signal, so a stalled response body also leaves time for the backup.
-export async function withModelFallback(primary, backup, signal, primaryMs, run) {
+export async function withModelFallback(primary, backup, signal, primaryMs, run, onFallback) {
  signal.throwIfAborted();
  const attempt = async (config, attemptSignal) => ({...await run(config, attemptSignal), config});
- if (!backup || !primary || primary === backup) return attempt(primary || backup, signal);
+ if (!backup || primary === backup) return attempt(primary, signal);
+ if (!primary) {
+  onFallback?.({reason:'primary_unconfigured'});
+  return attempt(backup, signal);
+ }
  const timer = AbortSignal.timeout(primaryMs);
  const primarySignal = AbortSignal.any([signal, timer]);
+ let failure;
  try {
   const result = await attempt(primary, primarySignal);
   if (result.response.ok || !await retryableResponse(result.response)) return result;
+  failure = {reason:'upstream_http', httpStatus:result.response.status};
   if (!result.response.bodyUsed) await result.response.body?.cancel();
  } catch (error) {
   signal.throwIfAborted();
   if (!timer.aborted && !(error instanceof TypeError) && error.name !== 'TimeoutError') throw error;
+  failure = {reason:timer.aborted || error.name === 'TimeoutError' ? 'timeout' : 'network_error'};
  }
  signal.throwIfAborted();
+ onFallback?.(failure);
  return attempt(backup, signal);
 }

@@ -153,12 +153,20 @@ test('clinical failover preserves six decks and verifies the same retrieved evid
   return Response.json({model:body.model,choices:[{finish_reason:'stop',message:{content:JSON.stringify(output)}}]});
  });
  const ask=async()=> (await call({...input,mode:'chat',role:'Clinicians'},options)).json();
+ const warnings=t.mock.method(console,'warn',()=>{});
  for(const stage of ['draft','review','neither']){
   rejectedStage=stage;
   const result=await ask();
   assert.equal(result.status,'generated');
   assert.equal(result.answer.generation.model,stage==='draft'?backupModel:DEEPSEEK_MODELS.professional);
   assert.equal(result.reviewModel,stage==='neither'?DEEPSEEK_MODELS.professional:backupModel);
+  const fallback=stage==='neither'?undefined:{
+   phase:stage==='draft'?'generation':'support_review',primaryModel:DEEPSEEK_MODELS.professional,
+   fallbackModel:backupModel,reason:'upstream_http',httpStatus:400
+  };
+  assert.deepEqual(result.modelFallback,fallback);
+  assert.deepEqual(warnings.mock.calls.map(call=>JSON.parse(call.arguments[0])),fallback?[{event:'ai_model_fallback',...fallback}]:[]);
+  warnings.mock.resetCalls();
   assert.deepEqual(result.decks.map(d=>d.deck),[1,2,3,4,5,6]);
   assert.match(result.decks[1].blocks[0].verification,/AI summary/);
   assert.deepEqual(calls.splice(0),stage==='draft'?['hf-draft','groq-draft','groq-review']:
@@ -167,6 +175,7 @@ test('clinical failover preserves six decks and verifies the same retrieved evid
  rejectedStage='draft';groqDown=true;
  const excerpt=await ask();
  assert.equal(excerpt.protocol,'source-excerpts-v1');
+ assert.equal(excerpt.modelFallback.httpStatus,400);
  assert.equal(excerpt.answer.generation,undefined);
  assert.equal(excerpt.decks.length,6);
  assert.deepEqual(calls.splice(0),['hf-draft','groq-draft']);
@@ -191,12 +200,22 @@ test('General search uses the backup and withholds a draft if its review fails',
  const accepted=await (await call(input,config)).json();
  assert.equal(accepted.status,'generated');
  assert.equal(accepted.protocol,'groq-cited-v1');
+ assert.deepEqual(accepted.modelFallback,{phase:'generation',primaryModel:DEEPSEEK_MODELS.general,fallbackModel:'openai/gpt-oss-120b',reason:'network_error'});
  assert.equal(accepted.answer.generation.model,'openai/gpt-oss-120b');
  assert.deepEqual(accepted.decks,[]);
  reviewUnavailable=true;
  const unavailable=await (await call(input,config)).json();
  assert.equal(unavailable.protocol,'source-excerpts-v1');
+ assert.deepEqual(unavailable.modelFallback,accepted.modelFallback);
  assert.equal(unavailable.answer.generation,undefined);
+ reviewUnavailable=false;
+ const missingPrimary={...config,HF_TOKEN:''};
+ assert.equal(modelStatus(missingPrimary).general.primaryConfigured,false);
+ assert.equal(modelStatus(missingPrimary).general.configured,true);
+ assert.equal(modelStatus(config).general.primaryConfigured,true);
+ const backupOnly=await (await call(input,missingPrimary)).json();
+ assert.equal(backupOnly.status,'generated');
+ assert.equal(backupOnly.modelFallback.reason,'primary_unconfigured');
 });
 
 test('Buddy sends the chosen model to the API and uses it for generation and citation review',async t=>{
@@ -219,6 +238,7 @@ test('Buddy sends the chosen model to the API and uses it for generation and cit
   assert.equal(r.status,'generated');
   assert.equal(r.answer.generation.model,model);
   assert.equal(r.reviewModel,model);
+  assert.equal(r.modelFallback,undefined);
   assert.deepEqual(calls.splice(0),[[url,model,false],[url,model,true]]);
  }
  const search=await call({...input,buddyModel:'groq'},cfg);

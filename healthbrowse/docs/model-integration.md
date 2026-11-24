@@ -55,9 +55,13 @@ The source tier identifies where the record comes from. Study design, eligibilit
 
 Run `npm test` and `npm run build` with Node 24. The automated model-routing and literature-agent tests use controlled provider and source responses. To confirm a deployed credential can perform inference, complete these checks with a signed-in test account.
 
-1. Open `GET /api/ai/status` to check the selected provider, configured routes and model IDs. This endpoint reads configuration.
+1. Open `GET /api/ai/status` to check the selected provider, configured routes and model IDs. Under the DeepSeek profile, `primaryConfigured` checks the role's DeepSeek model setting and the presence of `HF_TOKEN`. A role can still have `configured: true` when only its backup is configured.
 2. Submit one public educational question in each role. Check the actual answer response for the requested checkpoint, `deepseek-cited-v1` and supported citations. A `source-excerpts-v1` response indicates source fallback.
 3. Inspect a packet and open a cited publication. Compare the finding with the source and look for any planner fallback in `evidence_gaps`. Ask a Buddy follow-up and check that the displayed evidence belongs to the current question.
+
+For a DeepSeek-only check from a local checkout, run `npm run qa:bot -- --case=leukemia-overview --limit=2` from `healthbrowse/` with `MODEL_PROVIDER=deepseek` and your `HF_TOKEN` in the process environment. This sends one public example through each reading mode with the backup disabled. Inspect `records[].result` in `qa-results/report.json` for `status: "generated"`, `protocol: "deepseek-cited-v1"` and the expected model for each role.
+
+For production, open the browser's Network panel, submit a fresh search and select the `answer` request. When the Worker switches providers, its response includes `modelFallback` and it emits an `ai_model_fallback` log event. Both identify the phase (`generation` or `support_review`), the primary and backup models, and the reason. For `upstream_http`, check `httpStatus` against the Hugging Face account (401/403 for access, 402 for credits, 429 for rate limits) or the model's availability. A `timeout` means the primary exceeded its 35-second attempt budget or the upstream call reported a timeout. A `network_error` indicates a transport failure. For `primary_unconfigured`, check the runtime secret and role model setting. `reviewModel` identifies the support reviewer independently of the generator.
 
 ## Research lab and legacy deployments
 
