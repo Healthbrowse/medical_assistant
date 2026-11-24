@@ -22,6 +22,20 @@ The most recent year is the test split and the preceding year is validation. Mod
 
 The checked-in [baseline snapshot](benchmark-snapshot.json) predates the year-boundary fix and records the source version, split hashes, class supports and CPU baseline results. It contains no large-model scores.
 
+## Corrected DeepSeek 8B validation run
+
+Import [the corrected notebook](HealthBrowse_DeepSeek_8B_Corrected_Kaggle.ipynb) into Kaggle with Internet and a T4 GPU. It restores the two checksummed splits, trains for one class-weighted LoRA epoch on 4,096 records from 2022–2024 and compares all methods on the same 256 records from 2025. At 32 records per optimizer step, the run completed 128 steps.
+
+| Method | Macro F1 | Positive records detected out of 32 | False alarms among 224 zero-count records |
+| --- | ---: | ---: | ---: |
+| Carry-forward | 0.7094 | 28 | 6 |
+| DeepSeek 8B adapter | 0.5534 | 28 | 13 |
+| TF–IDF logistic regression | 0.4478 | 29 | 48 |
+
+Carry-forward uses the previous reporting week’s count band for the same disease and area. For scoring, a missing prior count defaults to zero. Both leading methods detected the same 28 positive records. The adapter correctly identified all 14 high-band records and two of five medium-band records. Carry-forward identified 11 high-band and four medium-band records. We retained carry-forward as the research benchmark and paused larger GPU runs. [Validation metrics](results/deepseek-8b-corrected/validation_metrics.json) · [Paired predictions](results/deepseek-8b-corrected/validation_predictions.csv)
+
+A separate frozen CPU comparison examined 327,707 eligible disease-area records in 2026 reporting weeks 5–45. Only 84 lacked a usable previous count. Using logistic regression for those gaps detected one additional positive record and produced six additional false alarms. [Evaluation protocol](results/carry-forward-fallback-protocol.json) · [Results](results/carry-forward-fallback-2026.json)
+
 ## Run on a CUDA host
 
 From this directory, install CUDA-compatible PyTorch plus the training dependencies pinned in the notebook. The data stage also uses pandas and scikit-learn. The optional `SOCRATA_APP_TOKEN` is read from the training process environment and sent to CDC in a request header. The GPU training stage reads only the prepared dataset.

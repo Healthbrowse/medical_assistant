@@ -1,0 +1,21 @@
+{
+  "bands": {
+    "high": ">10",
+    "low": "1-2",
+    "medium": "3-10",
+    "no_reported_cases": "0"
+  },
+  "comparator": "Same carry-forward rule with no_reported_cases for missing history.",
+  "estimator_sha256": "1b3b7d65aed0ebbd8f69271af012869f292157190425a9a20ab5086086f5527e",
+  "holdout": "All eligible 2026 disease-area rows in published MMWR weeks >=5; week 4 provides lag context only. Use exact adjacent calendar week. Exclude conflicting or unscorable disease-area-week counts.",
+  "policy": "Carry forward a valid count from exactly the previous week in the same area and disease. When absent use the frozen four-way class-balanced logistic argmax.",
+  "primary": "Additional true positives and false alarms on naturally missing previous counts; also report four-band macro F1 and exact positive band.",
+  "prior_rule": "Published count with blank or dash flag; numeric count takes precedence, a dash without a number denotes no reported cases. For both labels and lags exclude unresolved flags and missing counts without a dash.",
+  "scikit_learn": "1.8.0",
+  "scoring_code_sha256": "bd0cc2c649b6c19a5d67a6802f322339e0c1aed66a92242f8ef4727667ced7bc",
+  "seed": 42,
+  "source_rows_updated_at": 1795030065,
+  "train_sha256": "1554aabb7c187e66c533feb92453fc590cfa6665099eb8872c43058c3cb09f29",
+  "training": "Original 4096 rows from weeks 1-4 in 2022\u20132024",
+  "validation_sha256": "dee8199ab939e62f91d5c8f628c5e03265478ba36563718ff458170a61fd5b12"
+}

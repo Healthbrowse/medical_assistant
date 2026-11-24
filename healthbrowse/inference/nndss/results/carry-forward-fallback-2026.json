@@ -1,0 +1,319 @@
+{
+  "all": {
+    "carry_forward": {
+      "accuracy": 0.9252197847467403,
+      "confusion_matrix": [
+        [
+          280920,
+          7027,
+          1136,
+          432
+        ],
+        [
+          7058,
+          4383,
+          2121,
+          154
+        ],
+        [
+          1190,
+          2108,
+          5473,
+          1329
+        ],
+        [
+          467,
+          142,
+          1342,
+          12425
+        ]
+      ],
+      "correct": 303201,
+      "exact_positive_band": 22281,
+      "false_alarms": 8595,
+      "macro_f1": 0.6745808564745099,
+      "negatives": 289515,
+      "per_class_f1": {
+        "high": 0.8653712216186098,
+        "low": 0.3202074810052601,
+        "medium": 0.5426333531627999,
+        "no_reported_cases": 0.9701113701113702
+      },
+      "positive_detected": 29477,
+      "positives": 38192,
+      "rows": 327707
+    },
+    "hybrid": {
+      "accuracy": 0.9252014757084835,
+      "confusion_matrix": [
+        [
+          280914,
+          7027,
+          1138,
+          436
+        ],
+        [
+          7057,
+          4383,
+          2121,
+          155
+        ],
+        [
+          1190,
+          2108,
+          5473,
+          1329
+        ],
+        [
+          467,
+          142,
+          1342,
+          12425
+        ]
+      ],
+      "correct": 303195,
+      "exact_positive_band": 22281,
+      "false_alarms": 8601,
+      "macro_f1": 0.6745274961432043,
+      "negatives": 289515,
+      "per_class_f1": {
+        "high": 0.8652205703144041,
+        "low": 0.3202074810052601,
+        "medium": 0.5425795578467334,
+        "no_reported_cases": 0.9701023754064195
+      },
+      "positive_detected": 29478,
+      "positives": 38192,
+      "rows": 327707
+    }
+  },
+  "cohort": {
+    "known_history": 327623,
+    "later_conflicting_keys_excluded": 0,
+    "later_eligible_rows": 327707,
+    "later_flag_or_value_exclusions": 16693,
+    "later_raw_rows": 344400,
+    "missing_history": 84,
+    "source_week4_context_rows": 8400,
+    "weeks_scored": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45
+    ],
+    "year": 2026
+  },
+  "known": {
+    "carry_forward": {
+      "accuracy": 0.9252128208337022,
+      "confusion_matrix": [
+        [
+          280840,
+          7027,
+          1136,
+          432
+        ],
+        [
+          7054,
+          4383,
+          2121,
+          154
+        ],
+        [
+          1190,
+          2108,
+          5473,
+          1329
+        ],
+        [
+          467,
+          142,
+          1342,
+          12425
+        ]
+      ],
+      "correct": 303121,
+      "exact_positive_band": 22281,
+      "false_alarms": 8595,
+      "macro_f1": 0.674592165473736,
+      "negatives": 289435,
+      "per_class_f1": {
+        "high": 0.8653712216186098,
+        "low": 0.32025427444103466,
+        "medium": 0.5426333531627999,
+        "no_reported_cases": 0.9701098126724998
+      },
+      "positive_detected": 29477,
+      "positives": 38188,
+      "rows": 327623
+    },
+    "hybrid": {
+      "accuracy": 0.9252128208337022,
+      "confusion_matrix": [
+        [
+          280840,
+          7027,
+          1136,
+          432
+        ],
+        [
+          7054,
+          4383,
+          2121,
+          154
+        ],
+        [
+          1190,
+          2108,
+          5473,
+          1329
+        ],
+        [
+          467,
+          142,
+          1342,
+          12425
+        ]
+      ],
+      "correct": 303121,
+      "exact_positive_band": 22281,
+      "false_alarms": 8595,
+      "macro_f1": 0.674592165473736,
+      "negatives": 289435,
+      "per_class_f1": {
+        "high": 0.8653712216186098,
+        "low": 0.32025427444103466,
+        "medium": 0.5426333531627999,
+        "no_reported_cases": 0.9701098126724998
+      },
+      "positive_detected": 29477,
+      "positives": 38188,
+      "rows": 327623
+    }
+  },
+  "missing": {
+    "carry_forward": {
+      "accuracy": 0.9523809523809523,
+      "confusion_matrix": [
+        [
+          80,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "correct": 80,
+      "exact_positive_band": 0,
+      "false_alarms": 0,
+      "macro_f1": 0.24390243902439024,
+      "negatives": 80,
+      "per_class_f1": {
+        "high": 0.0,
+        "low": 0.0,
+        "medium": 0.0,
+        "no_reported_cases": 0.975609756097561
+      },
+      "positive_detected": 0,
+      "positives": 4,
+      "rows": 84
+    },
+    "hybrid": {
+      "accuracy": 0.8809523809523809,
+      "confusion_matrix": [
+        [
+          74,
+          0,
+          2,
+          4
+        ],
+        [
+          3,
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "correct": 74,
+      "exact_positive_band": 0,
+      "false_alarms": 6,
+      "macro_f1": 0.2356687898089172,
+      "negatives": 80,
+      "per_class_f1": {
+        "high": 0.0,
+        "low": 0.0,
+        "medium": 0.0,
+        "no_reported_cases": 0.9426751592356688
+      },
+      "positive_detected": 1,
+      "positives": 4,
+      "rows": 84
+    }
+  }
+}

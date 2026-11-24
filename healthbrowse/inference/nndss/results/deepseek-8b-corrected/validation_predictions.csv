@@ -1,0 +1,257 @@
+text,actual,deepseek_adapter,logistic_regression,carry_forward
+Disease: shigellosis. Reporting area: massachusetts. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 3.,medium,medium,medium,medium
+Disease: shiga toxin-producing escherichia coli (stec). Reporting area: florida. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 6.,high,high,medium,medium
+Disease: hemolytic uremic syndrome post-diarrheal. Reporting area: guam. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: meningococcal disease, other serogroups. Reporting area: u.s. territories. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: rubella. Reporting area: minnesota. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, perinatal, confirmed. Reporting area: arizona. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: candida auris, screening. Reporting area: delaware. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: viral hemorrhagic fevers, machupo virus. Reporting area: west north central. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: dengue virus infections, severe dengue. Reporting area: georgia. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: brucellosis. Reporting area: delaware. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis b, perinatal, confirmed. Reporting area: new england. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: vancomycin-resistant staphylococcus aureus. Reporting area: guam. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: coccidioidomycosis, confirmed. Reporting area: east south central. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: poliovirus infection, nonparalytic. Reporting area: middle atlantic. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,high,no_reported_cases
+Disease: psittacosis. Reporting area: middle atlantic. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,high,no_reported_cases
+"Disease: q fever, acute. Reporting area: arizona. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, marburg virus. Reporting area: kentucky. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: arboviral diseases, west nile virus disease. Reporting area: east north central. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: listeriosis, confirmed. Reporting area: vermont. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: campylobacteriosis. Reporting area: rhode island. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,medium,no_reported_cases
+Disease: shiga toxin-producing escherichia coli (stec). Reporting area: texas. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: listeriosis, confirmed. Reporting area: east south central. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: dengue virus infections, dengue. Reporting area: illinois. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: varicella disease. Reporting area: new mexico. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: shigellosis. Reporting area: oregon. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 5.,medium,high,medium,medium
+"Disease: invasive pneumococcal disease, all ages, probable. Reporting area: new mexico. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: listeriosis, confirmed. Reporting area: new york. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: coccidioidomycosis, probable. Reporting area: south atlantic. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+Disease: vancomycin-resistant staphylococcus aureus. Reporting area: iowa. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis a, confirmed. Reporting area: oregon. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,medium,no_reported_cases
+"Disease: viral hemorrhagic fevers, lassa virus. Reporting area: vermont. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: cyclosporiasis. Reporting area: washington. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: cronobacter invasive infection, infants, confirmed. Reporting area: oregon. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis b, chronic, probable. Reporting area: minnesota. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: salmonellosis (excluding salmonella typhi infection and salmonella paratyphi infection). Reporting area: nevada. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 1.,no_reported_cases,medium,medium,low
+Disease: hemolytic uremic syndrome post-diarrheal. Reporting area: montana. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: salmonellaparatyphi infection. Reporting area: west north central. MMWR year: 2025. MMWR week: 1. Previous week reported cases: unknown.,no_reported_cases,low,no_reported_cases,no_reported_cases
+"Disease: meningococcal disease, serogroups acwy. Reporting area: arkansas. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: legionellosis. Reporting area: texas. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,low,no_reported_cases
+Disease: toxic shock syndrome (other than streptococcal). Reporting area: georgia. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: rubella, congenital syndrome. Reporting area: new york. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: arboviral diseases, powassan virus disease. Reporting area: colorado. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: carbapenemase-producing organisms (cpo), total. Reporting area: kansas. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: poliomyelitis, paralytic. Reporting area: delaware. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: novel influenza a virus infections, confirmed. Reporting area: south dakota. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: vibriosis (any species of the family vibrionaceae, other than toxigenic vibrio cholerae o1 or o139), probable. Reporting area: missouri. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: meningococcal disease, unknown serogroup. Reporting area: california. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: viral hemorrhagic fevers, rift valley fever virus. Reporting area: kentucky. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: severe acute respiratory syndrome-associated coronavirus disease. Reporting area: texas. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: coccidioidomycosis, confirmed. Reporting area: arizona. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 284.",high,high,high,high
+"Disease: hepatitis b, chronic, confirmed. Reporting area: washington. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,high,no_reported_cases
+Disease: yellow fever. Reporting area: montana. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: salmonellaparatyphi infection. Reporting area: mountain. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,medium,no_reported_cases
+Disease: cyclosporiasis. Reporting area: florida. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 1.,low,low,no_reported_cases,low
+Disease: shigellosis. Reporting area: delaware. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 1.,medium,low,low,low
+Disease: shiga toxin-producing escherichia coli (stec). Reporting area: maine. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: syphilis, primary and secondary. Reporting area: american samoa. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,high,no_reported_cases
+Disease: gonorrhea. Reporting area: louisiana. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 75.,high,high,high,high
+Disease: pertussis. Reporting area: missouri. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 8.,medium,high,low,medium
+"Disease: haemophilus influenzae, invasive disease, all ages, all serotypes. Reporting area: texas. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 2.",low,medium,low,low
+"Disease: hepatitis b, perinatal, confirmed. Reporting area: ohio. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, marburg virus. Reporting area: virginia. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: cryptosporidiosis. Reporting area: massachusetts. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 3.,medium,medium,medium,medium
+"Disease: viral hemorrhagic fevers, lujo virus. Reporting area: mississippi. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: cryptosporidiosis. Reporting area: west north central. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 3.,low,medium,low,medium
+Disease: malaria. Reporting area: u.s. virgin islands. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: syphilis, primary and secondary. Reporting area: mississippi. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: botulism, infant. Reporting area: total. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 1.",no_reported_cases,low,low,low
+Disease: legionellosis. Reporting area: texas. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: measles, imported. Reporting area: minnesota. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, acute, probable. Reporting area: north dakota. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: salmonellosis (excluding salmonella typhi infection and salmonella paratyphi infection). Reporting area: indiana. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 2.,low,medium,medium,low
+"Disease: measles, indigenous. Reporting area: new mexico. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, acute, probable. Reporting area: commonwealth of northern mariana islands. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis b, acute, confirmed. Reporting area: florida. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",low,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, marburg virus. Reporting area: kansas. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: rubella, congenital syndrome. Reporting area: north carolina. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, guanarito virus. Reporting area: texas. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: chancroid. Reporting area: alabama. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: cronobacter invasive infection, infants, confirmed. Reporting area: arizona. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+Disease: campylobacteriosis. Reporting area: idaho. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 8.,no_reported_cases,high,medium,medium
+"Disease: arboviral diseases, powassan virus disease. Reporting area: new jersey. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: gonorrhea. Reporting area: north dakota. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 2.,no_reported_cases,high,high,low
+"Disease: syphilis, primary and secondary. Reporting area: minnesota. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: arboviral diseases, powassan virus disease. Reporting area: vermont. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: legionellosis. Reporting area: u.s. residents. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 55.,high,high,low,high
+"Disease: viral hemorrhagic fevers, lassa virus. Reporting area: hawaii. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: arboviral diseases, la crosse  virus disease. Reporting area: north dakota. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: hantavirus pulmonary syndrome. Reporting area: iowa. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: meningococcal disease, other serogroups. Reporting area: non-u.s. residents. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: tularemia. Reporting area: u.s. virgin islands. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: meningococcal disease, serogroup b. Reporting area: ohio. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: invasive pneumococcal disease, age <5 years, confirmed. Reporting area: kentucky. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: arboviral diseases, chikungunya virus disease. Reporting area: kentucky. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: dengue virus infections, dengue. Reporting area: middle atlantic. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: smallpox. Reporting area: district of columbia. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis b, chronic, probable. Reporting area: maryland. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 14.",high,high,high,high
+"Disease: hepatitis b, perinatal, confirmed. Reporting area: east north central. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: haemophilus influenzae, invasive disease, age <5 years, non-b serotype. Reporting area: mississippi. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: invasive pneumococcal disease, all ages, confirmed. Reporting area: ohio. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 35.",high,high,high,high
+"Disease: poliomyelitis, paralytic. Reporting area: georgia. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: hantavirus pulmonary syndrome. Reporting area: delaware. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: dengue virus infections, dengue. Reporting area: west south central. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: invasive pneumococcal disease, all ages, confirmed. Reporting area: missouri. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 8.",high,high,high,medium
+Disease: hemolytic uremic syndrome post-diarrheal. Reporting area: west south central. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: dengue virus infections, dengue-like illness. Reporting area: louisiana. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: zika virus disease, non-congenital. Reporting area: nevada. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, chronic, confirmed. Reporting area: florida. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 18.",high,high,high,high
+"Disease: dengue virus infections, severe dengue. Reporting area: north carolina. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, acute, confirmed. Reporting area: minnesota. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: invasive pneumococcal disease, age <5 years, confirmed. Reporting area: north dakota. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: haemophilus influenzae, invasive disease, age <5 years, nontypeable. Reporting area: north dakota. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: candida auris, clinical. Reporting area: u.s. virgin islands. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: cronobacter invasive infection, infants, confirmed. Reporting area: indiana. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: botulism, foodborne. Reporting area: west virginia. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, crimean-congo hemorrhagic fever virus. Reporting area: new york. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, perinatal, confirmed. Reporting area: west virginia. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: botulism, infant. Reporting area: new jersey. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, chapare virus. Reporting area: utah. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, chronic, probable. Reporting area: rhode island. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis b, acute, probable. Reporting area: oklahoma. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: coccidioidomycosis, probable. Reporting area: rhode island. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, marburg virus. Reporting area: west south central. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: psittacosis. Reporting area: washington. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, sabia virus. Reporting area: colorado. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: vancomycin-resistant staphylococcus aureus. Reporting area: kentucky. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, lassa virus. Reporting area: delaware. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: salmonellosis (excluding salmonella typhi infection and salmonella paratyphi infection). Reporting area: commonwealth of northern mariana islands. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,medium,no_reported_cases
+Disease: shiga toxin-producing escherichia coli (stec). Reporting area: new mexico. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: haemophilus influenzae, invasive disease, age <5 years, unknown serotype. Reporting area: pacific. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 1.",low,low,low,low
+"Disease: hepatitis a, confirmed. Reporting area: nebraska. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+Disease: tetanus. Reporting area: rhode island. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: q fever, acute. Reporting area: maryland. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: dengue virus infections, dengue-like illness. Reporting area: total. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,low,no_reported_cases,no_reported_cases
+Disease: gonorrhea. Reporting area: north dakota. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 1.,low,high,high,low
+"Disease: meningococcal disease, other serogroups. Reporting area: california. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",low,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, acute, probable. Reporting area: texas. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, ebola virus. Reporting area: west north central. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: measles, indigenous. Reporting area: north carolina. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, acute, confirmed. Reporting area: indiana. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: hepatitis c, perinatal, confirmed. Reporting area: montana. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: rubella, congenital syndrome. Reporting area: indiana. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: syphilis, primary and secondary. Reporting area: puerto rico. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,low,high,no_reported_cases
+"Disease: haemophilus influenzae, invasive disease, all ages, all serotypes. Reporting area: virginia. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 3.",low,medium,medium,medium
+"Disease: novel influenza a virus infections, probable. Reporting area: iowa. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: gonorrhea. Reporting area: puerto rico. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,high,high,no_reported_cases
+Disease: cryptosporidiosis. Reporting area: u.s. residents. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 73.,high,high,medium,high
+"Disease: arboviral diseases, st. louis encephalitis virus disease. Reporting area: mountain. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: gonorrhea. Reporting area: pacific. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 740.,high,high,high,high
+"Disease: haemophilus influenzae, invasive disease, all ages, all serotypes. Reporting area: michigan. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 1.",no_reported_cases,low,low,low
+Disease: malaria. Reporting area: minnesota. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: q fever, acute. Reporting area: nebraska. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: psittacosis. Reporting area: commonwealth of northern mariana islands. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: giardiasis. Reporting area: alaska. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 1.,low,medium,medium,low
+"Disease: cronobacter invasive infection, infants, confirmed. Reporting area: west virginia. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: botulism, foodborne. Reporting area: u.s. residents. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: hemolytic uremic syndrome post-diarrheal. Reporting area: new york city. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, acute, probable. Reporting area: new mexico. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: haemophilus influenzae, invasive disease, all ages, all serotypes. Reporting area: kansas. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,high,no_reported_cases
+Disease: varicella disease. Reporting area: florida. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,high,no_reported_cases
+"Disease: hepatitis c, chronic, confirmed. Reporting area: u.s. virgin islands. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: gonorrhea. Reporting area: illinois. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,high,high,no_reported_cases
+Disease: leprosy (hansen's disease). Reporting area: connecticut. MMWR year: 2025. MMWR week: 1. Previous week reported cases: unknown.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: hantavirus pulmonary syndrome. Reporting area: district of columbia. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: arboviral diseases, la crosse  virus disease. Reporting area: new york. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis b, perinatal, confirmed. Reporting area: north carolina. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, perinatal, confirmed. Reporting area: u.s. residents. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,low,no_reported_cases,no_reported_cases
+"Disease: arboviral diseases, west nile virus disease. Reporting area: non-u.s. residents. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: candida auris, clinical. Reporting area: missouri. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: tularemia. Reporting area: tennessee. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: leprosy (hansen's disease). Reporting area: south dakota. MMWR year: 2025. MMWR week: 1. Previous week reported cases: unknown.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: poliomyelitis, paralytic. Reporting area: puerto rico. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, junin virus. Reporting area: new hampshire. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: mpox. Reporting area: hawaii. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: psittacosis. Reporting area: vermont. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis b, acute, confirmed. Reporting area: pacific. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: viral hemorrhagic fevers, crimean-congo hemorrhagic fever virus. Reporting area: nebraska. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: rubella. Reporting area: commonwealth of northern mariana islands. MMWR year: 2025. MMWR week: 1. Previous week reported cases: unknown.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: haemophilus influenzae, invasive disease, age <5 years, serotype b. Reporting area: maine. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis b, perinatal, confirmed. Reporting area: south dakota. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: novel influenza a virus infections, confirmed. Reporting area: pennsylvania. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: malaria. Reporting area: florida. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,low,no_reported_cases,high,no_reported_cases
+"Disease: viral hemorrhagic fevers, lujo virus. Reporting area: new mexico. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: arboviral diseases, la crosse  virus disease. Reporting area: mountain. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: haemophilus influenzae, invasive disease, age <5 years, non-b serotype. Reporting area: utah. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: trichinellosis. Reporting area: colorado. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis c, perinatal, confirmed. Reporting area: minnesota. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: salmonella typhi infection. Reporting area: u.s. residents. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 4.,low,medium,low,medium
+Disease: yellow fever. Reporting area: ohio. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, guanarito virus. Reporting area: colorado. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: listeriosis, probable. Reporting area: guam. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: psittacosis. Reporting area: kentucky. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: dengue virus infections, severe dengue. Reporting area: wyoming. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: dengue virus infections, dengue. Reporting area: north dakota. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, sabia virus. Reporting area: new york. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: candida auris, screening. Reporting area: new england. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: candida auris, clinical. Reporting area: new hampshire. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,medium,no_reported_cases
+"Disease: cronobacter invasive infection, infants, probable. Reporting area: u.s. virgin islands. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: haemophilus influenzae, invasive disease, age <5 years, unknown serotype. Reporting area: new york. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 1.",no_reported_cases,low,medium,low
+Disease: cryptosporidiosis. Reporting area: minnesota. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: syphilis, congenital. Reporting area: new york city. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,low,no_reported_cases,no_reported_cases
+"Disease: poliomyelitis, paralytic. Reporting area: virginia. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: leptospirosis. Reporting area: indiana. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: syphilis, congenital. Reporting area: non-u.s. residents. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: rubella, congenital syndrome. Reporting area: commonwealth of northern mariana islands. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis b, chronic, probable. Reporting area: indiana. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,medium,no_reported_cases
+Disease: psittacosis. Reporting area: michigan. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: haemophilus influenzae, invasive disease, age <5 years, non-b serotype. Reporting area: east north central. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: meningococcal disease, serogroup b. Reporting area: south carolina. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, chapare virus. Reporting area: vermont. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: measles, imported. Reporting area: utah. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: tularemia. Reporting area: michigan. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: viral hemorrhagic fevers, guanarito virus. Reporting area: washington. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: cronobacter invasive infection, infants, confirmed. Reporting area: east north central. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: hepatitis c, acute, probable. Reporting area: new mexico. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+Disease: brucellosis. Reporting area: idaho. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: haemophilus influenzae, invasive disease, age <5 years, non-b serotype. Reporting area: commonwealth of northern mariana islands. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: shiga toxin-producing escherichia coli (stec). Reporting area: total. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 76.,high,high,medium,high
+"Disease: dengue virus infections, dengue-like illness. Reporting area: arizona. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: hepatitis b, chronic, probable. Reporting area: colorado. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,medium,no_reported_cases
+"Disease: vibriosis (any species of the family vibrionaceae, other than toxigenic vibrio cholerae o1 or o139), probable. Reporting area: kentucky. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: chlamydia trachomatis infection. Reporting area: oklahoma. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 57.,high,high,high,high
+Disease: varicella disease. Reporting area: indiana. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: severe acute respiratory syndrome-associated coronavirus disease. Reporting area: georgia. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: rubella, congenital syndrome. Reporting area: indiana. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: meningococcal disease, other serogroups. Reporting area: new england. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: cronobacter invasive infection, infants, confirmed. Reporting area: indiana. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: q fever, total. Reporting area: wisconsin. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+"Disease: arboviral diseases, st. louis encephalitis virus disease. Reporting area: district of columbia. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: invasive pneumococcal disease, all ages, probable. Reporting area: mountain. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",low,no_reported_cases,medium,no_reported_cases
+"Disease: hepatitis c, chronic, probable. Reporting area: florida. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 91.",high,high,high,high
+"Disease: listeriosis, confirmed. Reporting area: guam. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: meningococcal disease, other serogroups. Reporting area: mississippi. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: listeriosis, confirmed. Reporting area: montana. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: cronobacter invasive infection, infants, probable. Reporting area: alabama. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: haemophilus influenzae, invasive disease, age <5 years, serotype b. Reporting area: connecticut. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: q fever, chronic. Reporting area: texas. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: arboviral diseases, jamestown canyon  virus disease. Reporting area: east south central. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: tularemia. Reporting area: washington. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: candida auris, screening. Reporting area: mississippi. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: brucellosis. Reporting area: kansas. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: cyclosporiasis. Reporting area: new england. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: shiga toxin-producing escherichia coli (stec). Reporting area: california. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 6.,high,high,low,medium
+Disease: tularemia. Reporting area: massachusetts. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: meningococcal disease, unknown serogroup. Reporting area: california. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,low,no_reported_cases
+Disease: tularemia. Reporting area: guam. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: meningococcal disease, unknown serogroup. Reporting area: north dakota. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: trichinellosis. Reporting area: arizona. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: chancroid. Reporting area: middle atlantic. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: listeriosis, confirmed. Reporting area: pennsylvania. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: dengue virus infections, dengue. Reporting area: american samoa. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: vancomycin-resistant staphylococcus aureus. Reporting area: new hampshire. MMWR year: 2025. MMWR week: 2. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: viral hemorrhagic fevers, sabia virus. Reporting area: massachusetts. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+Disease: rubella. Reporting area: new england. MMWR year: 2025. MMWR week: 4. Previous week reported cases: 0.,no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: listeriosis, confirmed. Reporting area: illinois. MMWR year: 2025. MMWR week: 3. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
+"Disease: arboviral diseases, powassan virus disease. Reporting area: minnesota. MMWR year: 2025. MMWR week: 1. Previous week reported cases: 0.",no_reported_cases,no_reported_cases,no_reported_cases,no_reported_cases
