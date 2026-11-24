@@ -37,7 +37,6 @@
 #buddyDialog .buddy-questions{gap:10px;margin:18px 0}
 #buddyDialog .buddy-questions button{padding:14px;background:var(--surface);font:500 14px/1.6 system-ui;border-radius:14px}
 #buddyDialog .buddy-questions button:hover{background:var(--panel)}
-#buddyDialog .buddy-question-number{padding-top:2px}
 #buddyDialog .buddy-research{margin:22px 0}
 #buddyDialog .buddy-research>summary{min-height:44px;padding-block:8px}
 #buddyDialog .copilot-actions{display:flex;flex-direction:column;align-items:stretch;margin:20px 0 0;padding-top:18px;border-top:1px solid var(--line);gap:10px}
