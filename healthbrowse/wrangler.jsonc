@@ -14,5 +14,17 @@
       "database_name": "healthbrowse-db",
       "database_id": "7a93c3e9-2b79-4009-80b1-418e0350bcf1"
     }
-  ]
+  ],
+
+  "previews": {
+    "vars": { "MODEL_PROVIDER": "workers-ai" },
+    "ai": { "binding": "AI" },
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "healthbrowse-preview",
+        "database_id": "9ef3126c-c6fe-4571-ae39-78136741b970"
+      }
+    ]
+  }
 }
