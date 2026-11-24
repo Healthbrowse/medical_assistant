@@ -3,6 +3,7 @@ import {classifyResponseMode,screenGeneralQuery} from './response-mode.js';
 import {educationalSubject,clarifyQuery,renderClarification,retrievalTerms,studyFollowUp} from './query-understanding.js';
 import {setupAttachments,clearAttachments} from './attachments.js';
 import {researchResources} from './research-resources.js';
+import {publicConfig} from './account-client.js';
 import {setupMobileWorkspace} from './mobile-workspace.js';
 import {notifySafety} from './safety-notification.js';
 import {personalDiagnosisNotice} from './safety-policy.js';
@@ -108,7 +109,7 @@ function switchPrompt(container,input,target,continueSearch){
   prompt.append(button('Switch topic',()=>{container.replaceChildren();continueSearch()}),button('Stay on '+topic,()=>{container.replaceChildren();$('notice').textContent='Continuing with '+topic+'.'}));container.append(prompt);prompt.scrollIntoView({block:'nearest'});
 }
 const buddy=setupBuddy(currentContext);
-const mobile=setupMobileWorkspace({buddy,verify:openVerification});
+const mobile=setupMobileWorkspace({buddy,verify:openVerification,buddyModels:publicConfig?.buddyModels});
 setupAttachments();
 const resourceGuide=el('details',undefined,'source-directory research-resource-guide');resourceGuide.append(el('summary','Research sources & dataset guide'),el('p','Live evidence, research datasets and model candidates have different purposes. Reviewed 17 November 2026.'));
 for(const r of researchResources){const row=el('section');row.append(el('strong',r.status));reference(row,r.name,r.url);row.append(el('p',r.use));resourceGuide.append(row)}
@@ -194,6 +195,7 @@ function renderCodes(body){
   box.append(el('p',codes?.snomedStatus||'SNOMED CT lookup requires licensed terminology access.','meta'));body.append(box);
 }
 function render(){
+  mobile.setModelRole(roles[role]);
   for(const input of $('readingMode').querySelectorAll('input'))input.checked=input.value===roles[role];
   $('deskTitle').textContent='HealthBrowse research desk';$('deskIntro').textContent='Search medical topics, research, and enterprise documentation.';
   $('roleHint').textContent=readingProfile(role).guide;

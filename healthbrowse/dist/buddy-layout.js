@@ -7,7 +7,7 @@ function shouldSendBuddyKey(event){
  return event.key==='Enter' && !event.shiftKey && !event.isComposing && event.keyCode!==229;
 }
 export function resizeBuddyInput(input){input.style.height='auto';input.style.height=Math.max(48,Math.min(144,input.scrollHeight||48))+'px';input.style.overflowY=input.scrollHeight>144?'auto':'hidden'}
-export function setupBuddyLayout(){
+export function setupBuddyLayout(modelNames){
  const dialog=$('buddyDialog'),panel=$('copilot'),inner=panel.querySelector('.copilot-inner'),head=panel.querySelector('.copilot-head');
  const avatar=Object.assign(el('img','','buddy-header-avatar'),{src:'/buddy-avatar.svg',alt:'',width:42,height:42});
  const identity=el('div','','buddy-identity');identity.append(head.querySelector('.eyebrow'),$('copilot-heading'),$('copilotScope'));head.prepend(avatar,identity);$('copilot-heading').textContent='Buddy';
@@ -31,11 +31,25 @@ export function setupBuddyLayout(){
  });
  const footer=el('div','','buddy-composer-footer'),hint=el('span','Enter to send · Shift + Enter for a new line','buddy-key-hint');footer.append(hint);
  const actions=el('div','','buddy-composer-actions');
- const model=el('select');model.id='buddyModel';model.setAttribute('aria-label','Buddy model');model.title='Choose a model for Buddy';
- for(const [value,label] of [['deepseek','DeepSeek'],['groq','OpenGPT']]){
-  const option=el('option',label);option.value=value;model.append(option);
+ const picker=el('div','','buddy-model-picker'),shown=el('span');
+ shown.setAttribute('aria-hidden','true');
+ const model=el('select');model.id='buddyModel';model.setAttribute('aria-label','Buddy model');
+ const deepseek=el('option'),groq=el('option',modelNames?.groq||'GPT-OSS (model ID unavailable)');
+ deepseek.value='deepseek';groq.value='groq';
+ model.append(deepseek,groq);
+ function showSelection(){
+  shown.textContent=model.value==='groq'?groq.textContent:deepseek.textContent;
+  model.title=shown.textContent;
  }
- actions.append(model,voiceTools,send);form.append(actions);
+ function setModelRole(role){
+  const route=role==='Medical professional'?'professional':'general';
+  deepseek.textContent=modelNames?.[route]||'DeepSeek (model ID unavailable)';
+  showSelection();
+ }
+ setModelRole('General reader');
+ model.addEventListener('change',showSelection);
+ picker.append(shown,model);
+ actions.append(picker,voiceTools,send);form.append(actions);
  const progress=el('div','','buddy-progress');progress.append($('copilotHint'),$('buddyStop'));
  composer.append(consent,progress,form,footer);panel.append(composer);
  const greeting=el('section','','buddy-empty');const greetingTitle=el('h3','A little clarity, one question at a time.');greeting.append(Object.assign(el('img'),{src:'/buddy-avatar.svg',alt:'',width:64,height:64}),greetingTitle);
@@ -55,5 +69,5 @@ export function setupBuddyLayout(){
  dialog.addEventListener('buddy-verification',()=>showChat({focus:false}));
  input.addEventListener('input',()=>resizeBuddyInput(input));window.addEventListener('resize',()=>resizeBuddyInput(input));
  document.addEventListener('healthbrowse-chat-updated',event=>{greeting.hidden=event.detail.count>0;resizeBuddyInput(input)});
- return {composer,voiceTools,consent,safety,greeting:greetingText,more:panes.more,showChat};
+ return {composer,voiceTools,consent,safety,greeting:greetingText,more:panes.more,showChat,setModelRole};
 }

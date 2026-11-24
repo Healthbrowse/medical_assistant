@@ -11,7 +11,7 @@ const b=(text,action,cls='')=>{const x=n('button',text,cls);x.type='button';x.on
 const paths={home:'M3 10l9-7 9 7M5 9v12h5v-7h4v7h5V9',search:'M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',notes:'M5 3h14v18H5zM8 8h8M8 12h8M8 16h5',cards:'M5 5h15v16H5zM2 2h15',sources:'M3 5l8-2 10 2v15l-10-2-8 2zM11 3v15',evidence:'M4 4h16v16H4zM8 12l3 3 5-7',history:'M3 11a9 9 0 1 1 2 7M3 4v7h7M12 7v6l4 2',saved:'M6 3h12v18l-6-4-6 4z',account:'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M4 21v-2a8 8 0 0 1 16 0v2'};
 function icon(name){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');const p=document.createElementNS(svg.namespaceURI,'path');p.setAttribute('d',paths[name]||paths.search);svg.append(p);return svg}
 function safeLink(ref,label){const href=citationURL(ref.url);if(!href)return null;const a=n('a',label||ref.title||'Open source');a.href=href;a.target='_blank';a.rel='noopener noreferrer';return a}
-export function setupMobileWorkspace({buddy,verify}){
+export function setupMobileWorkspace({buddy,verify,buddyModels}){
  let state={topic:'',role:'General reader',responses:[]},identity='';
  document.body.classList.add('mobile-ready');
  // Keep one search form in the main research panel at every viewport size.
@@ -51,7 +51,7 @@ export function setupMobileWorkspace({buddy,verify}){
   showReportSection('evidence');
  }}else location.assign('/account.html#'+({history:'chats',account:'profile'}[name]));}
  // Mobile and desktop share chat data, with a dedicated responsive conversation layout.
- const {composer,voiceTools,consent,safety,greeting,more,showChat}=setupBuddyLayout();
+ const {composer,voiceTools,consent,safety,greeting,more,showChat,setModelRole}=setupBuddyLayout(buddyModels);
  let voiceApproved=false;
  const dictation=createDictation({Recognition:window.SpeechRecognition||window.webkitSpeechRecognition,onText:text=>{const input=$('question');input.value=(input.value?input.value+' ':'')+text;input.value=input.value.slice(0,input.maxLength);input.dispatchEvent(new Event('input',{bubbles:true}));},onStatus:text=>voiceStatus.textContent=text,onState:listening=>{voiceButton.setAttribute('aria-pressed',String(listening));voiceButton.title=listening?'Stop dictation':'Dictate a question';voiceButton.setAttribute('aria-label',voiceButton.title)}});
  function startVoice(){consent.hidden=true;voiceApproved=true;dictation.start()}
@@ -70,7 +70,7 @@ export function setupMobileWorkspace({buddy,verify}){
  document.addEventListener('healthbrowse-safety-alert',()=>{feedback.textContent='Safety guidance is available in your response.';feedback.hidden=false;document.body.classList.add('safety-feedback');clearTimeout(warningTimer);warningTimer=setTimeout(()=>{feedback.hidden=true;document.body.classList.remove('safety-feedback')},3500);if(!matchMedia('(prefers-reduced-motion:reduce)').matches){try{navigator.vibrate?.(40)}catch{}}});
  function viewport(){const v=window.visualViewport;if(v&&v.scale!==1)return;document.documentElement.style.setProperty('--mobile-vh',(v?.height||window.innerHeight)+'px');document.documentElement.style.setProperty('--visual-top',(v?.offsetTop||0)+'px');document.body.classList.toggle('keyboard-open',!!v&&window.innerHeight-v.height>130&&/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName||''))}
  window.visualViewport?.addEventListener('resize',viewport);window.visualViewport?.addEventListener('scroll',viewport);window.addEventListener('resize',viewport);document.addEventListener('focusin',viewport);document.addEventListener('focusout',()=>setTimeout(viewport,100));viewport();
- return {update(next){
+ return {setModelRole,update(next){
   state={...next,role:normalizeReadingRole(next.role)};document.body.dataset.reader=state.role==='Medical professional'?'clinical':'general';
   const general=state.responseMode==='general';
   const key=[state.topic,state.role,state.responseMode].join('|');if(key!==identity){identity=key;dictation.stop();reader.stop();if(source.dialog.open)source.dialog.close();}

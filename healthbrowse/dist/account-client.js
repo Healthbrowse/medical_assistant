@@ -1,4 +1,6 @@
 let pendingClient;
+// The desk loads after session initialization and reuses this public bootstrap response.
+export let publicConfig;
 const configError='Account access has not been configured. The public research desk is available.';
 
 export function publicAuthConfig(config) {
@@ -14,7 +16,8 @@ export async function getAuthClient(){
   if(!pendingClient)pendingClient=(async()=>{
     const response=await fetch('/api/config',{cache:'no-store',credentials:'same-origin'});
     if(!response.ok)throw new Error(configError);
-    const {url,key}=publicAuthConfig(await response.json());
+    publicConfig=await response.json();
+    const {url,key}=publicAuthConfig(publicConfig);
     const {createClient}=await import('./supabase-client.js');
     return createClient(url,key,{auth:{
       flowType:'pkce',storage:sessionStorage,storageKey:'hb-supabase-session',

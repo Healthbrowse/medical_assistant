@@ -53,6 +53,20 @@ test('Buddy preserves existing form and new-chat controls when moving tools out 
  f.document.dispatchEvent({type:'healthbrowse-chat-updated',detail:{count:0}});assert.equal(f.inner.querySelector('.buddy-empty').hidden,false);
 });
 
+test('the picker shows the role-specific model ID and keeps the selected provider on role changes',t=>{
+ const {form}=fixture(t);
+ const names={general:'deepseek-ai/DeepSeek-R1-Distill-Llama-8B',professional:'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',groq:'openai/gpt-oss-120b'};
+ const layout=setupBuddyLayout(names),select=form.querySelector('#buddyModel'),label=select.parent.querySelector('span');
+ assert.deepEqual(select.children.map(option=>[option.value,option.textContent]),[['deepseek',names.general],['groq',names.groq]]);
+ assert.equal(label.textContent,names.general);
+ layout.setModelRole('Medical professional');
+ assert.equal(label.textContent,names.professional);
+ select.value='groq';select.dispatchEvent({type:'change'});
+ layout.setModelRole('General reader');
+ assert.equal(select.value,'groq');assert.equal(label.textContent,names.groq);
+ assert.equal(select.children[0].textContent,names.general);assert.equal(select.title,names.groq);
+});
+
 test('Enter submits the Buddy form once and leaves Shift+Enter and composition to the textarea',t=>{
  const {document,form}=fixture(t);
  setupBuddyLayout();

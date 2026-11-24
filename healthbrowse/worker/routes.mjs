@@ -1,6 +1,6 @@
 import {inspectQuery} from '../dist/clinical-engine.js';
 import {assessSafety,safetyAnswer} from '../dist/safety-policy.js';
-import {browserConfig} from '../server/public-config.mjs';
+import {browserConfig,buddyModelNames} from '../server/public-config.mjs';
 import {accountAPI} from '../server/account-api.mjs';
 import {lookupTerminology,patientEducationForCode} from './terminology.mjs';
 import {researchRoute} from './research-routes.mjs';
@@ -20,7 +20,7 @@ export async function respond(request,env,assets) {
     return Response.json({service:'healthbrowse',status:ok?'ok':'unavailable'},{status:ok?200:503,headers});
   }
   if(url.pathname==='/api/config'){
-    return Response.json(browserConfig(env),{headers});
+    return Response.json({...browserConfig(env),buddyModels:buddyModelNames(env)},{headers});
   }
   if(url.pathname.startsWith('/api/ai/'))return modelAPI(request,env,assets);
   if(url.pathname==='/api/browser/general')return generalBrowser(request,assets);
