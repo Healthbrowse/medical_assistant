@@ -14,7 +14,7 @@ import {citedEvidence,prepareCited,presentCited,prepareCitedReview,applyCitedRev
 import {isReadingRole,normalizeReadingRole} from '../dist/reading-profiles.js';
 import {inspectQuery} from '../dist/clinical-engine.js';
 import {evidenceFor,generationMessages,validateDraft,reviewMessages,reviewPasses,presentDraft} from './model-evidence.mjs';
-import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,buddyEndpoint,fallbackEndpoint,GROQ_MODEL} from './model-provider.mjs';
+import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,buddyEndpoint,fallbackEndpoint,deepseekModelId,GROQ_MODEL} from './model-provider.mjs';
 import {deepseekPayload,readDeepSeekResult as readStructuredResult} from './deepseek-client.mjs';
 import {compactGeneration,compactReviews,ContextLimit} from './model-context.mjs';
 import {documentEvidence} from './document-evidence.mjs';
@@ -32,8 +32,9 @@ export function retryDelay(value,now=Date.now()){
 export function modelStatus(env){
  const deepseek=env.MODEL_PROVIDER==='deepseek';
  function routeStatus(route){
-  const config=endpoint(env,route)||fallbackEndpoint(env);
-  return {configured:!!config,...(deepseek&&config?{model:config.model}:{})};
+  const primary=endpoint(env,route);
+  const config=primary||fallbackEndpoint(env);
+  return {configured:!!config,...(deepseek?{primaryConfigured:!!primary}:{}),...(deepseek&&config?{model:config.model}:{})};
  }
  return {general:routeStatus('general'),professional:routeStatus('professional'),
   ...(deepseek?{provider:'deepseek',agent:routeStatus('agent'),...(env.MODEL_FALLBACK_PROVIDER==='groq'?{fallback:{provider:'groq',configured:!!fallbackEndpoint(env),model:GROQ_MODEL}}:{})}:{}),
@@ -77,9 +78,9 @@ async function requestCompletion(config,messages,signal,maxTokens,schema,validat
  if(data.choices?.[0]?.finish_reason==='length'||typeof content!=='string')throw Error('Incomplete model response');
  return {response:res,value:JSON.parse(content.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,''))};
 }
-async function checkedCompletion(primary,backup,messages,signal,maxTokens,schema,validateModel=false){
+async function checkedCompletion(primary,backup,messages,signal,maxTokens,schema,validateModel=false,onFallback){
  const result=await withModelFallback(primary,backup,signal,35000,(config,attemptSignal)=>
-  requestCompletion(config,messages,attemptSignal,maxTokens,schema,validateModel||config===backup));
+  requestCompletion(config,messages,attemptSignal,maxTokens,schema,validateModel||config===backup),onFallback);
  const {response:res,config}=result;
  if(!res.ok){
   if(res.status===401||res.status===403)fail(503,'provider_access','The AI provider rejected access. The site owner must check the token and model access.');
@@ -100,6 +101,7 @@ export async function modelAPI(request,env,assets){
  if(!evidenceOnly&&url.pathname!=='/api/ai/answer')return reply({error:'Unknown AI route.'},404);
  if(request.method!=='POST')return reply({error:'Use POST.'},405);
  let phase='input',fallbackEvidence=null,fallbackInput=null;
+ const routing={};
  try{
   if(request.headers.get('origin')&&request.headers.get('origin')!==url.origin)fail(403,'origin','Cross-origin requests are not supported.');
   if(!request.headers.get('content-type')?.startsWith('application/json'))fail(415,'body','Use JSON.');
@@ -146,7 +148,8 @@ export async function modelAPI(request,env,assets){
   if(help){phase='authentication';await identity(request,env);return reply({status:'platform',answer:help,decks:[]})}
   const route=b.role==='Medical professional'?'professional':'general';
   const backup=b.buddyModel==='groq'?null:fallbackEndpoint(env);
-  const config=buddyEndpoint(env,b.buddyModel,route)||backup;
+  const primary=buddyEndpoint(env,b.buddyModel,route);
+  const config=primary||backup;
   const reviewer=b.buddyModel?config:modelReviewEndpoint(env,route)||backup;
   phase='authentication';
   const user=await identity(request,env),grounded=config?.protocol==='grounded-v2';
@@ -181,20 +184,25 @@ export async function modelAPI(request,env,assets){
   // Incoming Request.signal is absent on older Workers compatibility dates.
   const signal=request.signal?AbortSignal.any([request.signal,deadline]):deadline;
   if(usesCitedProtocol(config)){
+   // A generation failover carries through review, so an answer switches once at most.
+   const recordFallback=detail=>{
+    routing.modelFallback={phase,primaryModel:deepseekModelId(env,route),fallbackModel:backup.model,...detail};
+    console.warn(JSON.stringify({event:'ai_model_fallback',...routing.modelFallback}));
+   };
    const prepared=prepareCited(b,evidence);
    phase='generation';
-   const draft=await checkedCompletion(config,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema,!!b.buddyModel);
+   const draft=await checkedCompletion(primary,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema,!!b.buddyModel,recordFallback);
    const check=prepareCitedReview(draft.value,prepared,b);
    phase='support_review';
    // Once Groq has taken over, review there too. A reviewer-only outage
    // retries the review of the same draft and evidence without regenerating it.
    const reviewAt=draft.config===backup?backup:reviewer;
    const review=check.claims.length
-    ?await checkedCompletion(reviewAt,backup,check.messages,signal,check.maxTokens,check.schema,!!b.buddyModel)
+    ?await checkedCompletion(reviewAt,backup,check.messages,signal,check.maxTokens,check.schema,!!b.buddyModel,recordFallback)
     :null;
    phase='presentation';
    const approved=applyCitedReview(review?.value||{checks:[]},check,prepared,b);
-   return reply({...presentCited(approved,prepared,b,draft.config.model),protocol:draft.config.protocol,
+   return reply({...presentCited(approved,prepared,b,draft.config.model),protocol:draft.config.protocol,...routing,
     ...(backup||b.buddyModel?{reviewModel:review?.config.model||null}:{}),retrieval:evidence.retrieval});
   }
   let reason='';
@@ -247,7 +255,7 @@ export async function modelAPI(request,env,assets){
   if(fallbackEvidence?.sources.length&&fallbackInput&&(isBuddyOverview(fallbackInput)||fallbackEvidence.documentMode||env.MODEL_PROVIDER==='deepseek'||env.RETRIEVAL_LIVE!=='off')){
    const prepared=prepareCited(fallbackInput,fallbackEvidence);const result=presentCited({answer:[]},prepared,fallbackInput,'');
    const message=error instanceof Failure?error.message:'AI synthesis could not finish. Retrieved source excerpts remain available.';
-   return reply({...result,protocol:'source-excerpts-v1',decks:buddyOverviewDecks(fallbackInput,fallbackEvidence),status:'sourced',code:error.code||'model_unavailable',message,retrieval:fallbackEvidence.retrieval,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})});
+   return reply({...result,protocol:'source-excerpts-v1',decks:buddyOverviewDecks(fallbackInput,fallbackEvidence),status:'sourced',code:error.code||'model_unavailable',message,retrieval:fallbackEvidence.retrieval,...routing,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})});
   }
   if(evidenceOnly&&phase==='evidence')return reply({query_decomposition:[],retrieved_sources:[],evidence_gaps:['Evidence retrieval could not be completed.']},503);
   return reply({status:'unavailable',code:error.code||'model_unavailable',error:error instanceof Failure?error.message:'AI synthesis is temporarily unavailable. Showing source excerpts instead.',...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})},error.status||503)}
