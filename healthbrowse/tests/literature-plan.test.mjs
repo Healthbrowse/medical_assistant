@@ -80,3 +80,17 @@ test('a planner outage uses GPT-OSS 120B with the same restricted vocabulary',as
  const down=await planLiterature({...options,fetcher:async()=>new Response(null,{status:503})});
  assert.equal(down.planner,'deterministic');
 });
+
+test('OpenGPT selection sends literature planning directly to the Groq 120B model',async()=>{
+ const options={...args,env:{...env,MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'planner-test'},buddyModel:'groq'};
+ let calls=0;
+ const r=await planLiterature({...options,fetcher:async(url,request)=>{
+  calls++;
+  assert.equal(url,'https://api.groq.com/openai/v1/chat/completions');
+  const body=JSON.parse(request.body);
+  assert.equal(body.model,'openai/gpt-oss-120b');
+  return Response.json({model:body.model,choices:[{finish_reason:'stop',message:{content:'{"searches":[]}'}}]});
+ }});
+ assert.equal(r.planner,'groq');
+ assert.equal(calls,1);
+});
