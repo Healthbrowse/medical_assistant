@@ -1,3 +1,5 @@
+import {CompletionError} from './deepseek-client.mjs';
+
 // Only failures from the external model call are eligible. Authentication,
 // request limits, retrieval, citation checks and model refusals run separately.
 async function retryableResponse(response, primary) {
@@ -24,6 +26,7 @@ async function retryableResponse(response, primary) {
   reader.releaseLock();
  }
  if (/safety|moderation|content[_ -]?(?:policy|filter)|refusal/i.test(detail)) return false;
+ if (primary.ai && [400,422].includes(status) && /JSON Mode couldn.t be met|json_validate_failed/i.test(detail)) return true;
  if (primary.ai && status === 403 && /"(?:code|internalCode)"\s*:\s*(?:5018|3041|5035)\b/.test(detail)) return true;
  // HF also returns 403 when a valid token lacks inference-provider permission.
  if (status === 403 && /(?:permissions?|authori[sz]ation).{0,150}(?:call|use|access).{0,60}inference providers?/i.test(detail)) return true;
@@ -50,8 +53,16 @@ export async function withModelFallback(primary, backup, signal, primaryMs, run,
   if (!result.response.bodyUsed) await result.response.body?.cancel();
  } catch (error) {
   signal.throwIfAborted();
-  if (!timer.aborted && !(error instanceof TypeError) && error.name !== 'TimeoutError') throw error;
-  failure = {reason:timer.aborted || error.name === 'TimeoutError' ? 'timeout' : 'network_error'};
+  if (error instanceof CompletionError) {
+   if (!['provider_output_invalid','provider_output_truncated'].includes(error.code)) throw error;
+   failure = {reason:error.code};
+  } else if (timer.aborted || error.name === 'TimeoutError') {
+   failure = {reason:'timeout'};
+  } else if (error instanceof TypeError) {
+   failure = {reason:'network_error'};
+  } else {
+   throw error;
+  }
  }
  signal.throwIfAborted();
  onFallback?.(failure);
