@@ -16,23 +16,45 @@ export function matchesDeepSeekModel(reported,requested){
  return name===expected||name===expected.split('/').pop()||
   (expected==='deepseek-ai/deepseek-v3.2'&&name==='deepseek/deepseek-v3.2');
 }
-// Some R1 hosts return a completed thought envelope before the final object;
-// others return a separate reasoning field. Only final JSON enters the product.
+// These codes describe the provider reply without exposing its body or the question.
+export class CompletionError extends Error {
+ constructor(code){super(code);this.code=code;}
+}
+function invalidOutput(){throw new CompletionError('provider_output_invalid');}
+function refused(){throw new CompletionError('provider_refusal');}
+function validateFinal(value,schema){
+ if(!matchesSchema(value,schema) ||
+    /<\s*\/?\s*(?:think|thinking|reasoning|analysis)\b/i.test(JSON.stringify(value)))invalidOutput();
+ return value;
+}
+// Read only final output. A refusal, filter or unexpected model is terminal.
 export function readDeepSeekResult(data,model,schema){
- const choice=data?.choices?.[0];
- if(!choice || (choice.finish_reason && choice.finish_reason!=='stop') || typeof choice.message?.content!=='string')throw new Error('Incomplete final response');
- if(!matchesDeepSeekModel(data.model,model))throw new Error('Unexpected response model');
- let content=choice.message.content.trim();
+ const choice=data?.choices?.[0],message=choice?.message;
+ const native=model.startsWith('@cf/') && data && !Object.hasOwn(data,'choices') && Object.hasOwn(data,'response');
+ const finish=native?data.finish_reason:choice?.finish_reason;
+ if(message?.refusal || finish==='content_filter' || data?.refusal)refused();
+ if(!matchesDeepSeekModel(data?.model,model))throw new CompletionError('provider_model_mismatch');
+ if(finish==='length')throw new CompletionError('provider_output_truncated');
+ if(finish && finish!=='stop')throw new CompletionError('provider_output_unexpected');
+ let content=native?data.response:message?.content;
+ if(native && content && typeof content==='object'){
+  if(content.refusal)refused();
+  return validateFinal(content,schema);
+ }
+ if(typeof content!=='string')invalidOutput();
+ content=content.trim();
  if(/^<think>/i.test(content)){
   const end=content.toLowerCase().indexOf('</think>');
-  if(end<0)throw new Error('Missing final response');
+  if(end<0)invalidOutput();
   content=content.slice(end+8).trim();
  }
- content=content.replace(/^\x60\x60\x60(?:json)?\s*/i,'').replace(/\s*\x60\x60\x60$/,'');
- const result=JSON.parse(content);
- if(!matchesSchema(result,schema) ||
-    /<\s*\/?\s*(?:think|thinking|reasoning|analysis)\b/i.test(JSON.stringify(result)))throw new Error('Invalid final response');
- return result;
+ content=content.replace(/^`{3}(?:json)?\s*/i,'').replace(/\s*`{3}$/,'');
+ // Plain prose may itself be a refusal. Retry only a recognizable format failure.
+ if(content && !content.startsWith('{') && !content.startsWith('['))throw new CompletionError('provider_output_unexpected');
+ let result;
+ try{result=JSON.parse(content);}catch{invalidOutput();}
+ if(result?.refusal)refused();
+ return validateFinal(result,schema);
 }
 export function deepseekPayload(model,messages,maxTokens,schema){
  // The inference providers support standard chat completions. Communicate the

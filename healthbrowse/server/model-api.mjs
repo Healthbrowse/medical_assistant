@@ -18,7 +18,7 @@ import {inspectQuery} from '../dist/clinical-engine.js';
 import {evidenceFor,generationMessages,validateDraft,reviewMessages,reviewPasses,presentDraft} from './model-evidence.mjs';
 import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,usesRoleModels,buddyEndpoint,fallbackEndpoint,deepseekModelId,GROQ_MODEL} from './model-provider.mjs';
 import {workersModels,workersProtocol,runWorkersCompletion,offersWorkersModels} from './workers-ai.mjs';
-import {deepseekPayload,readDeepSeekResult as readStructuredResult} from './deepseek-client.mjs';
+import {CompletionError,deepseekPayload,readDeepSeekResult as readStructuredResult} from './deepseek-client.mjs';
 import {compactGeneration,compactReviews,ContextLimit} from './model-context.mjs';
 import {documentEvidence} from './document-evidence.mjs';
 import {validateDocuments} from '../dist/document-policy.js';
@@ -69,11 +69,19 @@ async function reserve(env,user){
  WHERE hb_model_limits.bucket<>excluded.bucket OR hb_model_limits.requests<6`).bind(user,bucket).run();
  if(!result.meta?.changes)fail(429,'rate_limited','Your request limit has been reached. The cited sources remain available.',Math.ceil((60000-Date.now()%60000)/1000));
 }
+async function completionBody(response){
+ if(!response.body)throw new CompletionError('provider_output_invalid');
+ try{return await boundedJSON(response.body,120000);}
+ catch(error){
+  if(error instanceof SyntaxError || error.message==='Body too large')throw new CompletionError('provider_output_invalid');
+  throw error;
+ }
+}
 async function requestCompletion(config,messages,signal,maxTokens,schema,validateBackup){
  if(config.protocol===workersProtocol){
   const response=await runWorkersCompletion(config,messages,maxTokens,schema,signal);
   if(!response.ok)return {response};
-  const data=await boundedJSON(response.body,120000);
+  const data=await completionBody(response);
   return {response,value:readStructuredResult(data,config.model,schema)};
  }
  const deepseek=config.protocol==='deepseek-cited-v1';
@@ -81,7 +89,7 @@ async function requestCompletion(config,messages,signal,maxTokens,schema,validat
  const res=await fetch(config.url,{method:'POST',headers:{Authorization:'Bearer '+config.key,'Content-Type':'application/json'},redirect:'manual',signal,
   body:JSON.stringify(payload)});
  if(!res.ok)return {response:res};
- const data=await boundedJSON(res.body,120000);
+ const data=await completionBody(res);
  if(deepseek||validateBackup)return {response:res,value:readStructuredResult(data,config.model,schema)};
  const content=data.choices?.[0]?.message?.content;
  if(data.choices?.[0]?.finish_reason==='length'||typeof content!=='string')throw Error('Incomplete model response');
@@ -109,7 +117,7 @@ export async function modelAPI(request,env,assets){
  const evidenceOnly=url.pathname==='/api/ai/evidence';
  if(!evidenceOnly&&url.pathname!=='/api/ai/answer')return reply({error:'Unknown AI route.'},404);
  if(request.method!=='POST')return reply({error:'Use POST.'},405);
- let phase='input',fallbackEvidence=null,fallbackInput=null;
+ let phase='input',fallbackEvidence=null,fallbackInput=null,attemptedModel;
  const routing={};
  try{
   if(request.headers.get('origin')&&request.headers.get('origin')!==url.origin)fail(403,'origin','Cross-origin requests are not supported.');
@@ -230,16 +238,19 @@ export async function modelAPI(request,env,assets){
    const recordFallback=detail=>{
     const provider=b.buddyModel||env.MODEL_PROVIDER;
     const primaryModel=provider==='workers-ai'?workersModels[route]:deepseekModelId(env,route);
+    attemptedModel=backup.model;
     routing.modelFallback={phase,primaryModel,fallbackModel:backup.model,...detail};
     console.warn(JSON.stringify({event:'ai_model_fallback',...routing.modelFallback}));
    };
+   phase='preparation';
    const prepared=prepareCited(b,evidence);
    // Give Gemma enough time for a normal completion while reserving time for
    // review and an actual provider failure inside the existing request deadline.
    const primaryWait=config.model===workersModels.general?(quickChat?11000:50000):(quickChat?6500:35000);
-   phase='generation';
+   phase='generation';attemptedModel=config.model;
    const draft=await checkedCompletion(primary,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema,!!b.buddyModel,recordFallback,primaryWait);
    const clinicalBrowser=b.mode==='search' && route==='professional' && primary?.model===workersModels.professional;
+   phase='review_preparation';
    const check=prepareCitedReview(draft.value,prepared,b,{sentenceReferences:clinicalBrowser});
    phase='support_review';
    // Once Groq has taken over, review there too. A reviewer-only outage
@@ -247,6 +258,7 @@ export async function modelAPI(request,env,assets){
    const reviewAt=draft.config===backup?backup:reviewer;
    let review=null;
    if(check.claims.length){
+    attemptedModel=reviewAt.model;
     // Clinical Browser search used the 35-second generation allowance a second time here.
     // Give Qwen the first review attempt, then share the remaining time with the backup.
     const reviewSignal=clinicalBrowser?AbortSignal.any([signal,AbortSignal.timeout(20000)]):signal;
@@ -302,16 +314,33 @@ export async function modelAPI(request,env,assets){
   }
   fail(502,'verification_failed','The generated answer did not pass source checks. Showing source excerpts instead.');
  }catch(error){
-  if(phase==='support_review' && error.name==='TimeoutError' && !request.signal?.aborted)
-   error=new Failure(503,'model_timeout','Source review timed out. Showing cited source passages.');
+  const modelStage=phase==='generation'||phase==='support_review';
+  if(modelStage && request.signal?.aborted)return reply({status:'unavailable',code:'request_cancelled',error:'The request was cancelled.'},499);
+  if(modelStage && error.name==='TimeoutError')
+   error=new Failure(503,'model_timeout',phase==='support_review'?'Source review timed out. Showing cited source passages.':'Answer generation timed out. Showing cited source passages.');
+  if(modelStage && error instanceof CompletionError){
+   const messages={
+    provider_refusal:'The model declined this request.',
+    provider_model_mismatch:'The provider reported a different model than requested.',
+    provider_output_truncated:'The model stopped before completing its response.',
+    provider_output_unexpected:'The model did not return a final structured response.',
+    provider_output_invalid:'The model response could not be validated.'
+   };
+   error=new Failure(502,error.code,messages[error.code]+' Showing cited source passages.');
+  }
+  if(modelStage && attemptedModel){
+   // Include only known route identifiers and stable error codes in diagnostics.
+   routing.modelFailure={phase,model:attemptedModel,code:error instanceof Failure?error.code:'model_unavailable'};
+   console.warn(JSON.stringify({event:'ai_completion_failed',...routing.modelFailure}));
+  }
   // Never log questions, tokens, provider bodies, identities or error messages.
   if(error.code==='provider_busy')console.warn(JSON.stringify({event:'ai_provider_limited',phase,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})}));
   if(!(error instanceof Failure))console.error(JSON.stringify({event:'ai_request_failed',phase,kind:['TypeError','SyntaxError','TimeoutError','AbortError'].includes(error?.name)?error.name:'Error'}));
   if(fallbackEvidence?.sources.length&&fallbackInput&&(isBuddyOverview(fallbackInput)||fallbackEvidence.documentMode||usesRoleModels(env)||env.RETRIEVAL_LIVE!=='off')){
    const prepared=prepareCited(fallbackInput,fallbackEvidence);const result=presentCited({answer:[]},prepared,fallbackInput,'');
    const message=error instanceof Failure?error.message:'AI synthesis could not finish. Retrieved source excerpts remain available.';
-   return reply({...result,protocol:'source-excerpts-v1',decks:buddyOverviewDecks(fallbackInput,fallbackEvidence),status:'sourced',code:error.code||'model_unavailable',message,retrieval:fallbackEvidence.retrieval,...routing,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})});
+   return reply({...result,protocol:'source-excerpts-v1',decks:buddyOverviewDecks(fallbackInput,fallbackEvidence),status:'sourced',code:error instanceof Failure?error.code:'model_unavailable',message,retrieval:fallbackEvidence.retrieval,...routing,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})});
   }
   if(evidenceOnly&&phase==='evidence')return reply({query_decomposition:[],retrieved_sources:[],evidence_gaps:['Evidence retrieval could not be completed.']},503);
-  return reply({status:'unavailable',code:error.code||'model_unavailable',error:error instanceof Failure?error.message:'AI synthesis is temporarily unavailable. Showing source excerpts instead.',...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})},error.status||503)}
+  return reply({status:'unavailable',...routing,code:error instanceof Failure?error.code:'model_unavailable',error:error instanceof Failure?error.message:'AI synthesis is temporarily unavailable. Showing source excerpts instead.',...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})},error.status||503)}
 }
