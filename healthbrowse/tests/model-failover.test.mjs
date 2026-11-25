@@ -5,6 +5,7 @@ import {withModelFallback} from '../server/model-failover.mjs';
 test('Workers AI fails over on model access errors and preserves content refusals',async()=>{
  const primary={ai:{}},backup={};
  for(const [status,body,shouldSwitch] of [
+  [400,{message:"JSON Mode couldn't be met"},true],[400,{message:"content policy: JSON Mode couldn't be met"},false],
   [410,{code:5028},true],[403,{code:5035},true],[403,{code:3041},true],
   [403,{code:5035,message:'content policy refusal'},false],[403,{code:0},false]
  ]){

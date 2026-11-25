@@ -470,3 +470,80 @@ test('a stalled clinical Browser review hands the original draft to Groq once an
   }
  }
 });
+
+test('Browser retries a broken structured reply once, attributes the failed stage, and stops on refusals',async t=>{
+ const groq='openai/gpt-oss-120b', calls=[];
+ let badStage,primaryReply,backupReply;
+ function completion(model,input){
+  const data=JSON.parse(input.messages[1].content);
+  const stage=data.claims?'support_review':'generation';
+  calls.push([model,stage]);
+  if(stage===badStage){
+   const makeReply=model===groq?backupReply:primaryReply;
+   if(makeReply)return makeReply(model);
+  }
+  const s=data.evidence?.[0];
+  const output=data.claims
+   ?{checks:data.claims.map(c=>({id:c.id,verdict:'supported',sources:c.sources,...(data.sources[0].sentences?{quotes:[c.text]}:{})}))}
+   :{answer:[{text:s.text.split(/(?<=[.!?])\s+/)[0],sources:[s.id],...(data.role==='Medical professional'?{section:'synthesis'}:{})}]};
+  return Response.json({model,choices:[{message:{content:JSON.stringify(output)},finish_reason:'stop'}]});
+ }
+ const cfg={...env,MODEL_PROVIDER:'workers-ai',MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'fixture',DB:database(1),AI:{run:completion}};
+ t.mock.method(globalThis,'fetch',async(url,options)=>{
+  if(url==='https://auth.example/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
+  assert.equal(url,'https://api.groq.com/openai/v1/chat/completions');
+  const body=JSON.parse(options.body);
+  return completion(body.model,body);
+ });
+ const ask=role=>requestSynthesis({...input,role},input.question,{
+  tokenProvider:async()=>'test-token-for-api',
+  fetcher:(path,options)=>modelAPI(new Request('https://site.test'+path,options),cfg,assets)
+ });
+ const truncated=model=>Response.json({model,choices:[{finish_reason:'length',message:{content:'{'}}]});
+ const invalid=model=>Response.json({model,choices:[{finish_reason:'stop',message:{content:'{"unexpected":true}'}}]});
+ for(const [role,model] of [['General',workersModels.general],['Clinicians',workersModels.professional]]){
+  for(badStage of ['generation','support_review']){
+   primaryReply=badStage==='generation'?truncated:invalid;backupReply=null;
+   const got=await ask(role);
+   assert.equal(got.status,'generated');
+   assert.equal(got.model,badStage==='generation'?groq:model);
+   assert.equal(got.reviewModel,groq);
+   assert.equal(got.modelFallback.phase,badStage);
+   assert.match(got.answer.routingNotice,/response (was incomplete|format was invalid)/);
+   assert.ok(got.answer.blocks.some(b=>b.references?.length));
+   assert.deepEqual(calls.splice(0),badStage==='generation'?[[model,'generation'],[groq,'generation'],[groq,'support_review']]:[[model,'generation'],[model,'support_review'],[groq,'support_review']]);
+  }
+ }
+ badStage='generation';primaryReply=()=>new Response('{"choices":');backupReply=invalid;
+ const both=await ask('General');
+ assert.equal(both.status,'sourced');assert.equal(both.answer.generation,undefined);
+ assert.ok(both.answer.blocks.some(b=>b.references?.length));
+ assert.equal(both.modelFallback.reason,'provider_output_invalid');
+ assert.deepEqual(both.modelFailure,{phase:'generation',model:groq,code:'provider_output_invalid'});
+ assert.deepEqual(calls.splice(0),[[workersModels.general,'generation'],[groq,'generation']]);
+ for(const [reply,code] of [
+  [{choices:[{finish_reason:'content_filter',message:{content:null}}]},'provider_refusal'],
+  [{choices:[{finish_reason:'stop',message:{refusal:'declined',content:'{'}}]},'provider_refusal'],
+  [{choices:[{finish_reason:'stop',message:{content:'I cannot assist with this request.'}}]},'provider_output_unexpected'],
+  [{model:'another-model',choices:[{finish_reason:'stop',message:{content:'{'}}]},'provider_model_mismatch']
+ ]){
+  primaryReply=()=>Response.json(reply);
+  const result=await ask('General');
+  assert.equal(result.status,'sourced');assert.equal(result.answer.generation,undefined);
+  assert.deepEqual(result.modelFailure,{phase:'generation',model:workersModels.general,code});
+  assert.equal(result.modelFallback,undefined);
+  assert.deepEqual(calls.splice(0),[[workersModels.general,'generation']]);
+ }
+});
+
+test('Workers native JSON replies are subject to model, schema and finish checks',()=>{
+ const schema={type:'object',required:['answer'],properties:{answer:{type:'string'}}};
+ const read=body=>readDeepSeekResult(body,workersModels.general,schema);
+ const expected={answer:'ok'};
+ for(const response of [expected,JSON.stringify(expected)])assert.deepEqual(read({response}),expected);
+ for(const body of [{response:{extra:'x'}},{model:'other',response:expected},{finish_reason:'length',response:expected},
+  {finish_reason:'content_filter',response:expected},{choices:[],response:expected}]){
+  assert.throws(()=>read(body));
+ }
+ assert.throws(()=>readDeepSeekResult({response:expected},'openai/gpt-oss-120b',schema));
+});
