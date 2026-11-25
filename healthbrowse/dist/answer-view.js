@@ -67,6 +67,7 @@ function renderAnswerFooter(parent,answer,onRetry) {
  // Operational and audience labels never replace or precede the actual answer.
  if(answer.modelNotice){const notice=element('p',answer.modelNotice,'model-notice');notice.setAttribute('role','status');parent.append(notice)}
  renderRetry(parent,answer,onRetry);
+ if(answer.routingNotice)parent.append(element('small',answer.routingNotice,'meta'));
  if(answer.style)parent.append(element('small',answer.style,'answer-mode'));
  if(answer.generation)parent.append(element('small',(answer.generation.label||'AI synthesis')+' · '+answer.generation.model+(answer.generation.corrected?' · revised after source review':''),'meta'));
 }

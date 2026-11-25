@@ -7,6 +7,16 @@ function browserSummary(context,history){
  const titles=(context.browserSources||[]).slice(0,5).map(ref=>ref.title).filter(Boolean).join(' | ');
  return [summary,titles].filter(Boolean).join('\n').slice(0,1200);
 }
+function describeFallback(detail){
+ if(!detail?.primaryModel || !detail.fallbackModel)return '';
+ const primary=detail.primaryModel.split('/').pop(), backup=detail.fallbackModel.split('/').pop();
+ const action=detail.phase==='support_review'?'source review':'answer generation';
+ const http={401:'access was rejected',402:'provider credits were unavailable',403:'access was denied',404:'model was unavailable',410:'model was retired',429:'provider rate or usage limit was reached'};
+ const reason=detail.reason==='timeout'?'request timed out':detail.reason==='network_error'?'connection failed':
+  detail.reason==='primary_unconfigured'?'binding or credentials unavailable':
+  (http[detail.httpStatus]||'provider unavailable')+(Number.isInteger(detail.httpStatus)?' (HTTP '+detail.httpStatus+')':'');
+ return primary+' — '+reason+'. Switched to '+backup+' for '+action+'.';
+}
 export async function requestSynthesis(context,question,{mode='search',buddyModel,deck=0,history=[],signal,fetcher=fetch,tokenProvider=getAccessToken}={}){
  const controller=new AbortController(),abort=()=>controller.abort();
  if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
@@ -41,7 +51,8 @@ export async function requestSynthesis(context,question,{mode='search',buddyMode
   const fullReport=mode==='chat' && deck===0 && !context.attachments?.length &&
     Array.isArray(decks) && decks.length===6 && decks.every((entry,i)=>
       entry?.deck===i+1 && typeof entry.title==='string' && entry.title.trim() && Array.isArray(entry.blocks));
-  return {...data,decks:fullReport?decks:[],...retry};
+  const routingNotice=describeFallback(data.modelFallback);
+  return {...data,answer:routingNotice?{...data.answer,routingNotice}:data.answer,decks:fullReport?decks:[],...retry};
  }catch(error){if(signal?.aborted)throw error;return {status:'unavailable',message:'AI synthesis could not finish. Source excerpts are shown below.'}}
  finally{clearTimeout(timer);clearTimeout(statusTimer);signal?.removeEventListener('abort',abort)}
 }
