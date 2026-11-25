@@ -1,4 +1,5 @@
 // Every reading mode uses the same user-opened, keyboard-accessible buddy.
+import {setupBuddyWindow} from './buddy-window.js';
 import {accountRequest} from './account-client.js';
 import {createBuddyWelcome,createWelcomeTone} from './buddy-welcome.js';
 export function setupBuddy(getContext){
@@ -14,7 +15,7 @@ export function setupBuddy(getContext){
  document.addEventListener('research-ready',()=>{intro.arm();void intro.sync()});
  document.addEventListener('visibilitychange',()=>void intro.sync());
  window.addEventListener('pagehide',()=>intro.dismiss(),{once:true});
- dialog.append(panel);document.body.classList.add('buddy-enabled');
+ dialog.append(panel);setupBuddyWindow(dialog,$('buddyClose'));document.body.classList.add('buddy-enabled');
  function close(){if(dialog.open)dialog.close()}
  function show(from=launcher){
   if(dialog.open)return true;intro.used();returnFocus=from;dialog.showModal();launcher.setAttribute('aria-expanded','true');document.body.classList.add('buddy-open');$('copilot-heading').focus();dialog.dispatchEvent(new Event('buddy-opened'));return true;

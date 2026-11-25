@@ -12,6 +12,9 @@ const vague=/^(?:(?:what|how|why|tell|explain|describe|give|show|please|me|about
 const followup=/\b(?:it|its|this|that|these|those)\b|^(?:tell me more|go further|continue|follow[- ]?up|more)[?!. ]*$/i;
 export function clarifyQuery(question,{topic='',context=false,browser=false}={}){
  const q=String(question||'').trim(),plain=q.replace(/[^a-z\s]/gi,' ').replace(/\s+/g,' ').trim();
+ if(/\[(?:medication|medicine|drug)(?: name)?\]|\b(?:side effects?|precautions?)\b.*\b(?:this|my|a) (?:medicine|medication|drug)[?!. ]*$/i.test(q))return {
+  title:'Which medicine are you asking about?',text:'Enter the medicine name as printed on the label so the sources match it.',choices:[],allowEdit:true
+ };
  if(browser&&heartIntent(q)==='clarify')return {
   title:'What would you like to know about the heart?',text:'Choose a topic or write your own question.',choices:[
    {label:'Heart anatomy',query:'What are the chambers of the human heart?'},
