@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {deepseekPayload,readDeepSeekResult} from '../server/deepseek-client.mjs';
-import {modelEndpoint,DEEPSEEK_MODELS,HF_CHAT_URL} from '../server/model-provider.mjs';
+import {browserModelRoutes,modelEndpoint,DEEPSEEK_MODELS,HF_CHAT_URL} from '../server/model-provider.mjs';
 import {modelStatus,modelAPI} from '../server/model-api.mjs';
 import {buddyModelNames} from '../server/public-config.mjs';
 import {workersModels} from '../server/workers-ai.mjs';
@@ -101,6 +101,37 @@ test('Workers AI serves both Browser roles and Buddy, with a verified Groq fallb
    assert.deepEqual(calls.splice(0),[[model,'generation'],[model,'support_review']]);
   }
  }
+ // Manual Browser selection is independent of both the persona and the automatic fallback.
+ const manualModels=[workersModels.general,workersModels.professional,DEEPSEEK_MODELS.general,DEEPSEEK_MODELS.professional,groq];
+ assert.deepEqual([...browserModelRoutes(config).keys()],manualModels);
+ assert.deepEqual([...browserModelRoutes({...config,AI:null,HF_TOKEN:'',GROQ_API_KEY:''}).keys()],[]);
+ for(const audience of ['General','Clinicians']){
+  role=audience;
+  for(const browserModel of manualModels){
+   const result=await ask('search',{browserModel});
+   assert.equal(result.model,browserModel);
+   assert.equal(result.reviewModel,browserModel);
+   assert.equal(result.modelFallback,undefined);
+   assert.deepEqual(calls.splice(0),[[browserModel,'generation'],[browserModel,'support_review']]);
+  }
+ }
+ for(const stage of ['generation','support_review']){
+  failure=stage;
+  const result=await ask('search',{browserModel:workersModels.general});
+  assert.equal(result.code,'provider_busy');assert.equal(result.status,'sourced');
+  assert.equal(result.modelFallback,undefined);
+  assert.ok(calls.length&&calls.every(([model])=>model===workersModels.general));
+  calls.length=0;
+ }
+ for(const invalid of [null,{},'__proto__','https://unknown.example','unconfigured-model']){
+  const res=await call({...input,browserModel:invalid},config);
+  assert.equal(res.status,400);
+ }
+ for(const override of [{mode:'chat'},{buddyModel:'groq'}]){
+  assert.equal((await call({...input,browserModel:groq,...override},config)).status,400);
+ }
+ assert.equal((await call({...input,browserModel:groq},config,'/api/ai/evidence')).status,400);
+ assert.deepEqual(calls,[]);
  for(const stage of ['generation','support_review']){
   failure=stage;
   const result=await ask();

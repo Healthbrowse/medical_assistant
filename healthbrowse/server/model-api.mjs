@@ -16,7 +16,7 @@ import {citedEvidence,prepareCited,presentCited,prepareCitedReview,applyCitedRev
 import {isReadingRole,normalizeReadingRole} from '../dist/reading-profiles.js';
 import {inspectQuery} from '../dist/clinical-engine.js';
 import {evidenceFor,generationMessages,validateDraft,reviewMessages,reviewPasses,presentDraft} from './model-evidence.mjs';
-import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,usesRoleModels,buddyEndpoint,fallbackEndpoint,deepseekModelId,GROQ_MODEL} from './model-provider.mjs';
+import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,usesRoleModels,browserModelRoutes,buddyEndpoint,fallbackEndpoint,deepseekModelId,GROQ_MODEL} from './model-provider.mjs';
 import {workersModels,workersProtocol,runWorkersCompletion,offersWorkersModels} from './workers-ai.mjs';
 import {CompletionError,deepseekPayload,readDeepSeekResult as readStructuredResult} from './deepseek-client.mjs';
 import {compactGeneration,compactReviews,ContextLimit} from './model-context.mjs';
@@ -123,10 +123,13 @@ export async function modelAPI(request,env,assets){
   if(request.headers.get('origin')&&request.headers.get('origin')!==url.origin)fail(403,'origin','Cross-origin requests are not supported.');
   if(!request.headers.get('content-type')?.startsWith('application/json'))fail(415,'body','Use JSON.');
   let b;try{b=await boundedJSON(request.body,450000)}catch{fail(400,'body','Invalid or oversized question or document.')}
-  if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['topic','question','role','mode','deck','history','searchQuery','browserContext','attachments','buddyModel'].includes(k)))fail(400,'body','Unexpected input.');
+  if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['topic','question','role','mode','deck','history','searchQuery','browserContext','attachments','buddyModel','browserModel'].includes(k)))fail(400,'body','Unexpected input.');
   const supportedBuddyModels=offersWorkersModels(env)?['deepseek','groq','workers-ai']:['deepseek','groq'];
   if(b.buddyModel!==undefined&&(b.mode!=='chat'||!supportedBuddyModels.includes(b.buddyModel)))
    fail(400,'body','Choose a supported model for Buddy chat.');
+  const selectedBrowserModel=b.browserModel===undefined?null:browserModelRoutes(env).get(b.browserModel);
+  if(b.browserModel!==undefined&&(b.mode!=='search'||evidenceOnly||!selectedBrowserModel))
+   fail(400,'browser_model_unavailable','Choose a configured Browser model or switch to Automatic in the navigation.');
   if(evidenceOnly){
    if(Object.keys(b).some(k=>!['topic','question','role','mode','deck'].includes(k))||
       (b.mode!==undefined&&b.mode!=='search')||(b.deck!==undefined&&b.deck!==0))fail(400,'body','Evidence retrieval accepts a search question, topic and reading mode.');
@@ -165,10 +168,11 @@ export async function modelAPI(request,env,assets){
   const help=b.mode==='chat'&&!documentMode?buddyHelpAnswer(b.question):null;
   if(help){phase='authentication';await identity(request,env);return reply({status:'platform',answer:help,decks:[]})}
   const route=b.role==='Medical professional'?'professional':'general';
-  const backup=b.buddyModel==='groq'?null:fallbackEndpoint(env);
-  const primary=buddyEndpoint(env,b.buddyModel,route);
+  const backup=selectedBrowserModel||b.buddyModel==='groq'?null:fallbackEndpoint(env);
+  const primary=selectedBrowserModel||buddyEndpoint(env,b.buddyModel,route);
   const config=primary||backup;
-  const reviewer=b.buddyModel?config:modelReviewEndpoint(env,route)||backup;
+  const userSelected=!!(selectedBrowserModel||b.buddyModel);
+  const reviewer=userSelected?config:modelReviewEndpoint(env,route)||backup;
   phase='authentication';
   const user=await identity(request,env),grounded=config?.protocol==='grounded-v2';
   phase='quota';
@@ -248,7 +252,7 @@ export async function modelAPI(request,env,assets){
    // review and an actual provider failure inside the existing request deadline.
    const primaryWait=config.model===workersModels.general?(quickChat?11000:50000):(quickChat?6500:35000);
    phase='generation';attemptedModel=config.model;
-   const draft=await checkedCompletion(primary,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema,!!b.buddyModel,recordFallback,primaryWait);
+   const draft=await checkedCompletion(primary,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema,userSelected,recordFallback,primaryWait);
    const clinicalBrowser=b.mode==='search' && route==='professional' && primary?.model===workersModels.professional;
    phase='review_preparation';
    const check=prepareCitedReview(draft.value,prepared,b,{sentenceReferences:clinicalBrowser});
@@ -263,12 +267,12 @@ export async function modelAPI(request,env,assets){
     // Give Qwen the first review attempt, then share the remaining time with the backup.
     const reviewSignal=clinicalBrowser?AbortSignal.any([signal,AbortSignal.timeout(20000)]):signal;
     const attemptMs=clinicalBrowser?8000:quickChat?Math.max(1,Math.min(primaryWait,budget-(Date.now()-started)-3500)):primaryWait;
-    review=await checkedCompletion(reviewAt,backup,check.messages,reviewSignal,check.maxTokens,check.schema,!!b.buddyModel,recordFallback,attemptMs);
+    review=await checkedCompletion(reviewAt,backup,check.messages,reviewSignal,check.maxTokens,check.schema,userSelected,recordFallback,attemptMs);
    }
    phase='presentation';
    const approved=applyCitedReview(review?.value||{checks:[]},check,prepared,b);
    return reply({...presentCited(approved,prepared,b,draft.config.model),protocol:draft.config.protocol,...routing,
-    ...(backup||b.buddyModel?{reviewModel:review?.config.model||null}:{}),retrieval:evidence.retrieval});
+    ...(backup||userSelected?{reviewModel:review?.config.model||null}:{}),retrieval:evidence.retrieval});
   }
   let reason='';
   for(let attempt=0;attempt<2;attempt++){

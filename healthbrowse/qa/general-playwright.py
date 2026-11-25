@@ -114,6 +114,13 @@ def evaluate_case(page, service, surface, case, profile, exchanges, row):
     if page.locator("#welcome").is_visible():
         page.locator("#consent").check()
         page.locator("#enterDesk").click()
+    if surface == "browser" and profile != "gemma-fallback":
+        menu = page.locator("#browserModelMenu")
+        if not menu.is_visible():
+            page.get_by_role("button", name="Menu", exact=True).click()
+        menu.locator("summary").click()
+        page.get_by_label("Browser model", exact=True).select_option(service.info["models"][profile])
+        page.keyboard.press("Escape")
     start = time.perf_counter()
     if case.get("urgent"):
         answer = submit(page, surface, case, profile)
@@ -142,6 +149,10 @@ def evaluate_case(page, service, surface, case, profile, exchanges, row):
         row["findings"].append("One submission sent multiple answer requests")
     if request["role"] != "General reader" or request["mode"] != {"browser": "search", "buddy": "chat"}[surface]:
         row["findings"].append("Wrong audience or interaction mode")
+    if surface == "browser":
+        expected = None if profile == "gemma-fallback" else service.info["models"][profile]
+        if request.get("browserModel") != expected:
+            row["findings"].append("The request did not use the Browser navigation selection")
     if request["question"] != case["question"]:
         row["findings"].append("The submitted question changed")
     if actual:

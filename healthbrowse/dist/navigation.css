@@ -138,6 +138,27 @@
   background: var(--elevated);
   box-shadow: 0 6px 18px rgb(0 0 0 / 12%);
 }
+.site-header .browser-model-options {
+  display: grid;
+  gap: 8px;
+  width: min(18rem, 100%);
+  min-width: 16rem;
+  padding: 14px;
+  font: 550 14px/1.4 system-ui, sans-serif;
+}
+.site-header .browser-model-options select {
+  width: 100%;
+  min-height: 44px;
+  padding-inline: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.site-header .browser-model-options select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.site-header .browser-model-options small { color: var(--dim); font-weight: 400; }
 .site-header .nav-session { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 4px; }
 .site-header .nav-signout { width: 100%; color: var(--danger); }
 .site-header .nav-signout:not(:disabled):hover,
@@ -192,6 +213,7 @@
     border: 0;
     border-bottom: 1px solid var(--line);
   }
+  .site-header .browser-model-options { width: auto; }
   .site-header .nav-appearance { justify-content: space-between; padding: 2px 12px; }
   .site-header .nav-appearance-label { display: block; font: 550 14px/1.35 system-ui, sans-serif; }
   .site-header .nav-group > summary::after { margin-inline-start: auto; margin-inline-end: 4px; }

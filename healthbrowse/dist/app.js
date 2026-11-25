@@ -54,6 +54,43 @@ function textRecords(name=topic,record){
 let activeResearchReady=false;
 let responseMode='medical',generalResult=null,displayedEvidence=null;
 let synthesis=null,synthesisController=null,aiRequested=false;
+const browserPicker=$('browserModel');
+const browserModelKey='hb-browser-model';
+const modelLabels={
+ '@cf/google/gemma-4-26b-a4b-it':'Gemma 4 26B A4B IT',
+ '@cf/qwen/qwen3.8-27b':'Qwen3.8 27B',
+ 'openai/gpt-oss-120b':'GPT-OSS 120B',
+ 'openai/gpt-oss-20b':'GPT-OSS 20B'
+};
+for(const id of publicConfig?.browserModels||[]){
+ browserPicker.add(new Option(modelLabels[id]||id.split('/').pop(),id));
+}
+try{
+ const saved=localStorage.getItem(browserModelKey);
+ if([...browserPicker.options].some(option=>option.value===saved))browserPicker.value=saved;
+}catch{}
+function updateModelHint(){
+ $('browserModelHint').textContent=browserPicker.options.length===1?'Only automatic routing is configured.':
+  (browserPicker.value?'Uses this model for writing and source review.':'Automatic follows your reading mode and can use a backup.')+
+  ' Changing this setting regenerates the open medical answer.';
+}
+updateModelHint();
+browserPicker.addEventListener('change',()=>{
+ try{localStorage.setItem(browserModelKey,browserPicker.value)}catch{}
+ updateModelHint();
+ if(aiRequested&&responseMode==='medical'&&synthesis&&!['clarification','blocked'].includes(synthesis.status)){
+  $('notice').textContent='Updating your answer with '+browserPicker.selectedOptions[0].text+'.';
+  render();
+ }
+});
+function openBrowserModels(event){
+ // The navigation otherwise dismisses itself on clicks outside its header.
+ event.stopPropagation();
+ const toggle=document.querySelector('.nav-toggle');
+ if(toggle.getClientRects().length&&toggle.getAttribute('aria-expanded')==='false')toggle.click();
+ $('browserModelMenu').open=true;
+ browserPicker.focus();
+}
 function refreshSynthesis(context){
  const key=synthesisKey(context);if(!context||!aiRequested||synthesis?.key===key)return;
  synthesisController?.abort();const controller=new AbortController();synthesisController=controller;synthesis={key,status:'loading'};
@@ -64,13 +101,13 @@ function refreshSynthesis(context){
  }).catch(()=>{});
 }
 function currentContext(){
-  const selection={topic:topic||'',role:roles[role],query:activeQuery,responseMode,frameworkVersion,
+  const selection={topic:topic||'',role:roles[role],query:activeQuery,responseMode,frameworkVersion,browserModel:browserPicker.value,
     passages:[],records:[],sections:[],visibleTexts:[],answerSummary:'',browserSources:[],directAnswer:null,deckSummaries:[]};
   if(unresolved)return {...selection,topic:'',query:''};
   if(responseMode==='general')return {...selection,...displayedEvidence};
   if(!topic||!catalog)return {...selection,topic:'',query:''};
   const resources=catalog[topic]||[];
-  const currentAnswer=['generated','sourced'].includes(synthesis?.status)&&synthesis.key===synthesisKey({topic,role:roles[role],query:activeQuery});
+  const currentAnswer=['generated','sourced'].includes(synthesis?.status)&&synthesis.key===synthesisKey(selection);
   const learningMode=currentAnswer&&!!synthesis.learningMode;
   return {...selection,aliases:[...(medicalRecord(topic)?.aliases||[]),...(taxonomy?.entities.find(e=>e.name===topic)?.aliases||[])],
     learningMode,deckQuestions:learningMode?buddyLearningQuestions(roles[role]):null,
@@ -211,6 +248,8 @@ function render(){
     if(clinicalReport)direct={...direct,clinicalSynthesis:true};
     const renderDirect=clinicalReport?renderClinicalSynthesis:renderAnswer;
     renderDirect(overview,{...direct,code:state?.code,retryAt:state?.retryAt},renderCheck,()=>{if(synthesis?.key!==synthesisKey(context))return;synthesis=null;render()});
+    if(state?.code==='provider_model_mismatch'&&browserPicker.options.length>1)
+      overview.append(button('Choose another model',openBrowserModels));
     if(queryNotice)overview.append(el('small',role===1?'Clinical reference; interpret evidence against the patient context and local protocols.'+(queryNotice.includes('not saved')?' This personal question is not saved to chat history.':''):queryNotice,'query-interpretation'));
     overview.classList.add('primary-medical-response');
     header.append(overview,saveControls(topic));

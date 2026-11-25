@@ -36,7 +36,7 @@ mock.module(new URL('../server/workers-ai.mjs',import.meta.url),{exports:{
  }
 }});
 const {modelAPI,modelStatus} = await import('../server/model-api.mjs');
-const {GROQ_MODEL,DEEPSEEK_MODELS} = await import('../server/model-provider.mjs');
+const {GROQ_MODEL,DEEPSEEK_MODELS,browserModelRoutes} = await import('../server/model-provider.mjs');
 models.oss=GROQ_MODEL;
 models.deepseek=DEEPSEEK_MODELS.general;
 const {buddyModelNames} = await import('../server/public-config.mjs');
@@ -109,7 +109,7 @@ for await(const line of createInterface({input:process.stdin})){
   if(input.path==='/api/config'){
    const names=buddyModelNames(env);
    if(names.workers)names.workers.general=models[profile];
-   send({data:{supabaseUrl:'https://auth.example',supabaseAnonKey:'fixture',buddyModels:names}});continue;
+   send({data:{supabaseUrl:'https://auth.example',supabaseAnonKey:'fixture',buddyModels:names,browserModels:[...browserModelRoutes(env).keys()]}});continue;
   }
   if(input.path==='/api/ai/status'){send({data:modelStatus(env)});continue;}
   if(input.path!=='/api/ai/answer')throw Error('Unknown operation');

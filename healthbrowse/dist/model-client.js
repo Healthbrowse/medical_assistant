@@ -34,7 +34,7 @@ export async function requestSynthesis(context,question,{mode='search',buddyMode
   const token=await abortable(Promise.resolve().then(tokenProvider),controller.signal);if(!token)return {status:'unavailable',message:'Sign in to use AI synthesis. Source excerpts are available below.'};
   if(controller.signal.aborted)throw new DOMException('Aborted','AbortError');
   const response=await abortable(fetcher('/api/ai/answer',{method:'POST',redirect:'error',signal:controller.signal,cache:'no-store',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-   body:JSON.stringify({topic:context.topic||'Research question',question,searchQuery:context.query||context.topic,role:normalizeReadingRole(context.role),mode,deck,history:history.slice(-4).map(t=>typeof t==='string'?t:t.question),...(mode==='chat'&&context.attachments?.length?{attachments:context.attachments}:{}),...(mode==='chat'?{buddyModel,browserContext:browserSummary(context,history)}:{})})}),controller.signal);
+   body:JSON.stringify({topic:context.topic||'Research question',question,searchQuery:context.query||context.topic,role:normalizeReadingRole(context.role),mode,deck,history:history.slice(-4).map(t=>typeof t==='string'?t:t.question),...(mode==='chat'&&context.attachments?.length?{attachments:context.attachments}:{}),...(mode==='chat'?{buddyModel,browserContext:browserSummary(context,history)}:context.browserModel?{browserModel:context.browserModel}:{})})}),controller.signal);
   const data=await abortable(response.json(),controller.signal);
   if(data.status==='clarification'&&data.clarification)return data;
   if(['blocked','platform'].includes(data.status)&&data.answer)return {...data,decks:[]};
@@ -57,7 +57,7 @@ export async function requestSynthesis(context,question,{mode='search',buddyMode
  }catch(error){if(signal?.aborted)throw error;return {status:'unavailable',message:'AI synthesis could not finish. Source excerpts are shown below.'}}
  finally{clearTimeout(timer);clearTimeout(statusTimer);signal?.removeEventListener('abort',abort)}
 }
-export const synthesisKey=c=>JSON.stringify([c?.topic,c?.role,c?.query,...(c?.attachmentVersion?[c.attachmentVersion]:[])]);
+export const synthesisKey=c=>JSON.stringify([c?.topic,c?.role,c?.query,...(c?.browserModel?[{browserModel:c.browserModel}]:[]),...(c?.attachmentVersion?[c.attachmentVersion]:[])]);
 
 export async function requestLiteratureEvidence(context,{signal,tokenProvider=getAccessToken,fetcher=fetch}={}){
  if(context.responseMode!=='medical'||context.attachments?.length||!context.query?.trim())
