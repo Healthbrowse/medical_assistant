@@ -3,7 +3,7 @@
   "sha256": "ee612ebe2e37db2f07e7040e9b4d3f7290a44411917326e49abe64320177eb33",
   "sourceHashes": {
     "dist/heart-visual.js": "36f4cc277164ef5ce24175516b5240d1af73bc11214e0c7f353bc01a99974496",
-    "dist/query-understanding.js": "95ea5b27fdc729574233ace47ef6fac6bdfe8eb6ead2740610e81f2effe7729e",
+    "dist/query-understanding.js": "1df5ac5519c89d8227a3324770a112bf330eac6c482ccb4fe6477c5b6e8292b2",
     "server/live-evidence.mjs": "b9ad863c9307aa607a198a0758930f686f189173ad30e06246b4bf4eecbd5d25",
     "server/education-evidence.mjs": "59bcd8271121aa91abb9a5f8fc0ff167821768686f63b3cf79c6feda6af2fb4a",
     "dist/education-sources.json": "11c427009b19fb765a32e4590b7f7055c2da94fa614db0b575ea4c9630a83437",
@@ -30,7 +30,7 @@
     "dist/reading-profiles.js": "a19f4535c180917eef18cb8e1214b63075e2277c6421198c9077bc772a1b5b7b",
     "dist/source-labels.js": "515614d411b9f01fdd901e070b2f2a5d3e4587ddd761ddff62b39f5a0a8a0df0",
     "dist/claim-check.js": "eaa471ced400b475bd4de911b375aad5d00bba51e5c3e249524d9b3764b12a39",
-    "dist/clinical-engine.js": "cb58d5e5ce791953e3638e4a76eaa494252ce0f6521f6990f7836e2ca230e305",
+    "dist/clinical-engine.js": "fa779df3afa9d2a5c7a00f24b19ea34cddeb3d1d3c2946fede4b96f11a98e1bc",
     "dist/safety-policy.js": "423e5b0d46013370cc3af0ed81a7bb5ac7db79201c1f90a2c158877d8495c1b2",
     "dist/search-experience.js": "b5c3a4dd80a514d20f7e40a1804355801d450dce64dc9cddf7aa3348b294cb2d",
     "dist/authorities.js": "3ea48fa8a78094d46e7a2d3a495f2ef856e3f7959eb20492ec46bf0ff23782f6",
