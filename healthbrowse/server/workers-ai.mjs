@@ -16,9 +16,14 @@ export function workersEndpoint(env,route){
 
 // Raw responses preserve quota and availability errors for the shared failover logic.
 export function runWorkersCompletion(config,messages,maxTokens,schema,signal){
+ // Gemma's job here is bounded JSON extraction. Supply the contract in the
+ // prompt as well as validating it locally, without compiling a grammar per call.
+ const isGemma=config.model===gemma;
+ const prompt=isGemma?[{...messages[0],content:messages[0].content+'\nReturn only JSON matching this schema: '+JSON.stringify(schema)},...messages.slice(1)]:messages;
  return config.ai.run(config.model,{
-  messages,stream:false,temperature:0,max_completion_tokens:maxTokens,
+  messages:prompt,stream:false,temperature:0,max_completion_tokens:maxTokens,
   ...(config.model===qwen?{reasoning_effort:'low'}:{}),
-  response_format:{type:'json_schema',json_schema:{name:'healthbrowse',strict:true,schema}}
+  ...(isGemma?{chat_template_kwargs:{enable_thinking:false}}:{}),
+  response_format:isGemma?{type:'json_object'}:{type:'json_schema',json_schema:{name:'healthbrowse',strict:true,schema}}
  },{signal,returnRawResponse:true});
 }

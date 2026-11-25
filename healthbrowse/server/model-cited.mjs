@@ -1,3 +1,4 @@
+import {pressureAnswer,pressureDecks} from '../dist/blood-pressure-routine.js';
 import {heartIntent,heartSourceRank} from '../dist/heart-visual.js';
 import {conceptWords,definitionSubject,definitionScore,definitionExcerpt} from '../dist/answer-relevance.js';
 import {retrievalTerms} from '../dist/query-understanding.js';
@@ -67,7 +68,7 @@ export function prepareCited(input,evidence){
   seen.add(key);budget-=size;sources.push(s);if(sources.length===16)break;
  }
  const claim=object({text:{type:'string'},sources:array({type:'string'}),...(clinical?{section:{type:'string',enum:clinicalSections}}:{})});
- const overviewDecks=buddyOverviewDecks(input,evidence);
+ const overviewDecks=evidence.dailyPressure?[]:buddyOverviewDecks(input,evidence);
  const deckEvidence=overviewDecks.map(({deck,title,blocks})=>({
   deck,title,passages:blocks.flatMap(block=>block.references.map(ref=>({
    id:ref.id,text:ref.quote,title:ref.title,scopeTerms:ref.scopeTerms,sourceType:ref.sourceType,abstractOnly:ref.abstractOnly
@@ -250,7 +251,8 @@ export function presentCited(raw,prepared,input,model){
    citation:references[0],references,verification:'The cited excerpts were identified as conflicting during automated review.'});
  }
  if(!blocks.length&&!raw.unverifiedConflict){
-  const excerpt=fallbackExcerpt(evidence,input,clinical);if(excerpt)blocks.push(excerpt);
+  if(evidence.dailyPressure)blocks.push(...pressureAnswer(pressureDecks(),input.deck).blocks);
+  else {const excerpt=fallbackExcerpt(evidence,input,clinical);if(excerpt)blocks.push(excerpt);}
  }
  const gap=evidence.documentMode?'The attached documents do not provide enough information to answer this question.':insufficientClinicalContext;
  const citations=[...new Map(blocks.flatMap(b=>b.references).map(r=>[r.id,r])).values()];
@@ -259,9 +261,9 @@ export function presentCited(raw,prepared,input,model){
  if(raw.unverifiedConflict)gaps.push('A possible disagreement between sources could not be verified from two identified passages.');
  const direct={id:0,blocks,citations,gaps,checks:[],style:evidence.style,deck:input.deck||0,supported:generated,
   text:blocks.length?blocks.map(b=>b.text+' '+b.references.map(r=>'['+r.id+']').join(' ')).join('\n\n'):gap,
-  ...(generated?{generation:{model,mode:'generated',label:'AI explanation',checkedAt:new Date().toISOString()}}:{modelNotice:raw.conflicts?.length?'The retrieved sources disagree.':blocks.length?insufficientClinicalContext+' Source excerpt · shown for reference.':'Evidence gap · '+gap})};
+  ...(generated?{generation:{model,mode:'generated',label:'AI explanation',checkedAt:new Date().toISOString()}}:{modelNotice:raw.conflicts?.length?'The retrieved sources disagree.':evidence.dailyPressure?'From the linked patient guidance.':blocks.length?insufficientClinicalContext+' Source excerpt · shown for reference.':'Evidence gap · '+gap})};
  const answer=finishMedicalAnswer(direct,input,evidence,{fallback:!generated});
- return {status:'generated',protocol:'groq-cited-v1',documentMode:!!evidence.documentMode,answer:evidence.documentMode?{...answer,style:'Document review',modelNotice:answer.generation?undefined:answer.blocks.length?'Excerpt from the supplied document.':'The supplied passages do not establish an answer.'}:withAudienceDisclaimer(answer,normalizeReadingRole(input.role)),decks:raw[reviewedDecks]||prepared.overviewDecks||[],model,snapshot:evidence.snapshot,
+ return {status:'generated',protocol:'groq-cited-v1',documentMode:!!evidence.documentMode,answer:evidence.documentMode?{...answer,style:'Document review',modelNotice:answer.generation?undefined:answer.blocks.length?'Excerpt from the supplied document.':'The supplied passages do not establish an answer.'}:withAudienceDisclaimer(answer,normalizeReadingRole(input.role)),decks:evidence.dailyPressure?buddyOverviewDecks(input,evidence):raw[reviewedDecks]||prepared.overviewDecks||[],model,snapshot:evidence.snapshot,
   visual:evidence.visual||null,learningMode:!!evidence.learningMode,
   validation:{citationCheck:'server-resolved passages',semanticReview:raw.supportReview==='completed'?'automated support review; not independent clinical validation':'not independently validated',withheldClaims}};
 }
