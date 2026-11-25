@@ -45,6 +45,18 @@ export function buddyEndpoint(env,choice,route){
  }
  return modelEndpoint(env,route);
 }
+// Only expose model IDs with a configured, server-owned cited-answer endpoint.
+export function browserModelRoutes(env){
+ const endpoints=[];
+ if(usesRoleModels(env)){
+  for(const role of ['general','professional'])endpoints.push(workersEndpoint(env,role));
+  for(const role of ['general','professional'])endpoints.push(deepseekEndpoint(env,role));
+  endpoints.push(fallbackEndpoint(env));
+ }else if(env.MODEL_PROVIDER==='groq'){
+  endpoints.push(modelEndpoint(env,'general'));
+ }
+ return new Map(endpoints.filter(Boolean).map(config=>[config.model,config]));
+}
 export function usesCitedProtocol(config){
  return config?.protocol==='groq-cited-v1'||config?.protocol==='deepseek-cited-v1'||config?.protocol===workersProtocol;
 }
