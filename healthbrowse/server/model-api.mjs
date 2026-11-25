@@ -239,14 +239,20 @@ export async function modelAPI(request,env,assets){
    const primaryWait=config.model===workersModels.general?(quickChat?11000:50000):(quickChat?6500:35000);
    phase='generation';
    const draft=await checkedCompletion(primary,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema,!!b.buddyModel,recordFallback,primaryWait);
-   const check=prepareCitedReview(draft.value,prepared,b);
+   const clinicalBrowser=b.mode==='search' && route==='professional' && primary?.model===workersModels.professional;
+   const check=prepareCitedReview(draft.value,prepared,b,{sentenceReferences:clinicalBrowser});
    phase='support_review';
    // Once Groq has taken over, review there too. A reviewer-only outage
    // retries the review of the same draft and evidence without regenerating it.
    const reviewAt=draft.config===backup?backup:reviewer;
-   const review=check.claims.length
-    ?await checkedCompletion(reviewAt,backup,check.messages,signal,check.maxTokens,check.schema,!!b.buddyModel,recordFallback,quickChat?Math.max(1,Math.min(primaryWait,budget-(Date.now()-started)-3500)):primaryWait)
-    :null;
+   let review=null;
+   if(check.claims.length){
+    // Clinical Browser search used the 35-second generation allowance a second time here.
+    // Give Qwen the first review attempt, then share the remaining time with the backup.
+    const reviewSignal=clinicalBrowser?AbortSignal.any([signal,AbortSignal.timeout(20000)]):signal;
+    const attemptMs=clinicalBrowser?8000:quickChat?Math.max(1,Math.min(primaryWait,budget-(Date.now()-started)-3500)):primaryWait;
+    review=await checkedCompletion(reviewAt,backup,check.messages,reviewSignal,check.maxTokens,check.schema,!!b.buddyModel,recordFallback,attemptMs);
+   }
    phase='presentation';
    const approved=applyCitedReview(review?.value||{checks:[]},check,prepared,b);
    return reply({...presentCited(approved,prepared,b,draft.config.model),protocol:draft.config.protocol,...routing,
@@ -296,6 +302,8 @@ export async function modelAPI(request,env,assets){
   }
   fail(502,'verification_failed','The generated answer did not pass source checks. Showing source excerpts instead.');
  }catch(error){
+  if(phase==='support_review' && error.name==='TimeoutError' && !request.signal?.aborted)
+   error=new Failure(503,'model_timeout','Source review timed out. Showing cited source passages.');
   // Never log questions, tokens, provider bodies, identities or error messages.
   if(error.code==='provider_busy')console.warn(JSON.stringify({event:'ai_provider_limited',phase,...(error.retryAfterSeconds!==undefined?{retryAfterSeconds:error.retryAfterSeconds}:{})}));
   if(!(error instanceof Failure))console.error(JSON.stringify({event:'ai_request_failed',phase,kind:['TypeError','SyntaxError','TimeoutError','AbortError'].includes(error?.name)?error.name:'Error'}));
