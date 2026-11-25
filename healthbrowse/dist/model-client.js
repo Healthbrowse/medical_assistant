@@ -13,6 +13,7 @@ function describeFallback(detail){
  const action=detail.phase==='support_review'?'source review':'answer generation';
  const http={401:'access was rejected',402:'provider credits were unavailable',403:'access was denied',404:'model was unavailable',410:'model was retired',429:'provider rate or usage limit was reached'};
  const reason=detail.reason==='timeout'?'request timed out':detail.reason==='network_error'?'connection failed':
+  detail.reason==='provider_output_invalid'?'the response format was invalid':detail.reason==='provider_output_truncated'?'the response was incomplete':
   detail.reason==='primary_unconfigured'?'binding or credentials unavailable':
   (http[detail.httpStatus]||'provider unavailable')+(Number.isInteger(detail.httpStatus)?' (HTTP '+detail.httpStatus+')':'');
  return primary+' — '+reason+'. Switched to '+backup+' for '+action+'.';
