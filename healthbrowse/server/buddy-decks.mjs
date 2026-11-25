@@ -1,3 +1,4 @@
+import {pressureDecks} from '../dist/blood-pressure-routine.js';
 import {conceptWords,definitionScore} from '../dist/answer-relevance.js';
 import {authorityFor} from '../dist/authorities.js';
 import {hasUnsafeBuddyOutput,assessBuddySafety} from '../dist/buddy-policy.js';
@@ -54,6 +55,7 @@ function learningCandidates(source, terms) {
 // Group the passages from this request, keeping each quote intact and traceable.
 export function buddyOverviewDecks(input, evidence) {
  if (!isBuddyOverview(input) || evidence.documentMode) return [];
+ if (evidence.dailyPressure) return pressureDecks();
  const clinical = roleIndex(input.role) === 1;
  const subject = input.topic;
  const terms = conceptWords(retrievalTerms(subject));

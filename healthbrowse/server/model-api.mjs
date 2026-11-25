@@ -2,6 +2,7 @@ import {abortable} from '../dist/request-deadline.js';
 import {withModelFallback} from './model-failover.mjs';
 import {educationalVisual} from './education-visuals.mjs';
 import {learningDecks} from './learning-decks.mjs';
+import {asksPressureRoutine,pressureRequest,pressureDecks,pressureTopic,pressureQuestion} from '../dist/blood-pressure-routine.js';
 import {isBuddyOverview,buddyOverviewDecks} from './buddy-decks.mjs';
 import {buddyDeckIntent} from '../dist/buddy-deck-intent.js';
 import {educationEvidence,addEducation} from './education-evidence.mjs';
@@ -169,7 +170,10 @@ export async function modelAPI(request,env,assets){
    if(clarification)return reply({query_decomposition:[],retrieved_sources:[],evidence_gaps:[clarification.text]});
    return reply(await retrieveLiteraturePacket(b,env,request.signal,fetch,assets));
   }
-  if (isBuddyOverview(b)) {
+  const dailyPressure=(!config || usesCitedProtocol(config)) && pressureRequest(b);
+  if(dailyPressure) {
+   b={...b,topic:pressureTopic,question:b.deck>0||asksPressureRoutine(b.question)?b.question:pressureQuestion};
+  } else if (isBuddyOverview(b)) {
    const intent = buddyDeckIntent(b.question,{topic:b.topic,index:medicalTopicIndex(assets),queryMode:evidenceMode(b,assets)});
    if (intent.explicit && (intent.topic || b.topic)) {
     const subject = (intent.topic || b.topic).trim();
@@ -182,7 +186,18 @@ export async function modelAPI(request,env,assets){
   const chatDeadline=quickChat?AbortSignal.timeout(budget):null;
   const local=documentMode?null:grounded?groundedEvidence(assets,b):usesCitedProtocol(config)||!config?citedEvidence(assets,b):evidenceFor(assets,b.topic,b.role,b.question);
   let evidence=documentMode?documentEvidence(b.attachments,b):local;
-  if(!documentMode&&!grounded){
+  if(dailyPressure){
+   // Publish only the preselected, source-linked summaries for this routine.
+   // No live literature planner or unrelated disease passages are needed here.
+   const decks=pressureDecks();
+   const sources=decks.filter(d=>!b.deck||d.deck===b.deck).map(d=>{
+    const {citation,text}=d.blocks[0];
+    return {...citation,text,heading:d.title,deck:d.deck,scopeTerms:[],
+     sourceType:'HealthBrowse summary of linked patient guidance'};
+   });
+   evidence={...local,sources,topic:pressureTopic,style:'Plain-language answer',dailyPressure:true,
+    retrieval:{providers:[{name:'NHLBI and American Heart Association patient guidance',status:'available'}]}};
+  }else if(!documentMode&&!grounded){
    const lookupDeadline=quickChat?AbortSignal.timeout(7000):null;
    const lookupSignal=quickChat?AbortSignal.any([lookupDeadline,chatDeadline,...(request.signal?[request.signal]:[])]):request.signal;
    try{
@@ -219,15 +234,18 @@ export async function modelAPI(request,env,assets){
     console.warn(JSON.stringify({event:'ai_model_fallback',...routing.modelFallback}));
    };
    const prepared=prepareCited(b,evidence);
+   // Give Gemma enough time for a normal completion while reserving time for
+   // review and an actual provider failure inside the existing request deadline.
+   const primaryWait=config.model===workersModels.general?(quickChat?11000:50000):(quickChat?6500:35000);
    phase='generation';
-   const draft=await checkedCompletion(primary,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema,!!b.buddyModel,recordFallback,quickChat?6500:35000);
+   const draft=await checkedCompletion(primary,backup,prepared.messages,signal,prepared.maxTokens,prepared.schema,!!b.buddyModel,recordFallback,primaryWait);
    const check=prepareCitedReview(draft.value,prepared,b);
    phase='support_review';
    // Once Groq has taken over, review there too. A reviewer-only outage
    // retries the review of the same draft and evidence without regenerating it.
    const reviewAt=draft.config===backup?backup:reviewer;
    const review=check.claims.length
-    ?await checkedCompletion(reviewAt,backup,check.messages,signal,check.maxTokens,check.schema,!!b.buddyModel,recordFallback,quickChat?6500:35000)
+    ?await checkedCompletion(reviewAt,backup,check.messages,signal,check.maxTokens,check.schema,!!b.buddyModel,recordFallback,quickChat?Math.max(1,Math.min(primaryWait,budget-(Date.now()-started)-3500)):primaryWait)
     :null;
    phase='presentation';
    const approved=applyCitedReview(review?.value||{checks:[]},check,prepared,b);

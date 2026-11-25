@@ -1,3 +1,4 @@
+import {asksPressureRoutine,pressureDecks,pressureAnswer,pressureSections,pressureTopic,pressureQuestion} from './blood-pressure-routine.js';
 import {buddyHealthTask,buddyHealthGuide} from './health-questions.js';
 import {buddyLearningQuestions} from './learning-questions.js';
 import {buddyDeckIntent} from './buddy-deck-intent.js';
@@ -48,6 +49,15 @@ export function setupCopilot(browserContext,actions={}){
  const controls=[$('deckSelect'),$('question'),$('ask').querySelector('button[type=submit]')];
  controls.forEach(control=>control.disabled=true);
  function conversationContext(browser) {
+  const context=topicContext(browser);
+  const last=history.at(-1);
+  const routine=last ? last.pressureRoutine && last.topic===context.topic : (!conversationTopic || conversationTopic===browser.topic) && asksPressureRoutine(browser.query);
+  if(!browser.attachments?.length && readingProfile(browser.role).index===0 && routine){
+   return {...context,topic:pressureTopic,query:pressureQuestion,responseMode:'medical',deckQuestions:pressureSections,learningMode:false};
+  }
+  return context;
+ }
+ function topicContext(browser) {
   if(generalConversation)return {...browser,...generalConversation};
   const learning=conversationTopic && conversationTopic===learningTopic;
   if(!conversationTopic||conversationTopic===browser.topic){
@@ -129,8 +139,11 @@ export function setupCopilot(browserContext,actions={}){
   const audit=!fileMode&&c.directAnswer&&isBrowserAuditQuestion(q);
   const queryMode=actions.classify?.(q,c)??classifyResponseMode(q,{topic:c.topic,previousMode:c.responseMode||'medical'});
   const intent=buddyDeckIntent(q,{...c,queryMode});
+  const namedRoutine=!fileMode && readingProfile(c.role).index===0 && asksPressureRoutine(q);
+  const routine=namedRoutine || (!fileMode && c.deckQuestions===pressureSections &&
+   ((intent.explicit&&!intent.topic) || (guidedDeck>0&&q===pressureSections[guidedDeck-1])));
   const sectionFollowUp=c.topic&&c.responseMode!=='general'&&isMedicalSectionFollowUp(q);
-  const general=!fileMode&&!guidedDeck&&(audit?c.responseMode==='general':queryMode==='general'&&!intent.overview&&!sectionFollowUp);
+  const general=!routine&&!fileMode&&!guidedDeck&&(audit?c.responseMode==='general':queryMode==='general'&&!intent.overview&&!sectionFollowUp);
   const prepared=(fileMode||general||audit)?{...screenGeneralQuery(q,[c.topic,history.at(-1)?.question].filter(Boolean).join(' ')),query:q}:prepareQuery(q,[c.topic,c.query,history.at(-1)?.question].filter(Boolean).join(' ')),status=prepared.status;q=prepared.query;$('question').value='';$('scopeQuestion').replaceChildren();
   if(status!=='ok')notifySafety({status,safety:prepared.safety?.safety});
   if(status==='ok'&&(prepared.ephemeral||!canSaveResearchQuestion(q,c.query)))privateConversation=true;
@@ -138,7 +151,7 @@ export function setupCopilot(browserContext,actions={}){
   if(healthTask){showHealthGuide(healthTask,q);return;}
   const saveable=status==='ok'&&!privateConversation&&!fileMode&&!audit&&!general;
   const run=++sequence,scope=identity;
-  const narrativeTopic=status==='ok'&&!general&&!audit&&!guidedDeck&&!fileMode&&readingProfile(c.role).index===0?actions.personalTopic?.(q,c.topic):null;
+  const narrativeTopic=status==='ok'&&!routine&&!general&&!audit&&!guidedDeck&&!fileMode&&readingProfile(c.role).index===0?actions.personalTopic?.(q,c.topic):null;
   const missingDeckTopic=intent.explicit&&!intent.topic&&!c.topic?{
    title:'Which medical topic should the six decks cover?',text:'Enter a condition or a biology topic.',choices:[],allowEdit:true
   }:null;
@@ -147,7 +160,7 @@ export function setupCopilot(browserContext,actions={}){
   const choices=narrativeTopic==null&&status==='ok'&&!general&&!audit&&!fileMode&&!guidedDeck?actions.scopeChoice?.(q)||[]:[];
   const previousTopic=c.topic;
   const namedQuestion=/^(?:what (?:is|are)|what about|explain|describe|tell me about|how does)\b/i.test(q);
-  const changesSubject=narrativeTopic||intent.topic||(!intent.explicit&&!usesActiveTopic(q)&&(choices.length||namedQuestion||intent.overview));
+  const changesSubject=!routine&&(narrativeTopic||intent.topic||(!intent.explicit&&!usesActiveTopic(q)&&(choices.length||namedQuestion||intent.overview)));
   if(status==='ok'&&!general&&!audit&&!fileMode&&!guidedDeck&&changesSubject){
    generalConversation=null;
    const terms=retrievalTerms(q);
@@ -155,32 +168,45 @@ export function setupCopilot(browserContext,actions={}){
    const next=narrativeTopic||intent.topic||(intent.overview||normalFunction?terms:choices.length===1?choices[0]:terms);
    if(next&&next.toLowerCase()!==c.topic.toLowerCase()){conversationTopic=next[0].toUpperCase()+next.slice(1);c={...conversationContext(browser),query:q};active=1;}
   }
+  if(status==='ok' && routine){
+   generalConversation=null;learningTopic='';conversationTopic=pressureTopic;
+   c={...topicContext(browser),topic:pressureTopic,query:pressureQuestion,responseMode:'medical',learningMode:false,deckQuestions:pressureSections};
+   if(!guidedDeck)active=1;
+  }
   const help=status==='ok'&&!fileMode&&!audit?buddyHelpAnswer(q):null;
   // Introduce a new medical subject with a direct answer and the six sections.
   // Once the conversation is underway, a targeted follow-up can stay focused.
   const newSubject=!!c.topic&&(!history.length||previousTopic!==c.topic);
   const asksForBrief=/\b(?:brief(?:ly)?|short answer|one sentence|just the answer|only|(?:no|without|skip|omit|avoid|do not|don.t)\b[^.!?]{0,35}\bdecks?)\b/i.test(q);
-  const fullTopic=intent.explicit||(!asksForBrief&&(intent.overview||newSubject&&!isRecordListing(q)));
+  const fullTopic=intent.explicit||(!asksForBrief&&(routine||intent.overview||newSubject&&!isRecordListing(q)));
   const report=status==='ok'&&fullTopic&&!help&&!general&&!audit&&!fileMode&&!guidedDeck&&!prepared.ephemeral&&canSaveResearchQuestion(q);
   const localQuestion=report&&intent.explicit?c.topic:q;
-  let answer=status!=='ok'?{...(prepared.safety||{text:guardMessage(status),citations:[],checks:[]}),deck:active}:help?{...help,deck:active}:audit?auditBrowserAnswer(c,q):fileMode||general?{text:'Checking the sources…',blocks:[],citations:[]}:guidedDeck?domainAnswer(c,guidedDeck):searchAnswer(c,localQuestion,{detail:true,activeDeck:active});
+  const careDecks=status==='ok'&&routine?pressureDecks():null;
+  let answer;
+  if(status!=='ok')answer={...(prepared.safety||{text:guardMessage(status),citations:[],checks:[]}),deck:active};
+  else if(help)answer={...help,deck:active};
+  else if(careDecks)answer=pressureAnswer(careDecks,guidedDeck);
+  else if(audit)answer=auditBrowserAnswer(c,q);
+  else if(fileMode||general)answer={text:'Checking the sources…',blocks:[],citations:[]};
+  else answer=guidedDeck?domainAnswer(c,guidedDeck):searchAnswer(c,localQuestion,{detail:true,activeDeck:active});
   if(!answer)return;
   if(status==='ok'&&c.attachments?.length&&!help)answer={text:'Reading the attached documents…',blocks:[],citations:[],checks:[],deck:active};
   if(status==='ok'&&!help&&!general&&!audit&&!fileMode)answer=withAudienceDisclaimer(answer,c.role);
   const clinicalQuestion=status==='ok'&&!help&&!general&&!audit&&!fileMode&&readingProfile(c.role).index===1;
-  if(report&&!answer.safety)answer={...answer,buddyDecks:localBuddyDecks(c),deck:active};
+  if(report&&!answer.safety)answer={...answer,buddyDecks:careDecks||localBuddyDecks(c),deck:active};
   if(clinicalQuestion&&!report&&!answer.safety&&answer.blocks?.length)answer={...answer,clinicalSynthesis:true};
   // Give the visitor the source-backed response now; optional remote services
   // can enrich this same turn without holding the conversation blank.
-  const turn={...answer,frameworkVersion,topic:c.topic,question:status==='ok'?q:'Input withheld',overview:report||isOverviewQuestion(c,q)};
+  const turn={...answer,...(careDecks?{pressureRoutine:true}:{}),frameworkVersion,topic:c.topic,question:status==='ok'?q:'Input withheld',overview:report||isOverviewQuestion(c,q)};
   if(status==='ok'){active=answer.deck||active;if(!help&&!audit&&!general&&!fileMode)turn.modelNotice='Checking for additional evidence. You can read the cited response below.'}
   history=[...history.slice(-9),turn];if(fromSuggestion&&saveable)publicTurns=[...publicTurns.slice(-9),turn];
   sync();$('thread').lastElementChild?.scrollIntoView({block:'nearest'});
-  let catalogAnswer = false;
+  let catalogAnswer = !!careDecks && (guidedDeck>0 || intent.explicit);
+  if(catalogAnswer)delete turn.modelNotice;
   const presetDeck = guidedDeck && questions(c)[guidedDeck-1]?.prompt === q;
   const publicDeckRequest = (report || presetDeck) && status === 'ok' && !privateConversation
    && !fileMode && !help && !audit && !general && !answer.safety && canSaveResearchQuestion(c.topic,c.query);
-  if (publicDeckRequest) {
+  if (publicDeckRequest && !careDecks) {
    const previous = history.slice(0,-1).findLast(item => item.topic === c.topic && item.buddyDecks?.length === 6);
    const cachedDeck = guidedDeck && previous?.buddyDecks[guidedDeck-1];
    const snapshot = cachedDeck?.blocks?.length && cachedDeck.title === (c.deckQuestions?.[guidedDeck-1] || domainTitle(guidedDeck,c.role))
@@ -227,7 +253,7 @@ export function setupCopilot(browserContext,actions={}){
    else if(['generated','sourced','blocked','platform'].includes(result.status)){
     const grounded=['sourced','generated'].includes(result.status);
     if(grounded&&!general&&!fileMode&&result.learningMode)learningTopic=c.topic;
-    const decks=report&&grounded?mergeBuddyDecks(result.decks,answer.buddyDecks):null;
+    const decks=report&&grounded?careDecks||mergeBuddyDecks(result.decks,answer.buddyDecks):null;
     answer=decks?{...result.answer,deck:active,buddyDecks:decks}:result.answer;
     if(clinicalQuestion&&!report&&grounded)answer={...answer,clinicalSynthesis:true};
    }else answer={...answer,...(clinicalQuestion&&!report&&!answer.safety?{clinicalSynthesis:true}:{}),...(fileMode?{text:'Buddy could not complete the document review.'}:{}),modelNotice:result.message,code:result.code,retryAt:result.retryAt};
@@ -242,7 +268,7 @@ export function setupCopilot(browserContext,actions={}){
   // so an enriched answer cannot inherit an obsolete coverage-gap message.
   for(const key of Object.keys(turn))delete turn[key];
   const finalTopic=general&&!audit?answer.topic:c.topic;
-  Object.assign(turn,answer,{frameworkVersion,topic:finalTopic||c.topic,question:status==='ok'?q:'Input withheld',overview:report||isOverviewQuestion(c,q)});
+  Object.assign(turn,answer,{...(careDecks?{pressureRoutine:true}:{}),frameworkVersion,topic:finalTopic||c.topic,question:status==='ok'?q:'Input withheld',overview:report||isOverviewQuestion(c,q)});
   if(status==='ok'&&!privateConversation&&!prepared.symptom&&!help&&!audit&&!guidedDeck&&!fileMode)
    turn.inviteTopic=invitationTopic(answer,finalTopic,q);
   if(status==='ok'&&saveable){void actions.onChat?.(c,active);try{void actions.onTurn?.(turn)}catch{}}

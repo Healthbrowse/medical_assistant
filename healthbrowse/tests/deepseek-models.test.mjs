@@ -6,6 +6,8 @@ import {modelEndpoint,DEEPSEEK_MODELS,HF_CHAT_URL} from '../server/model-provide
 import {modelStatus,modelAPI} from '../server/model-api.mjs';
 import {buddyModelNames} from '../server/public-config.mjs';
 import {workersModels} from '../server/workers-ai.mjs';
+import {asksPressureRoutine,pressureRequest,pressureSections,pressureTopic} from '../dist/blood-pressure-routine.js';
+import {requestSynthesis} from '../dist/model-client.js';
 
 const env={MODEL_PROVIDER:'deepseek',HF_TOKEN:'server-hf-only',RETRIEVAL_LIVE:'off',SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public'};
 const assets=Object.fromEntries(['medline-topics','clinical-passages','grounded-sources'].map(name=>['/'+name+'.json',{text:readFileSync(new URL('../dist/'+name+'.json',import.meta.url),'utf8')}]));
@@ -53,7 +55,12 @@ test('Workers AI serves both Browser roles and Buddy, with a verified Groq fallb
  }
  const AI={async run(model,payload,options){
   assert.equal(options.returnRawResponse,true);assert.ok(options.signal instanceof AbortSignal);
-  assert.equal(payload.response_format.type,'json_schema');assert.ok(payload.max_completion_tokens>0);
+  assert.ok(payload.max_completion_tokens>0);
+  if(model===workersModels.general){
+   assert.deepEqual(payload.response_format,{type:'json_object'});
+   assert.equal(payload.chat_template_kwargs.enable_thinking,false);
+   assert.match(payload.messages[0].content,/Return only JSON matching this schema:/);
+  }else assert.equal(payload.response_format.type,'json_schema');
   assert.equal(payload.reasoning_effort,model===workersModels.professional?'low':undefined);
   assert.equal(JSON.stringify(payload).includes(env.HF_TOKEN),false);
   return completion(model,payload);
@@ -113,6 +120,59 @@ test('Workers AI serves both Browser roles and Buddy, with a verified Groq fallb
  assert.equal(pilot.model,workersModels.professional);
  const explicitDeepSeek=await ask('chat',{buddyModel:'deepseek'});assert.equal(explicitDeepSeek.model,DEEPSEEK_MODELS.professional);
  const explicitGroq=await ask('chat',{buddyModel:'groq'});assert.equal(explicitGroq.model,groq);
+
+ role='General'; calls.length=0;
+ const question='How to manage high blood pressure day to day?';
+ const context={topic:question,query:question,role};
+ const fetcher=(path,opts)=>modelAPI(new Request('https://site.test'+path,opts),config,assets);
+ const run=(mode,questionText=question,deck=0,topic=context.topic)=>requestSynthesis({...context,topic},questionText,
+  {mode,deck,tokenProvider:async()=>'session-test-token',fetcher});
+ for(const mode of ['search','chat']){
+  const result=await run(mode);
+  assert.equal(result.status,'generated');assert.equal(result.answer.generation.model,workersModels.general);
+  assert.deepEqual(calls.splice(0),[[workersModels.general,'generation'],[workersModels.general,'support_review']]);
+  assert.equal(result.decks.length,mode==='chat'?6:0);assert.equal(result.answer.routingNotice,undefined);
+  if(mode==='chat'){
+   assert.deepEqual(result.decks.map(d=>d.title),pressureSections);
+   for(const d of result.decks){
+    assert.ok(d.blocks[0].text.length>60);
+    assert.ok(d.blocks[0].references.every(r=>['www.nhlbi.nih.gov','www.heart.org'].includes(new URL(r.url).hostname)));
+   }
+  }
+ }
+ for(const stage of ['generation','support_review']){
+  failure=stage;
+  const result=await run('chat');
+  assert.equal(result.answer.generation.model,stage==='generation'?groq:workersModels.general);
+  assert.match(result.answer.routingNotice,/gemma.*429.*gpt-oss-120b/i);
+  assert.ok(result.answer.routingNotice.endsWith(stage==='generation'?'answer generation.':'source review.'));
+  assert.equal(result.decks.length,6);
+ }
+ failure='generation';groqDown=true;
+ const snapshot=await run('chat','Show all six decks',0,pressureTopic);
+ assert.equal(snapshot.status,'sourced');assert.equal(snapshot.answer.generation,undefined);
+ assert.deepEqual(snapshot.decks.map(d=>d.title),pressureSections);
+ for(let deck=1;deck<=6;deck++){
+  const selected=await run('chat',pressureTopic+' — '+pressureSections[deck-1],deck,pressureTopic);
+  assert.equal(selected.answer.blocks[0].text,snapshot.decks[deck-1].blocks[0].text);
+  assert.deepEqual(selected.decks,[]);
+ }
+});
+
+test('the daily blood pressure routine stays scoped to general educational questions',()=>{
+ const question='How to manage high blood pressure day to day?';
+ assert.ok(asksPressureRoutine(question));
+ assert.ok(asksPressureRoutine('How is high blood pressure usually managed day-to-day?'));
+ for(const other of ['What causes high blood pressure?', 'How to manage hypertension in pregnancy?',
+  'How can I lower my hypertension with chest pain?', 'My blood pressure is 195/125. What should I do?',
+  'Compare hypertension and low blood pressure','How can I lower my hypertension with amlodipine?']){
+  assert.equal(asksPressureRoutine(other),false,other);
+ }
+ const body={role:'General',mode:'chat',topic:pressureTopic,searchQuery:question,question:'Show all six decks',deck:0};
+ assert.ok(pressureRequest(body));
+ for(const override of [{role:'Clinicians'},{attachments:[{}]},{topic:'Leukemia'},{searchQuery:'What is hypertension?'},{question:'What are the symptoms of leukemia?'}]){
+  assert.equal(pressureRequest({...body,...override}),false);
+ }
 });
 
 test('portable completion accepts only schema-conformant final JSON from the requested model',()=>{
