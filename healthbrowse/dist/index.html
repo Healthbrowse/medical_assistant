@@ -11,6 +11,14 @@
       <a href="#main" data-nav-destination="research" aria-current="page">Research desk</a>
       <a href="/account.html#chats" data-nav-destination="history">Chat history</a>
     </div>
+    <details class="nav-group nav-model" id="browserModelMenu">
+      <summary><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h4m5 0h9M3 17h10m5 0h3"/><circle cx="9.5" cy="7" r="2.5"/><circle cx="15.5" cy="17" r="2.5"/></svg>Models</summary>
+      <div class="nav-popover browser-model-options">
+        <label for="browserModel">Browser model</label>
+        <select id="browserModel" aria-describedby="browserModelHint"><option value="">Automatic</option></select>
+        <small id="browserModelHint">Automatic follows your reading mode.</small>
+      </div>
+    </details>
     <details class="nav-group">
       <summary>Help</summary>
       <div class="nav-popover">
