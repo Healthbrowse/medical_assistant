@@ -1,21 +1,22 @@
+import {setBuddyIcon} from './buddy-layout.js';
 // The same dialog owns chat, focus and attachments in either view.
 export function setupBuddyWindow(dialog, close) {
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'buddy-window-toggle';
-  toggle.textContent = 'Full window';
+  setBuddyIcon(toggle, 'maximize', 'Full window');
+  setBuddyIcon(close, 'close', 'Close Buddy');
   toggle.setAttribute('aria-controls', dialog.id);
   close.before(toggle);
   toggle.onclick = () => {
     const full = dialog.classList.toggle('buddy-full-window');
-    toggle.textContent = full ? 'Restore panel' : 'Full window';
+    setBuddyIcon(toggle, full ? 'restore' : 'maximize', full ? 'Restore panel' : 'Full window');
   };
 
   const handle = document.createElement('button');
   handle.type = 'button';
   handle.className = 'buddy-window-resize';
-  handle.textContent = '⤡';
-  handle.setAttribute('aria-label', 'Resize Buddy panel');
+  setBuddyIcon(handle, 'resize', 'Resize Buddy panel');
   handle.title = 'Drag to resize or use the arrow keys. Press Enter to reset the size.';
   handle.setAttribute('aria-description', handle.title);
   dialog.append(handle);
