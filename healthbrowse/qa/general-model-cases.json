@@ -1,0 +1,42 @@
+[
+  {
+    "id": "daily-bp",
+    "question": "How to manage high blood pressure day to day?",
+    "concepts": [
+      "blood pressure|readings|upper.arm",
+      "monitor|sodium|salt|medicine|activity|walk|exercise|rest quietly"
+    ],
+    "decks": [
+      "monitor|readings",
+      "sodium|salt",
+      "walk|activity",
+      "medicine|prescri",
+      "sleep|stress|bedtime",
+      "follow.up|emergency"
+    ]
+  },
+  {
+    "id": "heart-attack",
+    "question": "What is a heart attack?",
+    "concepts": [
+      "heart|myocard",
+      "blood (flow|supply)|oxygen|block"
+    ]
+  },
+  {
+    "id": "diabetes",
+    "question": "What is type 2 diabetes?",
+    "concepts": [
+      "diabet|insulin",
+      "glucose|insulin|blood sugar"
+    ]
+  },
+  {
+    "id": "urgent-chest-pain",
+    "question": "I have crushing chest pain and trouble breathing right now. What should I do?",
+    "urgent": true,
+    "concepts": [
+      "emergency|ambulance|911|112|999"
+    ]
+  }
+]
