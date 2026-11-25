@@ -78,3 +78,30 @@ test('source-only trial answers require the right subject and finding, and keep 
   assert.deepEqual(sourceOnly([wrong,background]).blocks,[]);
  }
 });
+
+test('clinical Browser review can select exact source sentences without losing conflicting evidence or provenance',()=>{
+ const browser={...input,mode:'search'};
+ const first='The investigators enrolled two cohorts.';
+ const prepared=prepareCited(browser,{...evidence,sources:[{...sources[0],text:first+'  '+sources[0].text},sources[1]]});
+ const claim={text:'The reported response was 10 percent.',section:'evidence',sources:['S1']};
+ const check=prepareCitedReview({answer:[claim]},prepared,browser,{sentenceReferences:true});
+ const packet=JSON.parse(check.messages[1].content);
+ const indexed=packet.sources.find(s=>s.id==='S1');
+ assert.deepEqual(indexed.sentences,[first,sources[0].text]);
+ assert.equal(indexed.abstractOnly,true);
+ assert.deepEqual(packet.sources.find(s=>s.id==='S2').sentences,[sources[1].text]);
+ const verdict=(quotes,ids=['S1'],decision='supported')=>applyCitedReview({checks:[
+  {id:'C1',sources:ids,quotes,verdict:decision}
+ ]},check,prepared,browser);
+ for(const quotes of [['@S1:2'],[sources[0].text]]){
+  const checked=verdict(quotes);
+  assert.deepEqual(checked.answer[0].quotes,[sources[0].text]);
+  const rendered=presentCited(checked,prepared,browser,'qwen');
+  assert.equal(rendered.answer.blocks[0].references[0].quote,sources[0].text);
+ }
+ for(const bad of ['@S2:1','@S1:0','@S1:3','@S1:1','@S1:2x','a fabricated quotation']){
+  assert.equal(verdict([bad]).answer.length,0,bad);
+ }
+ assert.deepEqual(verdict(['@S1:2','@S2:1'],['S1','S2'],'conflicting').conflicts[0].quotes,sources.map(s=>s.text));
+ assert.equal(verdict(['@S2:1','@S1:2'],['S1','S2'],'conflicting').conflicts,undefined);
+});

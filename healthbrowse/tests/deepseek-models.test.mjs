@@ -419,3 +419,54 @@ test('Buddy serves cited local decks for both roles when live literature retriev
  }
  assert.ok(liveLookups>=2);
 });
+
+test('a stalled clinical Browser review hands the original draft to Groq once and withholds it if both reviewers stall',async t=>{
+ const nativeTimeout=AbortSignal.timeout.bind(AbortSignal);
+ let afterDraft=false,expireBackup=false,primaryTimer,reviewTimer,reviewInput;
+ const calls=[];
+ t.mock.method(AbortSignal,'timeout',ms=>{
+  if(afterDraft && (ms===8000 || ms===20000)){
+   const timer=new AbortController();
+   if(ms===8000)primaryTimer=timer;else reviewTimer=timer;
+   return timer.signal;
+  }
+  return nativeTimeout(ms);
+ });
+ const stall=timer=>{
+  assert.ok(timer,'review timer was installed');
+  timer.abort(new DOMException('Simulated slow reviewer','TimeoutError'));
+  return new Promise(()=>{});
+ };
+ const response=(model,data)=>Response.json({model,choices:[{finish_reason:'stop',message:{content:JSON.stringify(data)}}]});
+ const config={...env,DB:database(1),MODEL_PROVIDER:'workers-ai',MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'test-groq',
+  AI:{run(model,payload){
+   const data=JSON.parse(payload.messages[1].content);
+   if(data.claims){calls.push('primary-review');reviewInput=data;return stall(primaryTimer)}
+   calls.push('draft');afterDraft=true;
+   const source=data.evidence[0];
+   return response(model,{answer:[{section:'synthesis',text:source.text.split(/(?<=[.!?])\s+/)[0],sources:[source.id]}]});
+  }}};
+ t.mock.method(globalThis,'fetch',async(url,opts)=>{
+  if(url==='https://auth.example/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
+  assert.equal(url,'https://api.groq.com/openai/v1/chat/completions');
+  const payload=JSON.parse(opts.body),data=JSON.parse(payload.messages[1].content);
+  assert.deepEqual(data,reviewInput);calls.push('backup-review');
+  if(expireBackup)return stall(reviewTimer);
+  return response(payload.model,{checks:data.claims.map(c=>({id:c.id,sources:c.sources,quotes:['@'+c.sources[0]+':1'],verdict:'supported'}))});
+ });
+ const body={...input,role:'Clinicians',topic:'Prostate Cancer',question:'What is prostate cancer?'};
+ for(expireBackup of [false,true]){
+  afterDraft=false;primaryTimer=null;reviewTimer=null;
+  const result=await(await call(body,config)).json();
+  assert.deepEqual(calls.splice(0),['draft','primary-review','backup-review']);
+  assert.equal(result.modelFallback.phase,'support_review');assert.equal(result.modelFallback.reason,'timeout');
+  if(expireBackup){
+   assert.equal(result.status,'sourced');assert.equal(result.code,'model_timeout');
+   assert.equal(result.answer.generation,undefined);
+  }else{
+   assert.equal(result.answer.generation.model,workersModels.professional);
+   assert.equal(result.reviewModel,'openai/gpt-oss-120b');
+   assert.ok(result.answer.blocks[0].references[0].quote.length>=10);
+  }
+ }
+});
