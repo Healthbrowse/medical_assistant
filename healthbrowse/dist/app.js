@@ -1,3 +1,4 @@
+import {healthQuestions,buddyHealthTask} from './health-questions.js';
 import {heartIntent,heartParagraphs} from './heart-visual.js';
 import {enrichResult} from './result-enrichment.js';
 import {classifyResponseMode,screenGeneralQuery} from './response-mode.js';
@@ -282,6 +283,12 @@ async function terminology(term,signal){
 let searchSequence=0;
 async function search(input,chosenTopic,confirmed=false){
   const query=String(input||'').trim();if(!query)return;
+  const buddyTask=buddyHealthTask(query);
+  if(buddyTask && screenGeneralQuery(query).status==='ok'){
+    const opener=document.activeElement;
+    if(buddy.show(opener))copilot.showHealthGuide(buddyTask,query);
+    return;
+  }
   if(synthesis?.key===synthesisKey(currentContext())&&prepareQuery(query).query===activeQuery&&(synthesis.status==='loading'||synthesis.retryAt>Date.now()))return;
   const sequence=++searchSequence;
   $('searchSubmit').textContent='Searching…';$('find').setAttribute('aria-busy','true');$('notice').textContent='Looking for a sourced answer…';
@@ -442,6 +449,14 @@ try{
   medlineLookup=medlineIndex(feed);
   for(const item of feed.topics)if(!allowedTopics.has(item.title.toLowerCase()))allowedTopics.set(item.title.toLowerCase(),item.title);
   lookupIndex=topicIndex([...feed.topics.map(t=>({name:t.title,aliases:(t.aliases||[]).filter(a=>medlineLookup.find(a)===t)})),...taxonomy.entities],allowedTopics.values());
+  const examples=el('details',undefined,'focus-directory health-question-examples');
+  examples.append(el('summary','Try a health question'));
+  const exampleList=el('div');
+  for(const question of healthQuestions){
+    const choice=button(question,()=>searchUI.send(question));
+    choice.type='button';exampleList.append(choice);
+  }
+  examples.append(exampleList);$('searchSwitch').before(examples);
   Object.keys(catalog).forEach(name=>$('focusTopics').append(button(name,()=>search(name))));
   attachQueryCompletion({input:$('query'),popup:$('querySuggestionPopup'),list:$('querySuggestions'),status:$('querySuggestionStatus'),form:$('find'),suggest:createQuerySuggestions([...Object.keys(catalog).map(name=>({name,aliases:medicalRecord(name)?.aliases||[]})),...feed.topics])});
 

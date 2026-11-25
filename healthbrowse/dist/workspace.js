@@ -1,3 +1,4 @@
+import {buddyHealthTask,buddyHealthGuide} from './health-questions.js';
 import {buddyLearningQuestions} from './learning-questions.js';
 import {buddyDeckIntent} from './buddy-deck-intent.js';
 import {invitationTopic,invitationChoices,invitationReply} from './buddy-invitation.js';
@@ -89,7 +90,7 @@ export function setupCopilot(browserContext,actions={}){
   $('buddyWelcome').hidden=false;$('buddyQuestions').hidden=false;
   $('buddyWelcome').replaceChildren(node('p',medical?'Explore '+c.topic+' with Buddy.':'Ask about the answer, compare its sources or attach a document for review.'));
   $('buddyQuestions').replaceChildren();
-  const choices=c.attachments?.length?['Summarize the documents and cite the relevant passages.','Compare the stated controls, supporting evidence and gaps.']:
+  const choices=c.attachments?.length?['Summarize the documents and cite the relevant passages.','Compare the stated controls, supporting evidence and gaps.','Explain the lab results using the units and reference ranges printed in the report.','Explain the written radiology impression in plain language.']:
    !medical&&c.answerSummary?['Check the claims in the browser answer.','Explain the methodology and limitations.']:[];
   for(const prompt of choices){const b=node('button',prompt);b.type='button';b.disabled=busy;b.onclick=()=>ask(prompt);$('buddyQuestions').append(b)}
   if(medical)for(const choice of questions(c)){const b=node('button',choice.label);b.type='button';b.disabled=busy;b.onclick=()=>ask(choice.prompt,true,choice.deck);$('buddyQuestions').append(b)}
@@ -133,6 +134,8 @@ export function setupCopilot(browserContext,actions={}){
   const prepared=(fileMode||general||audit)?{...screenGeneralQuery(q,[c.topic,history.at(-1)?.question].filter(Boolean).join(' ')),query:q}:prepareQuery(q,[c.topic,c.query,history.at(-1)?.question].filter(Boolean).join(' ')),status=prepared.status;q=prepared.query;$('question').value='';$('scopeQuestion').replaceChildren();
   if(status!=='ok')notifySafety({status,safety:prepared.safety?.safety});
   if(status==='ok'&&(prepared.ephemeral||!canSaveResearchQuestion(q,c.query)))privateConversation=true;
+  const healthTask=status==='ok'&&!fileMode&&!guidedDeck&&buddyHealthTask(q);
+  if(healthTask){showHealthGuide(healthTask,q);return;}
   const saveable=status==='ok'&&!privateConversation&&!fileMode&&!audit&&!general;
   const run=++sequence,scope=identity;
   const narrativeTopic=status==='ok'&&!general&&!audit&&!guidedDeck&&!fileMode&&readingProfile(c.role).index===0?actions.personalTopic?.(q,c.topic):null;
@@ -217,7 +220,7 @@ export function setupCopilot(browserContext,actions={}){
   }else if(status==='ok'&&!help&&!audit&&!catalogAnswer){
    modelRequest?.abort();modelRequest=new AbortController();
    const modelQuestion=presetDeck && !fileMode ? c.topic + ' — ' + q : q;
-   const result=await requestSynthesis(c,modelQuestion,{mode:'chat',buddyModel,deck:report?0:guidedDeck||active,history:history.slice(0,-1).filter(turn=>turn.topic===c.topic),signal:modelRequest.signal});
+   const result=await requestSynthesis(c,modelQuestion,{mode:'chat',buddyModel,deck:report?0:guidedDeck||active,history:history.slice(0,-1).filter(turn=>turn.topic===c.topic&&!turn.healthGuide),signal:modelRequest.signal});
    if(run!==sequence||identity!==scope)return;
    if(result.status==='blocked')notifySafety({status:'blocked',safety:result.answer?.safety});
    if(result.status==='clarification'){renderClarification($('scopeQuestion'),result.clarification,query=>void ask(query),draft=>{if(draft!==undefined)$('question').value=draft;$('question').focus()});answer={text:result.clarification.text,blocks:[],citations:[],checks:[],supported:false};}
@@ -270,7 +273,23 @@ export function setupCopilot(browserContext,actions={}){
   $('clearChat').onclick=()=>{sequence++;modelRequest?.abort();busy=false;$('scopeQuestion').replaceChildren();history=[];publicTurns=[];privateConversation=false;generalConversation=null;conversationTopic=getContext()?.topic||'';sync()};
  document.addEventListener('healthbrowse-documents-changed',sync);
  $('buddyDialog').addEventListener('buddy-opened',sync);
- return {sync,verify(){
+ function showHealthGuide(task,question){
+  const dialog=$('buddyDialog');
+  dialog.dispatchEvent(new Event('buddy-return-to-chat'));
+  const guide={...buddyHealthGuide(task),question,frameworkVersion,healthGuide:true,topic:getContext().topic,deck:active};
+  history=[...history.slice(-9),guide];sync();
+  $('thread').lastElementChild?.scrollIntoView({block:'nearest'});
+  if(task==='visit')$('question').focus();
+  else {
+   const input=$('question');
+   if(!input.value.trim()){
+    input.value=task==='imaging'?'Explain the written radiology impression in plain language.':'Explain the lab results using the units and reference ranges printed in the report.';
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+   }
+   dialog.querySelector('.attachment-trigger')?.focus({preventScroll:true});
+  }
+ }
+ return {sync,showHealthGuide,verify(){
   $('buddyDialog').dispatchEvent(new Event('buddy-verification'));
   if(busy){modelRequest?.abort();++sequence;busy=false}
   const c=getContext();generalConversation=null;conversationTopic=c.topic;

@@ -159,3 +159,31 @@
 }
 #buddyDialog .buddy-invitation > div { display: flex; flex-wrap: wrap; gap: .5rem; }
 #buddyDialog .buddy-invitation button { min-height: 44px; max-width: 100%; text-align: start; white-space: normal; }
+
+.buddy-window-toggle, .buddy-window-resize { display: none; }
+@media (min-width: 761px) {
+  #buddyDialog {
+    box-sizing: border-box;
+    inset: 24px 24px auto auto;
+    width: min(var(--buddy-width, 560px), calc(100vw - 48px));
+    height: min(var(--buddy-height, calc(100dvh - 48px)), calc(100dvh - 48px));
+  }
+  #buddyDialog.buddy-full-window { inset: 0; width: 100%; height: 100dvh; border-radius: 0; }
+  #buddyDialog #copilot .copilot-head { padding-right: 168px; }
+  #buddyDialog .buddy-window-toggle, #buddyDialog .buddy-window-resize {
+    display: grid; place-items: center; position: absolute; z-index: 1;
+    border: 1px solid var(--line); color: var(--ink); background: var(--surface);
+  }
+  #buddyDialog .buddy-window-toggle {
+    top: 22px; right: 66px; min-height: 44px; padding: 0 10px; border-radius: 14px;
+    font: 600 12px/1.25 system-ui; cursor: pointer;
+  }
+  #buddyDialog .buddy-window-resize {
+    bottom: 0; left: 0; width: 28px; height: 28px; border-radius: 0 8px 0 0;
+    cursor: nesw-resize; touch-action: none; user-select: none;
+  }
+  #buddyDialog.buddy-full-window .buddy-window-resize { display: none; }
+  #buddyDialog .buddy-window-resize:focus-visible { outline-offset: -4px; }
+}
+.health-question-examples > div { display: grid; gap: .5rem; padding-block: .75rem; }
+.health-question-examples button { white-space: normal; text-align: start; }
