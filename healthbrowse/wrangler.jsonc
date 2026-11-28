@@ -21,7 +21,7 @@
 
   "env": {
     "staging": {
-      "name": "healthbrowse-ai-staging",
+      "name": "staging-healthbrowse-ai",
       "workers_dev": true,
       "routes": [],
       "vars": {

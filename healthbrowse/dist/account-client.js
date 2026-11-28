@@ -1,7 +1,7 @@
 let pendingClient;
 // The desk loads after session initialization and reuses this public bootstrap response.
 export let publicConfig;
-const configError='Account access has not been configured. The public research desk is available.';
+const configError='Sign-in is currently unavailable. Please try again later.';
 
 export function publicAuthConfig(config) {
   if(!config?.supabaseUrl||!config?.supabaseAnonKey)throw new Error(configError);

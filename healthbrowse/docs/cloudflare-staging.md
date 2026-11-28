@@ -2,9 +2,9 @@
 
 ## Status and deployment boundary
 
-This change prepares deployment configuration; it does not provision or deploy a Cloudflare staging Worker. The tracked `env.staging.d1_databases` array is intentionally empty. The staging commands refuse to run until an operator inserts the actual ID of a dedicated **healthbrowse-staging** D1 database. No production database, existing preview database, credentials, or invented resource IDs are copied into staging.
+This configuration targets the existing **staging-healthbrowse-ai** Worker at [staging-healthbrowse-ai.abhaysrivastava518.workers.dev](https://staging-healthbrowse-ai.abhaysrivastava518.workers.dev/). It does not provision resources or verify the live deployment's bindings and credentials. The tracked `env.staging.d1_databases` array is intentionally empty. The staging commands refuse to run until an operator inserts the actual ID of a dedicated **healthbrowse-staging** D1 database. No production database, existing preview database, credentials, or invented resource IDs are copied into staging.
 
-Use one GitHub repository, **Healthbrowse/medical_assistant**, with a persistent **staging** branch and a separate **healthbrowse-ai-staging** Worker. Production remains the existing top-level **healthbrowse-ai** Worker connected to **main**. Do not create an `env.production` merely for symmetry: that would change the target name unless separately configured.
+Use one GitHub repository, **Healthbrowse/medical_assistant**, with a persistent **staging** branch and the separate **staging-healthbrowse-ai** Worker. Production remains the existing top-level **healthbrowse-ai** Worker connected to **main**. The configuration matches the existing staging Worker; no external Worker rename is needed. Do not create an `env.production` merely for symmetry: that would change the target name unless separately configured.
 
 Cloudflare's [Wrangler environments](https://developers.cloudflare.com/workers/wrangler/environments/) create persistent Workers. [Worker Previews](https://developers.cloudflare.com/workers/previews/compare-workflows/) create branch environments under a Worker. This guide uses the persistent staging Worker first; it does not switch the existing production Worker's preview model.
 
@@ -12,7 +12,7 @@ Cloudflare's [Wrangler environments](https://developers.cloudflare.com/workers/w
 | --- | --- | --- |
 | Repository | `Healthbrowse/medical_assistant` | Same repository |
 | Git branch in Workers Builds | `staging` | `main` |
-| Worker | `healthbrowse-ai-staging` | Existing `healthbrowse-ai` |
+| Worker | `staging-healthbrowse-ai` | Existing `healthbrowse-ai` |
 | Root directory | `healthbrowse` | `healthbrowse` |
 | Build command | `npm ci && npm run build && npm test` | Same verification command |
 | Deploy command | `npm run deploy:staging` | Existing `npx wrangler deploy` |
@@ -67,7 +67,7 @@ npm run db:staging:migrate
 
 The migration scripts internally use `healthbrowse-staging --remote --config wrangler.jsonc --env staging`. They reject a production or existing-preview database ID. For an existing database, inspect its schema and applied migration state before applying changes; do not mark migrations applied merely to silence an error. Cloudflare documents [migration directory and tracking behavior](https://developers.cloudflare.com/d1/reference/migrations/). This repository's SQL migrations live in `drizzle/`, not Wrangler's default `migrations/` directory.
 
-## 3. Create the staging Worker and configure runtime secrets
+## 3. Deploy reviewed staging code and configure runtime secrets
 
 With the actual dedicated database configured and migrations applied:
 
@@ -75,7 +75,7 @@ With the actual dedicated database configured and migrations applied:
 npm run deploy:staging
 ```
 
-The wrapper constructs `wrangler deploy --config wrangler.jsonc --env staging`. It accepts no extra flags and rejects a `WRANGLER_CI_OVERRIDE_NAME` targeting any other Worker. The first deployment creates the persistent Worker if needed; authentication and model calls remain unavailable until their runtime configuration is supplied.
+The wrapper constructs `wrangler deploy --config wrangler.jsonc --env staging`. It accepts no extra flags and rejects a `WRANGLER_CI_OVERRIDE_NAME` targeting any Worker other than **staging-healthbrowse-ai**. Inspect the existing staging Worker's bindings before deploying. Authentication and model calls remain unavailable until their runtime configuration is supplied.
 
 Set staging runtime values through interactive secret input, not command arguments or committed files:
 
@@ -85,13 +85,30 @@ npx --no-install wrangler secret put SUPABASE_URL --env staging
 npx --no-install wrangler secret put SUPABASE_ANON_KEY --env staging
 ```
 
-Use the intended staging authentication project and its publishable/anon key, not a service-role key. Configure its exact staging callback URLs for the sign-in methods being tested. A key stored in the private ChatGPT testing Site is not automatically present in this Cloudflare Worker. Runtime secrets are separate from Cloudflare Build variables/secrets.
+In the dashboard, set these values in **Variables and Secrets for the existing staging-healthbrowse-ai Worker**. Values entered only under **Builds → Build variables/secrets** are available during the build and are not automatically supplied to the running Worker. This app reads its authentication configuration from the request-time Worker `env`; its build scripts do not embed these values. A key stored in the private ChatGPT testing Site or another Worker is not automatically present here. Ensure the runtime changes are active before rechecking sign-in.
+
+Use the exact variable names below, with values from the intended staging authentication project:
+
+| Runtime name | Accepted value |
+| --- | --- |
+| `SUPABASE_URL` | The HTTPS project origin, such as `https://<project-ref>.supabase.co`, with no `/auth/v1`, `/rest/v1`, dashboard path, query, fragment, or embedded credentials. |
+| `SUPABASE_ANON_KEY` | The project's public `sb_publishable_…` key, or a legacy anon JWT whose payload has `role: "anon"`. Keep this variable name even when using a publishable key. |
+| `SARVAM_API_KEY` | The staging Sarvam credential. This is independent of account setup. |
+
+`SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_*`, and `NEXT_PUBLIC_SUPABASE_*` are not read by this application. Paste raw key values without surrounding quotes or leading whitespace. The browser bootstrap deliberately rejects `sb_secret_…` and legacy `service_role` keys; do not use them as `SUPABASE_ANON_KEY`. The validated project URL and public key are returned to the browser through `/api/config`.
+
+Allow the app's exact staging callback URLs in the staging authentication project's redirect URL configuration:
+
+- `https://staging-healthbrowse-ai.abhaysrivastava518.workers.dev/account.html`
+- `https://staging-healthbrowse-ai.abhaysrivastava518.workers.dev/account.html?flow=recovery`
+
+Check [the staging `/api/config` endpoint](https://staging-healthbrowse-ai.abhaysrivastava518.workers.dev/api/config) before attempting sign-in. It should return nonempty `supabaseUrl` and `supabaseAnonKey` fields. Empty fields mean the runtime values are missing or failed the public-config validation; HTTP 200 alone does not establish account readiness. The account page's setup error can also result from a non-success response from this endpoint, so check its HTTP status before assuming credentials are missing. A valid-looking public key does not prove that it belongs to the configured project, so complete a staging sign-in after fixing the bootstrap. `/healthz` and `/readyz` check service/assets, not authentication or database configuration.
 
 Protect staging with Cloudflare Access before sharing private test content. Use synthetic cases and test accounts. Do not import production account data, patient material or outbound email credentials to make a smoke test pass.
 
 ## 4. Connect the staging Worker to GitHub
 
-In Cloudflare **Workers & Pages**, select **healthbrowse-ai-staging**, then its **Settings → Builds** connection. Connect **Healthbrowse/medical_assistant** and use the staging column of the table above. Set the build variable **`NODE_VERSION=24`**. Set **staging** as this Worker's production branch; the dashboard term refers to the active deployment of this particular Worker.
+In Cloudflare **Workers & Pages**, select **staging-healthbrowse-ai**, then its **Settings → Builds** connection. Connect **Healthbrowse/medical_assistant** and use the staging column of the table above. Set the build variable **`NODE_VERSION=24`**. Set **staging** as this Worker's production branch; the dashboard term refers to the active deployment of this particular Worker.
 
 Initially disable branch Preview builds on the staging Worker. The persistent staging branch is sufficient for this release path. Do not use a copied production deploy command: Workers Builds can override a configured Worker name while still using the wrong top-level resource bindings. The explicit staging environment is essential.
 

@@ -6,7 +6,7 @@ import {dirname,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 
 const appRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-const workerName='healthbrowse-ai-staging',databaseName='healthbrowse-staging';
+const workerName='staging-healthbrowse-ai',databaseName='healthbrowse-staging';
 const actions=new Set(['check','deploy','migrations-list','migrations-apply']);
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export class StagingConfigurationError extends Error {}
@@ -15,10 +15,10 @@ const refuse=message=>{throw new StagingConfigurationError(message)};
 export function stagingArguments(args,config,buildEnv={}){
  if(args.length!==1||!actions.has(args[0]))refuse('Use exactly one staging action: check, deploy, migrations-list, or migrations-apply. Additional flags are not accepted.');
  if(buildEnv.WRANGLER_CI_OVERRIDE_NAME&&buildEnv.WRANGLER_CI_OVERRIDE_NAME!==workerName)
-  refuse('This build is connected to a different Worker. Connect the staging command to healthbrowse-ai-staging only.');
+  refuse('This build is connected to a different Worker. Connect the staging command to staging-healthbrowse-ai only.');
  const staging=config?.env?.staging;
  if(config?.name!=='healthbrowse-ai'||staging?.name!==workerName)
-  refuse('Expected production healthbrowse-ai and a separate env.staging named healthbrowse-ai-staging.');
+  refuse('Expected production healthbrowse-ai and a separate env.staging named staging-healthbrowse-ai.');
  if(!Array.isArray(staging.routes)||staging.routes.length||staging.workers_dev!==true)
   refuse('Staging must use its own workers.dev address with an explicit empty routes array.');
  if(staging.vars?.MODEL_PROVIDER!=='sarvam'||staging.vars?.SARVAM_MODEL!=='deepseekv4.1-flash-1017'||staging.ai?.binding!=='AI')
