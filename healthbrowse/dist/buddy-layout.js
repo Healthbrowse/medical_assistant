@@ -63,21 +63,28 @@ export function setupBuddyLayout(modelNames){
  const picker=el('div','','buddy-model-picker'),shown=el('span');
  shown.setAttribute('aria-hidden','true');
  const model=el('select');model.id='buddyModel';model.setAttribute('aria-label','Buddy model');
- const deepseek=el('option'),groq=el('option',modelNames?.groq||'GPT-OSS (model ID unavailable)');
- deepseek.value='deepseek';groq.value='groq';
- const workers=modelNames?.workers?el('option'):null;
- if(workers)workers.value='workers-ai';
- const options=workers?[workers,deepseek,groq]:[deepseek,groq];
- model.append(...options);
- model.value=workers&&modelNames.preferred==='workers-ai'?'workers-ai':'deepseek';
+ let options=[];
  function showSelection(){
-  shown.textContent=options.find(option=>option.value===model.value).textContent;
+  shown.textContent=options.find(option=>option.value===model.value)?.textContent||'No model configured';
   model.title=shown.textContent;
  }
  function setModelRole(role){
   const route=role==='Medical professional'?'professional':'general';
-  deepseek.textContent=modelNames?.[route]||'DeepSeek (model ID unavailable)';
-  if(workers)workers.textContent=modelNames.workers[route];
+  const selected=model.value;
+  for(const option of options)option.remove();
+  options=[
+   ['sarvam',modelNames?.sarvam?.[route]],
+   ['workers-ai',modelNames?.workers?.[route]],
+   ['deepseek',modelNames?.[route]],
+   ['groq',modelNames?.groq]
+  ].filter(([,id])=>typeof id==='string'&&id.trim()).map(([value,id])=>{
+   const option=el('option',id+(value==='sarvam'?' · Sarvam':''));option.value=value;return option;
+  });
+  model.disabled=!options.length;
+  if(!options.length){const option=el('option','No model configured');option.value='';options=[option];}
+  model.append(...options);
+  model.value=options.some(option=>option.value===selected)?selected:
+   options.some(option=>option.value===modelNames?.preferred)?modelNames.preferred:options[0].value;
   showSelection();
  }
  setModelRole('General reader');

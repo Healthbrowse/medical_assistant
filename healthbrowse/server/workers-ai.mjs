@@ -1,3 +1,5 @@
+import {isModelDisabled} from './model-policy.mjs';
+
 const gemma='@cf/google/gemma-4-26b-a4b-it';
 const qwen='@cf/qwen/qwen3.8-27b';
 
@@ -5,12 +7,12 @@ export const workersModels=Object.freeze({general:gemma,professional:qwen,agent:
 export const workersProtocol='workers-ai-cited-v1';
 
 export function offersWorkersModels(env){
- return env.MODEL_PROVIDER==='workers-ai'||(env.MODEL_PROVIDER==='deepseek'&&typeof env.AI?.run==='function');
+ return typeof env.AI?.run==='function'&&Object.values(workersModels).some(model=>!isModelDisabled(env,model));
 }
 
 export function workersEndpoint(env,route){
  const model=workersModels[route];
- if(!offersWorkersModels(env)||typeof env.AI?.run!=='function'||!model)return null;
+ if(!offersWorkersModels(env)||!model||isModelDisabled(env,model))return null;
  return {model,ai:env.AI,protocol:workersProtocol,compact:false};
 }
 

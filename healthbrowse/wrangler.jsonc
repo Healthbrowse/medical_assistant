@@ -7,6 +7,9 @@
   "workers_dev": true,
   "keep_vars": true,
   "ai": { "binding": "AI" },
+  "vars": {
+    "MODEL_DISABLED_MODELS": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B,deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+  },
 
   "d1_databases": [
     {
@@ -16,8 +19,26 @@
     }
   ],
 
+  "env": {
+    "staging": {
+      "name": "healthbrowse-ai-staging",
+      "workers_dev": true,
+      "routes": [],
+      "vars": {
+        "MODEL_PROVIDER": "sarvam",
+        "SARVAM_MODEL": "deepseekv4.1-flash-1017",
+        "MODEL_DISABLED_MODELS": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B,deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+      },
+      "ai": { "binding": "AI" },
+      "d1_databases": []
+    }
+  },
+
   "previews": {
-    "vars": { "MODEL_PROVIDER": "workers-ai" },
+    "vars": {
+      "MODEL_PROVIDER": "workers-ai",
+      "MODEL_DISABLED_MODELS": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B,deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+    },
     "ai": { "binding": "AI" },
     "d1_databases": [
       {

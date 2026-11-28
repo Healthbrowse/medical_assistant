@@ -69,6 +69,23 @@ test('V3.2 plan, indexed primary follow-up, and matching PubMed pages supply tra
  assert.equal(passage.evidenceTier,1);assert.match(passage.id,/^S\d+$/);
 });
 
+test('an explicit Browser model neither calls the automatic planner nor reuses its cached packet',async()=>{
+ clearRetrievalCache();
+ const {trace,fetcher}=network();
+ const automatic=await retrieveLiteraturePacket(input,env,undefined,fetcher,assets);
+ assert.equal(trace.filter(call=>call.url===HF_CHAT_URL).length,1);
+ const before=trace.length;
+ const pinned=await retrieveLiteraturePacket({...input,browserModel:DEEPSEEK_MODELS.general},env,undefined,fetcher,assets);
+ assert.equal(trace.filter(call=>call.url===HF_CHAT_URL).length,1,'Explicit selection must not invoke the automatic planner');
+ assert.ok(trace.length>before,'The automatic packet must not bypass the explicit planning policy');
+ assert.ok(pinned.retrieved_sources.length);
+ assert.ok(pinned.evidence_gaps.some(gap=>gap.includes('without an AI planner')));
+ assert.ok(!pinned.evidence_gaps.some(gap=>gap.includes('planner was unavailable')));
+ const after=trace.length;
+ assert.equal(await retrieveLiteraturePacket(input,env,undefined,fetcher,assets),automatic);
+ assert.equal(trace.length,after,'Automatic retrieval keeps its own reusable packet');
+});
+
 test('only public topic terms leave the app for a personal question, and personal lookups are uncached',async()=>{
  clearRetrievalCache();
  const {trace,fetcher}=network();

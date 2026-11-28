@@ -13,6 +13,14 @@ function rawFor(p=prepared){
  const text=source.text.match(/^.*?[.!?](?:\s|$)/)?.[0].trim()||source.text+'.';
  return {answer:[{text,sources:[source.id]}]};
 }
+// Simulate the actual clinician schema requested from Groq, including section
+// labels and source quotes. The API validates these fields for every provider.
+function citedReply(body,raw){
+ const data=JSON.parse(body.messages[1].content),schema=body.response_format.json_schema.schema;
+ if(schema.properties.answer?.items.required.includes('section'))raw.answer=raw.answer.map(claim=>({...claim,section:'synthesis'}));
+ if(schema.properties.checks?.items.required.includes('quotes'))raw.checks=raw.checks.map(check=>({...check,quotes:[data.claims.find(claim=>claim.id===check.id).text]}));
+ return Response.json({model:body.model,choices:[{finish_reason:'stop',message:{content:JSON.stringify(raw)}}]});
+}
 test('Groq uses only its own key and a fixed endpoint for both reading modes',()=>{
  const env={MODEL_PROVIDER:'groq',HF_TOKEN:'must-not-leak',MODEL_PROFESSIONAL_KEY:'must-not-leak'};
  assert.equal(modelEndpoint(env,'general'),null);assert.equal(modelEndpoint(env,'professional'),null);
@@ -90,8 +98,8 @@ test('both modes and Buddy generate once and review support once through the API
   assert.equal(url,GROQ_CHAT_URL);assert.equal(opts.headers.Authorization,'Bearer test-only');
   const body=JSON.parse(opts.body);calls.push(body);if(providerStatus!==200)return Response.json({}, {status:providerStatus});
   const p=JSON.parse(body.messages[1].content);
-  if(p.claims)return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify({checks:p.claims.map(c=>({id:c.id,verdict:'supported',sources:c.sources}))})}}]});
-  return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify(rawFor({evidence:{sources:p.evidence}}))}}]});
+  if(p.claims)return citedReply(body,{checks:p.claims.map(c=>({id:c.id,verdict:'supported',sources:c.sources}))});
+  return citedReply(body,rawFor({evidence:{sources:p.evidence}}));
  });
  const call=b=>modelAPI(new Request('https://site.test/api/ai/answer',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer test-session-12345'},body:JSON.stringify(b)}),env,assets);
  for(const role of ['General','Clinicians']){const r=await (await call({...input,role})).json();assert.equal(r.status,'generated');assert.deepEqual(r.decks,[]);}
@@ -129,9 +137,9 @@ test('diagnosis lead survives the complete API and client path for browser, Budd
  const env={RETRIEVAL_LIVE:'off',DB,SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public',MODEL_PROVIDER:'groq',GROQ_API_KEY:'test-only'};
  t.mock.method(globalThis,'fetch',async(url,opts)=>{
   if(url==='https://auth.example/auth/v1/user')return Response.json({id:'11111111-1111-4111-8111-111111111111'});
-  assert.equal(url,GROQ_CHAT_URL);const data=JSON.parse(JSON.parse(opts.body).messages[1].content);
+  assert.equal(url,GROQ_CHAT_URL);const body=JSON.parse(opts.body),data=JSON.parse(body.messages[1].content);
   const output=data.claims?{checks:data.claims.map(c=>({id:c.id,verdict:'supported',sources:c.sources}))}:rawFor({evidence:{sources:data.evidence}});
-  return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify(output)}}]});
+  return citedReply(body,output);
  });
  const fetcher=(url,options={})=>modelAPI(new Request('https://site.test'+url,options),env,assets);
  for(const role of ['General','Clinicians'])for(const mode of ['search','chat']){
@@ -162,7 +170,7 @@ test('pituitary search and Buddy complete the authenticated API contract for bot
    const source=data.evidence.find(s=>s.text.includes('hormones that affect growth'));assert.ok(source);
    raw={answer:[{text:source.text,sources:[source.id]}]};
   }
-  return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify(raw)}}]});
+  return citedReply(body,raw);
  });
  for(const role of ['General','Clinicians'])for(const mode of ['search','chat']){
   const question=mode==='search'?'What is the main function of the pituitary gland?':'What does it do?';

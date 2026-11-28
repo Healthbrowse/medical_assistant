@@ -46,7 +46,13 @@ function fixture(t){
   assert.equal(url,GROQ_CHAT_URL,'Document questions must not call public retrieval APIs');if(busy)return Response.json({},{status:429});
   const body=JSON.parse(options.body),p=JSON.parse(body.messages[1].content);prompts.push(body);
   const out=p.claims?{checks:p.claims.map(c=>({id:c.id,verdict:'supported',sources:c.sources}))}:{answer:[{text:'The document states that the pituitary gland produces hormones that regulate growth and other glands.',sources:[p.evidence[0].id]}],...(p.mode==='search'?{decks:Object.fromEntries(Array.from({length:6},(_,i)=>[i+1,[]]))}:{})};
-  return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify(out)}}]});
+  const schema=body.response_format.json_schema.schema;
+  if(schema.properties.answer?.items.required.includes('section'))out.answer=out.answer.map(claim=>({...claim,section:'synthesis'}));
+  if(schema.properties.checks?.items.required.includes('quotes'))out.checks=out.checks.map(check=>({...check,quotes:check.sources.map(id=>{
+   const source=p.sources.find(source=>source.id===id);assert.ok(source,'Review quotes must come from the submitted document evidence');
+   return source.text.match(/^.*?[.!?](?:\s|$)/)?.[0].trim()||source.text;
+  })}));
+  return Response.json({model:body.model,choices:[{finish_reason:'stop',message:{content:JSON.stringify(out)}}]});
  });
  const env={DB,SUPABASE_URL:'https://auth.example',SUPABASE_ANON_KEY:'public',MODEL_PROVIDER:'groq',GROQ_API_KEY:'test-only'};
  return {calls,prompts,busy:()=>busy=true,call:(patch={},auth=true)=>modelAPI(new Request('https://test.example/api/ai/answer',{method:'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer test-only-session'}:{})},body:JSON.stringify({...input,...patch})}),env,{})};

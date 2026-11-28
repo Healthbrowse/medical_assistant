@@ -5,11 +5,27 @@ import {compactGeneration,contextCost,ContextLimit} from '../server/model-contex
 import {evidenceFor} from '../server/model-evidence.mjs';
 import {groundedEvidence,prepareGrounded,decodeGrounded} from '../server/model-grounded.mjs';
 import {prepareCited,prepareCitedReview,applyCitedReview,presentCited} from '../server/model-cited.mjs';
+import {clinicalBuddyPrompt,compactClinicalBuddyPrompt,clinicalSemanticReview,clinicalPromptVersion} from '../server/clinical-prompt.mjs';
 
 const assets=Object.fromEntries(['medline-topics','clinical-passages','grounded-sources'].map(name=>[
  '/'+name+'.json',{text:readFileSync(new URL('../dist/'+name+'.json',import.meta.url),'utf8')}
 ]));
 const question=(topic,role)=>({topic,question:'What is '+topic+'?',role,mode:'search',deck:0});
+
+test('documentation absence remains distinct from a negative history in active generation and review instructions',()=>{
+ const input={...question('Synthetic evidence','Medical professional'),mode:'chat',deck:1};
+ const source={id:'D1',deck:1,title:'Synthetic report',text:'No prior bleeding is documented.'};
+ const evidence={documentMode:true,clinicalDocument:true,sources:[source],domains:[]};
+ const prepared=prepareCited(input,evidence);
+ const review=prepareCitedReview({answer:[{text:source.text,sources:['D1'],section:'synthesis'}]},prepared,input);
+ for(const policy of [clinicalBuddyPrompt,compactClinicalBuddyPrompt,clinicalSemanticReview,prepared.messages[0].content,
+  review.messages[0].content,compactGeneration(input,evidence).messages[0].content]){
+  assert.match(policy,/absence of documentation.{0,60}confirmed negative finding/i);
+ }
+ const reference=readFileSync(new URL('../docs/clinical-buddy-prompt.md',import.meta.url),'utf8');
+ assert(reference.includes('**Prompt version:** '+clinicalPromptVersion));
+ for(const policy of [clinicalBuddyPrompt,compactClinicalBuddyPrompt,clinicalSemanticReview])assert(reference.includes(policy),'Documented prompt diverges from runtime');
+});
 
 test('grounded prompts preserve all six source decks for General and clinician searches within the existing budget',()=>{
  for(const topic of ['Leukemia','Sore Throat'])for(const role of ['General reader','Medical professional']){

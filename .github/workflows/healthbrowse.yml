@@ -4,7 +4,7 @@ on:
   pull_request:
     paths: ['healthbrowse/**', '.github/workflows/healthbrowse.yml']
   push:
-    branches: [main]
+    branches: [main, staging]
     paths: ['healthbrowse/**', '.github/workflows/healthbrowse.yml']
   schedule:
     - cron: '17 4 * * 1'

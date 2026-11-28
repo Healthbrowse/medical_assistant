@@ -10,6 +10,48 @@ const toolResult=parameters=>Response.json({model:'deepseek/deepseek-v3.2',choic
  reasoning_content:'This ignored field cannot enter the search plan.'
 }}]});
 
+test('explicit Sarvam planning stays deterministic despite a configured Groq backup',async()=>{
+ const result=await planLiterature({...args,buddyModel:'sarvam',env:{...env,SARVAM_API_KEY:'fixture-only',MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'fixture-only'},fetcher:()=>assert.fail('No cross-provider planning for an explicit choice')});
+ assert.equal(result.planner,'deterministic');
+ assert.equal(result.reason,'planner_unconfigured');
+});
+
+test('explicit Browser planning uses bounded vocabulary without invoking a configured model or backup',async()=>{
+ const result=await planLiterature({...args,deterministicOnly:true,
+  env:{...env,MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'fixture-only',AI:{run(){assert.fail('No native planner call')}}},
+  fetcher:()=>assert.fail('No hosted planner call')});
+ assert.equal(result.planner,'deterministic');assert.equal(result.model,null);
+ assert.equal(result.reason,'explicit_browser_model');
+ assert.ok(result.queries.length>0&&result.queries.length<=3);
+ assert.ok(result.queries.every(query=>query.includes('hypertension')));
+});
+
+test('planner refusals remain terminal even when valid JSON or tool arguments accompany them',async()=>{
+ const config={...env,MODEL_FALLBACK_PROVIDER:'groq',GROQ_API_KEY:'fixture-only'};
+ for(const data of [
+  {choices:[{finish_reason:'stop',message:{refusal:'Synthetic refusal',content:'{"searches":[]}'}}]},
+  {refusal:'Synthetic refusal',choices:[{finish_reason:'stop',message:{content:'{"searches":[]}'}}]},
+  {choices:[{finish_reason:'tool_calls',message:{refusal:'Synthetic refusal',tool_calls:[{type:'function',function:{name:'plan_literature_search',arguments:'{"searches":[]}'}}]}}]}
+ ]){
+  let calls=0;
+  const result=await planLiterature({...args,env:config,fetcher:async url=>{
+   calls++;assert.equal(url,HF_CHAT_URL);return Response.json({model:DEEPSEEK_MODELS.agent,...data});
+  }});
+  assert.equal(result.planner,'deterministic');assert.equal(result.reason,'planner_unavailable');
+  assert.equal(calls,1,'A refusal must not trigger a retry or alternate provider');
+ }
+});
+
+test('Workers native JSON planning preserves the selected model and validates its schema',async()=>{
+ const AI={async run(model){
+  assert.equal(model,'@cf/google/gemma-4-26b-a4b-it');
+  return Response.json({response:{searches:[{terms:[0],mesh:[],focus:0}]}});
+ }};
+ const result=await planLiterature({...args,env:{MODEL_PROVIDER:'workers-ai',AI},buddyModel:'workers-ai',fetcher:()=>assert.fail('Native AI binding expected')});
+ assert.equal(result.planner,'workers-ai');
+ assert.ok(result.queries.every(query=>query.includes('hypertension')));
+});
+
 test('V3.2 receives only public vocabulary and returns executable bounded queries',async()=>{
  const result=await planLiterature({...args,patientHistory:'not part of the public vocabulary',fetcher:async(url,request)=>{
   assert.equal(url,HF_CHAT_URL);assert.equal(request.redirect,'manual');

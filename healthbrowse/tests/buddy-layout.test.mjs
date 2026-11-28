@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {setupBuddyLayout,resizeBuddyInput} from '../dist/buddy-layout.js';
 import {createDictation} from '../dist/mobile-voice.js';
+import {buddyModelNames} from '../server/public-config.mjs';
 
 test('the message input grows, stays bounded for long questions and shrinks after sending',()=>{
  const input={style:{},scrollHeight:96};resizeBuddyInput(input);assert.equal(input.style.height,'96px');
@@ -76,6 +77,51 @@ test('Workers AI picker follows the reading role and retains an explicit DeepSee
  layout.setModelRole('Medical professional');assert.equal(select.title,names.workers.professional);
  select.value='deepseek';select.dispatchEvent({type:'change'});
  layout.setModelRole('General reader');assert.equal(select.title,names.general);
+});
+
+test('Sarvam picker names the actual served checkpoint and preserves an explicit provider choice',t=>{
+ const {form}=fixture(t),model='deepseekv4.1-flash-1017';
+ const names={general:'DeepSeek R1 8B',professional:'DeepSeek R1 32B',groq:'GPT-OSS',preferred:'sarvam',sarvam:{general:model,professional:model}};
+ const layout=setupBuddyLayout(names),select=form.querySelector('#buddyModel');
+ assert.deepEqual(select.children.map(option=>option.value),['sarvam','deepseek','groq']);
+ assert.equal(select.value,'sarvam');assert.equal(select.title,model+' · Sarvam');
+ layout.setModelRole('Medical professional');assert.equal(select.title,model+' · Sarvam');
+ select.value='deepseek';select.dispatchEvent({type:'change'});
+ assert.equal(select.title,names.professional);
+ layout.setModelRole('General reader');assert.equal(select.value,'deepseek');assert.equal(select.title,names.general);
+});
+
+test('a Groq-only deployment selects its configured checkpoint without phantom DeepSeek choices',t=>{
+ const {form}=fixture(t),model='openai/gpt-oss-20b';
+ const names=buddyModelNames({MODEL_PROVIDER:'groq',GROQ_API_KEY:'test-key',GROQ_MODEL:model});
+ const layout=setupBuddyLayout(names),select=form.querySelector('#buddyModel');
+ assert.deepEqual(select.children.map(option=>[option.value,option.textContent]),[['groq',model]]);
+ assert.equal(select.value,'groq');assert.equal(select.disabled,false);
+ layout.setModelRole('Medical professional');
+ assert.equal(select.value,'groq');assert.equal(select.title,model);
+});
+
+test('a role change removes unavailable choices and selects a configured alternative',t=>{
+ const {form}=fixture(t);
+ const names=buddyModelNames({MODEL_PROVIDER:'deepseek',HF_TOKEN:'test-hf-key',GROQ_API_KEY:'test-groq-key',DEEPSEEK_CLINICIAN_MODEL:'invalid-checkpoint'});
+ const layout=setupBuddyLayout(names),select=form.querySelector('#buddyModel');
+ assert.equal(select.value,'deepseek');
+ layout.setModelRole('Medical professional');
+ assert.deepEqual(select.children.map(option=>option.value),['groq']);
+ assert.equal(select.value,'groq');assert.equal(select.title,names.groq);
+ layout.setModelRole('General reader');
+ assert.deepEqual(select.children.map(option=>option.value),['deepseek','groq']);
+ assert.equal(select.value,'groq','Keep a provider that remains available after a role change');
+});
+
+test('the picker handles a missing binding or empty catalog without inventing model availability',t=>{
+ const {form}=fixture(t);
+ const layout=setupBuddyLayout(buddyModelNames({MODEL_PROVIDER:'workers-ai'})),select=form.querySelector('#buddyModel');
+ assert.equal(select.disabled,true);assert.equal(select.value,'');
+ assert.deepEqual(select.children.map(option=>option.textContent),['No model configured']);
+ layout.setModelRole('Medical professional');
+ assert.equal(select.disabled,true);assert.equal(select.children.length,1);
+ assert.equal(select.title,'No model configured');
 });
 
 test('Enter submits the Buddy form once and leaves Shift+Enter and composition to the textarea',t=>{

@@ -59,11 +59,17 @@ function fixture(t){
   if(url.startsWith('https://wsearch.nlm.nih.gov/'))return sourceFailure?new Response('',{status:503}):new Response(xml);
   if(url.startsWith('https://www.ebi.ac.uk/'))return sourceFailure?new Response('',{status:503}):Response.json({resultList:{result:[paper]}});
   assert.equal(url,GROQ_CHAT_URL);if(providerFailure)return Response.json({},{status:503});
-  const body=JSON.parse(options.body),payload=JSON.parse(body.messages[1].content);prompts.push(body);
+  const body=JSON.parse(options.body),payload=JSON.parse(body.messages[1].content),schema=body.response_format.json_schema.schema;prompts.push(body);
   let output;
-  if(payload.claims)output={checks:payload.claims.map(c=>({id:c.id,verdict:'supported',sources:c.sources}))};
-  else {const sources=payload.evidence,claim=s=>({text:s.text.split(/(?<=[.!?])\s+(?=[A-Z])/)[0],sources:[s.id]}),answer=[...new Map(sources.map(s=>[s.text,s])).values()].slice(0,4).map(claim);output={answer};}
-  return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify(output)}}]});
+  if(payload.claims)output={checks:payload.claims.map(c=>({id:c.id,verdict:'supported',sources:c.sources,
+   ...(schema.properties.checks.items.required.includes('quotes')?{quotes:c.sources.map(id=>{
+    const source=payload.sources.find(s=>s.id===id);
+    assert.ok(source?.text.includes(c.text),'Fixture review quotes must occur verbatim in the cited source');
+    return c.text;
+   })}:{})}))};
+  else {const sources=payload.evidence,claim=s=>({text:s.text.split(/(?<=[.!?])\s+(?=[A-Z])/)[0],sources:[s.id],
+   ...(schema.properties.answer.items.required.includes('section')?{section:'synthesis'}:{})}),answer=[...new Map(sources.map(s=>[s.text,s])).values()].slice(0,4).map(claim);output={answer};}
+  return Response.json({model:body.model,choices:[{finish_reason:'stop',message:{content:JSON.stringify(output)}}]});
  });
  const input={topic:'Pituitary gland',question:'What is the main function of the pituitary gland?',role:'General reader',mode:'search',deck:0};
  const call=(patch={},token=true)=>modelAPI(new Request('https://site.test/api/ai/answer',{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer test-session-12345'}:{})},body:JSON.stringify({...input,...patch})}),env,assets);

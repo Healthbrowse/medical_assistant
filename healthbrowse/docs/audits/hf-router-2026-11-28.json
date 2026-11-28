@@ -1,0 +1,42 @@
+{
+  "version": "healthbrowse-model-audit-v1",
+  "checkedAt": "2026-11-28T11:48:31.772Z",
+  "mode": "hf_catalog",
+  "clinicalValidation": false,
+  "inferenceTested": false,
+  "status": "catalog_only",
+  "requests": 1,
+  "results": [
+    {
+      "provider": "huggingface",
+      "model": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+      "operatorDisabled": false,
+      "retirementEstablished": false,
+      "status": "catalog_unlisted",
+      "providerCount": 0,
+      "liveProviders": 0,
+      "structuredOutputProviders": 0
+    },
+    {
+      "provider": "huggingface",
+      "model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+      "operatorDisabled": false,
+      "retirementEstablished": false,
+      "status": "catalog_unlisted",
+      "providerCount": 0,
+      "liveProviders": 0,
+      "structuredOutputProviders": 0
+    },
+    {
+      "provider": "huggingface",
+      "model": "deepseek-ai/DeepSeek-V3.2",
+      "operatorDisabled": false,
+      "retirementEstablished": false,
+      "status": "catalog_listed",
+      "providerCount": 3,
+      "liveProviders": 3,
+      "structuredOutputProviders": 3
+    }
+  ],
+  "elapsedMs": 7985
+}

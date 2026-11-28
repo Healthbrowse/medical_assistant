@@ -13,6 +13,10 @@
     "qa:bot": "node scripts/qa-bot.mjs",
     "qa:red-team": "node scripts/red-team.mjs",
     "db:generate": "drizzle-kit generate",
+    "staging:check": "node scripts/staging-worker.mjs check",
+    "deploy:staging": "node scripts/staging-worker.mjs deploy",
+    "db:staging:list": "node scripts/staging-worker.mjs migrations-list",
+    "db:staging:migrate": "node scripts/staging-worker.mjs migrations-apply",
     "dev": "node scripts/dev.mjs"
   },
   "dependencies": {
@@ -25,7 +29,8 @@
     "drizzle-kit": "0.31.10",
     "drizzle-orm": "0.45.2",
     "esbuild": "0.28.2",
-    "miniflare": "4.20260730.0"
+    "miniflare": "4.20260730.0",
+    "wrangler": "4.169.0"
   },
   "overrides": {
     "miniflare": {

@@ -1,12 +1,16 @@
-import {deepseekModelId,GROQ_MODEL} from './model-provider.mjs';
-import {offersWorkersModels,workersModels} from './workers-ai.mjs';
+import {buddyModelRoutes} from './model-provider.mjs';
 
 export function buddyModelNames(env){
+  const general=buddyModelRoutes(env,'general'),professional=buddyModelRoutes(env,'professional');
+  const names=choice=>({general:general.get(choice)?.model||null,professional:professional.get(choice)?.model||null});
+  const choices=[...new Set([...general.keys(),...professional.keys()])];
+  const preferred=choices.includes(env.MODEL_PROVIDER)?env.MODEL_PROVIDER:choices[0];
   return {
-    general:deepseekModelId(env,'general'),
-    professional:deepseekModelId(env,'professional'),
-    groq:GROQ_MODEL,
-    ...(offersWorkersModels(env)?{workers:{general:workersModels.general,professional:workersModels.professional},preferred:env.MODEL_PROVIDER}:{})
+    ...names('deepseek'),
+    ...(choices.includes('groq')?{groq:general.get('groq')?.model||professional.get('groq').model}:{}),
+    ...(choices.includes('workers-ai')?{workers:names('workers-ai')}:{}),
+    ...(choices.includes('sarvam')?{sarvam:names('sarvam')}:{}),
+    ...(preferred?{preferred}:{})
   };
 }
 

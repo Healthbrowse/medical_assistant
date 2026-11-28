@@ -135,7 +135,7 @@ export function setupCopilot(browserContext,actions={}){
  }
  async function respond(q,fromSuggestion=false,guidedDeck=0){
   const browser=getContext();if(!browser||!q.trim())return;
-  const buddyModel=$('buddyModel')?.value;
+  const buddyModel=$('buddyModel')?.value||undefined;
   let c=conversationContext(browser);
   const enteredQuestion=q,clinician=readingProfile(c.role).index===1;
   const clinicalTurn=clinician?resolveClinicalTurn(q,{pending:pendingClinical,caseQuestion:clinicalCase,preferences:clinicianPreferences}):null;

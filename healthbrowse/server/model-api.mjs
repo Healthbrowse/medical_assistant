@@ -16,8 +16,9 @@ import {citedEvidence,prepareCited,presentCited,prepareCitedReview,applyCitedRev
 import {isReadingRole,normalizeReadingRole} from '../dist/reading-profiles.js';
 import {inspectQuery} from '../dist/clinical-engine.js';
 import {evidenceFor,generationMessages,validateDraft,reviewMessages,reviewPasses,presentDraft} from './model-evidence.mjs';
-import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,usesRoleModels,browserModelRoutes,buddyEndpoint,fallbackEndpoint,deepseekModelId,GROQ_MODEL} from './model-provider.mjs';
-import {workersModels,workersProtocol,runWorkersCompletion,offersWorkersModels} from './workers-ai.mjs';
+import {modelEndpoint as endpoint,modelReviewEndpoint,usesCitedProtocol,usesRoleModels,browserModelRoutes,buddyModelRoutes,buddyEndpoint,fallbackEndpoint,deepseekModelId,groqModelId,sarvamProtocol} from './model-provider.mjs';
+import {completeSarvam,SarvamError} from './sarvam-client.mjs';
+import {workersModels,workersProtocol,runWorkersCompletion} from './workers-ai.mjs';
 import {CompletionError,deepseekPayload,readDeepSeekResult as readStructuredResult} from './deepseek-client.mjs';
 import {compactGeneration,compactReviews,ContextLimit} from './model-context.mjs';
 import {documentEvidence} from './document-evidence.mjs';
@@ -41,7 +42,7 @@ export function modelStatus(env){
   return {configured:!!config,...(roleModels?{primaryConfigured:!!primary}:{}),...(roleModels&&config?{model:config.model}:{})};
  }
  return {general:routeStatus('general'),professional:routeStatus('professional'),
-  ...(roleModels?{provider:env.MODEL_PROVIDER,agent:routeStatus('agent'),...(env.MODEL_FALLBACK_PROVIDER==='groq'?{fallback:{provider:'groq',configured:!!fallbackEndpoint(env),model:GROQ_MODEL}}:{})}:{}),
+  ...(roleModels?{provider:env.MODEL_PROVIDER,agent:routeStatus('agent'),...(env.MODEL_PROVIDER!=='sarvam'&&env.MODEL_FALLBACK_PROVIDER==='groq'?{fallback:{provider:'groq',configured:!!fallbackEndpoint(env),model:groqModelId(env)}}:{})}:{}),
   validation:roleModels||env.MODEL_PROVIDER==='groq'?'Server-resolved citations; AI interpretation is not independently clinically validated':'Automated support review; independent clinical validation pending'};
 }
 function evidenceMode(input,assets){
@@ -79,6 +80,22 @@ async function completionBody(response){
  }
 }
 async function requestCompletion(config,messages,signal,maxTokens,schema,validateBackup){
+ if(config.protocol===sarvamProtocol){
+  try{
+   const result=await completeSarvam({apiKey:config.key,model:config.model,messages,schema,maxTokens,reasoningEffort:'none',signal});
+   return {response:new Response(null,{status:200}),value:result.value,usage:result.usage};
+  }catch(error){
+   if(!(error instanceof SarvamError))throw error;
+   // Reuse the existing safe public failure messages; never expose provider
+   // bodies or credentials and never redirect this route to another provider.
+   if(Number.isInteger(error.status))return {response:new Response(null,{status:error.status})};
+   if(['provider_refusal','provider_model_mismatch','provider_output_truncated','provider_output_unexpected','provider_output_invalid'].includes(error.code))throw new CompletionError(error.code);
+   if(error.code==='provider_timeout'||error.code==='request_cancelled')fail(503,'model_timeout','AI generation or verification exceeded the response deadline. Showing source excerpts instead.');
+   if(error.code==='sarvam_key_missing')fail(503,'model_not_configured','The selected Buddy model is unavailable. Choose another model or read the cited excerpts.');
+   if(error.code==='invalid_sarvam_input')fail(503,'provider_configuration','The AI provider could not accept this model request. Showing source excerpts instead.');
+   fail(503,'provider_unavailable','The AI provider is temporarily unavailable. Showing source excerpts instead.');
+  }
+ }
  if(config.protocol===workersProtocol){
   const response=await runWorkersCompletion(config,messages,maxTokens,schema,signal);
   if(!response.ok)return {response};
@@ -91,7 +108,7 @@ async function requestCompletion(config,messages,signal,maxTokens,schema,validat
   body:JSON.stringify(payload)});
  if(!res.ok)return {response:res};
  const data=await completionBody(res);
- if(deepseek||validateBackup)return {response:res,value:readStructuredResult(data,config.model,schema)};
+ if(deepseek||config.protocol==='groq-cited-v1'||validateBackup)return {response:res,value:readStructuredResult(data,config.model,schema)};
  const content=data.choices?.[0]?.message?.content;
  if(data.choices?.[0]?.finish_reason==='length'||typeof content!=='string')throw Error('Incomplete model response');
  return {response:res,value:JSON.parse(content.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,''))};
@@ -125,8 +142,7 @@ export async function modelAPI(request,env,assets){
   if(!request.headers.get('content-type')?.startsWith('application/json'))fail(415,'body','Use JSON.');
   let b;try{b=await boundedJSON(request.body,450000)}catch{fail(400,'body','Invalid or oversized question or document.')}
   if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['topic','question','role','mode','deck','history','searchQuery','browserContext','attachments','buddyModel','browserModel','clinicalContext'].includes(k)))fail(400,'body','Unexpected input.');
-  const supportedBuddyModels=offersWorkersModels(env)?['deepseek','groq','workers-ai']:['deepseek','groq'];
-  if(b.buddyModel!==undefined&&(b.mode!=='chat'||!supportedBuddyModels.includes(b.buddyModel)))
+  if(b.buddyModel!==undefined&&(b.mode!=='chat'||!['deepseek','groq','workers-ai','sarvam'].includes(b.buddyModel)))
    fail(400,'body','Choose a supported model for Buddy chat.');
   const selectedBrowserModel=b.browserModel===undefined?null:browserModelRoutes(env).get(b.browserModel);
   if(b.browserModel!==undefined&&(b.mode!=='search'||evidenceOnly||!selectedBrowserModel))
@@ -141,6 +157,8 @@ export async function modelAPI(request,env,assets){
   if(documentMode){try{validateDocuments(b.attachments)}catch(error){fail(400,'document_input',error.message)}}
   else if(JSON.stringify(b).length>12000)fail(400,'body','Invalid or oversized question.');
   if(typeof b.topic!=='string'||b.topic.length>160||typeof b.question!=='string'||!b.question.trim()||b.question.length>1600||!isReadingRole(b.role)||!['search','chat'].includes(b.mode)||!Number.isInteger(b.deck)||b.deck<0||b.deck>6)fail(400,'body','Check the topic, question and reading mode.');
+  if(b.buddyModel!==undefined&&!buddyModelRoutes(env,normalizeReadingRole(b.role)==='Medical professional'?'professional':'general').has(b.buddyModel))
+   fail(400,'buddy_model_unavailable','The selected Buddy model is no longer configured. Choose an available model.');
   if(b.history!==undefined&&(!Array.isArray(b.history)||b.history.length>4||b.history.some(q=>typeof q!=='string'||q.length>1600)))fail(400,'body','Invalid follow-up context.');
   if(b.searchQuery!==undefined&&(typeof b.searchQuery!=='string'||b.searchQuery.length>1600))fail(400,'body','Invalid browser context.');
   if(b.browserContext!==undefined&&(typeof b.browserContext!=='string'||b.browserContext.length>1200))fail(400,'body','Invalid browser summary.');
@@ -177,7 +195,9 @@ export async function modelAPI(request,env,assets){
   const help=b.mode==='chat'&&!documentMode?buddyHelpAnswer(b.question):null;
   if(help){phase='authentication';await identity(request,env);return reply({status:'platform',answer:help,decks:[]})}
   const route=b.role==='Medical professional'?'professional':'general';
-  const backup=selectedBrowserModel||b.buddyModel==='groq'?null:fallbackEndpoint(env);
+  // An explicit choice pins both generation and review. Only Automatic may
+  // switch providers, so a successful named-model test cannot hide a failure.
+  const backup=selectedBrowserModel||b.buddyModel!==undefined?null:fallbackEndpoint(env);
   const primary=selectedBrowserModel||buddyEndpoint(env,b.buddyModel,route);
   const config=primary||backup;
   const userSelected=!!(selectedBrowserModel||b.buddyModel);
@@ -281,7 +301,8 @@ export async function modelAPI(request,env,assets){
    phase='presentation';
    const approved=applyCitedReview(review?.value||{checks:[]},check,prepared,b);
    return reply({...presentCited(approved,prepared,b,draft.config.model),protocol:draft.config.protocol,...routing,
-    ...(backup||userSelected?{reviewModel:review?.config.model||null}:{}),retrieval:evidence.retrieval});
+    ...(backup||userSelected||config.protocol===sarvamProtocol?{reviewModel:review?.config.model||null}:{}),
+    ...(config.protocol===sarvamProtocol?{usage:{generation:draft.usage||{},review:review?.usage||{}}}:{}),retrieval:evidence.retrieval});
   }
   let reason='';
   for(let attempt=0;attempt<2;attempt++){

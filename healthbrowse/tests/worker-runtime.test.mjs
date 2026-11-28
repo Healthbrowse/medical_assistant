@@ -22,14 +22,19 @@ test('Workers runtime supports authenticated accounts, both reading modes and Bu
    }
    assert.equal(url.origin,'https://api.groq.com','Credentials must never follow a redirect');
    if(providerMode==='redirect')return new WorkerResponse(null,{status:307,headers:{Location:'https://untrusted.example/steal'}});
-   const payload=JSON.parse((await request.json()).messages[1].content);
+   const body=await request.json(),payload=JSON.parse(body.messages[1].content);
+   const schema=body.response_format.json_schema.schema;
    let raw;
    if(payload.claims)raw={checks:payload.claims.map(c=>({id:c.id,verdict:'supported',sources:c.sources}))};
    else {
     const claim=s=>({text:s.text.match(/^.*?[.!?](?:\s|$)/)?.[0].trim()||s.text+'.',sources:[s.id]});
     raw={answer:[claim(payload.evidence[0])]};
    }
-   return response({choices:[{finish_reason:'stop',message:{content:JSON.stringify(raw)}}]});
+   // Mirror the requested schema; clinician claims and reviews require fields
+   // that the General response deliberately omits.
+   if(schema.properties.answer?.items.required.includes('section'))raw.answer=raw.answer.map(claim=>({...claim,section:'synthesis'}));
+   if(schema.properties.checks?.items.required.includes('quotes'))raw.checks=raw.checks.map(check=>({...check,quotes:[payload.claims.find(claim=>claim.id===check.id).text]}));
+   return response({model:body.model,choices:[{finish_reason:'stop',message:{content:JSON.stringify(raw)}}]});
   }});
  t.after(()=>mf.dispose());
  const db=await mf.getD1Database('DB');

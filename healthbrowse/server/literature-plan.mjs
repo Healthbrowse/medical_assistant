@@ -2,7 +2,7 @@ import {inspectInput} from '../dist/clinical-engine.js';
 import {hasUnsafeBuddyOutput} from '../dist/buddy-policy.js';
 import {withModelFallback} from './model-failover.mjs';
 import {buddyEndpoint,fallbackEndpoint} from './model-provider.mjs';
-import {matchesDeepSeekModel} from './deepseek-client.mjs';
+import {matchesDeepSeekModel,readDeepSeekResult} from './deepseek-client.mjs';
 import {workersProtocol,runWorkersCompletion} from './workers-ai.mjs';
 
 const maxQueries=3;
@@ -92,6 +92,7 @@ async function boundedJSON(response) {
 }
 function readPlan(data) {
  const choice=data?.choices?.[0],message=choice?.message;
+ if(message?.refusal||data?.refusal||choice?.finish_reason==='content_filter')throw Error('Planner refusal');
  if(!['stop','tool_calls'].includes(choice?.finish_reason))throw Error('Incomplete plan');
  if(message?.tool_calls){
   const calls=message.tool_calls;
@@ -103,13 +104,18 @@ function readPlan(data) {
  return JSON.parse(message.content);
 }
 
-export async function planLiterature({terms,meshTerms=[],env={},buddyModel,signal,fetcher=fetch}) {
+export async function planLiterature({terms,meshTerms=[],env={},buddyModel,deterministicOnly=false,signal,fetcher=fetch}) {
  if(signal?.aborted)signal.throwIfAborted();
  if(!eligibleLiteratureTerms(terms))return {queries:[],planner:'blocked',model:null,reason:'no_public_search_terms'};
  const vocab=vocabulary(terms,meshTerms);
  const fallback=reason=>({queries:deterministicPlan(vocab),planner:'deterministic',model:null,reason});
+ // A Browser checkpoint pins generation and review; its search terms do not
+ // need a separate, potentially different model invocation.
+ if(deterministicOnly)return fallback('explicit_browser_model');
  const config=buddyEndpoint(env,buddyModel,'agent');
- const backup=buddyModel==='groq'?null:fallbackEndpoint(env);
+ // Respect an explicit provider throughout the request, including planning.
+ // Sarvam has no planner route and uses deterministic vocabulary selection.
+ const backup=buddyModel!==undefined?null:fallbackEndpoint(env);
  if(!config&&!backup)return fallback('planner_unconfigured');
  const timer=AbortSignal.timeout(8500),deadline=signal?AbortSignal.any([signal,timer]):timer;
  async function requestPlan(route,attemptSignal){
@@ -141,7 +147,7 @@ export async function planLiterature({terms,meshTerms=[],env={},buddyModel,signa
   const {config:used,response,value:data}=await withModelFallback(config,backup,deadline,4000,requestPlan);
   if(!response.ok){if(!response.bodyUsed)await response.body?.cancel();return fallback('planner_unavailable');}
   if(!matchesDeepSeekModel(data.model,used.model))return fallback('planner_unavailable');
-  const proposal=readPlan(data);
+  const proposal=used.protocol===workersProtocol?readDeepSeekResult(data,used.model,selectionSchema):readPlan(data);
   const planner=used.protocol===workersProtocol?'workers-ai':used.protocol===protocol?'deepseek':'groq';
   return {queries:materialize(proposal,vocab),planner,model:used.model};
  }catch{

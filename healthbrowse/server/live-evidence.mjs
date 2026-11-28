@@ -161,13 +161,16 @@ export async function retrieveLiteraturePacket(input,env={},signal,fetcher=fetch
  const args=packetInputs(input,assets);
  if(!args)return emptyPacket('This question needs a public biomedical topic before a literature search can run.');
  if(env.RETRIEVAL_LIVE==='off')return emptyPacket('Live literature retrieval is disabled in this environment.');
- const key=JSON.stringify([env.MODEL_PROVIDER||'',input.buddyModel||'',args.terms,args.meshTerms.map(m=>m.id||m.label)]);
+ const deterministicOnly=!!input.browserModel;
+ const key=JSON.stringify([env.MODEL_PROVIDER||'',input.buddyModel||'',deterministicOnly,args.terms,args.meshTerms.map(m=>m.id||m.label)]);
  const cached=!args.personal&&packetCache.get(key);
  if(cached&&Date.now()-cached.time<30*60*1000)return cached.packet;
- const plan=await planLiterature({...args,env,buddyModel:input.buddyModel,signal,fetcher});
+ const plan=await planLiterature({...args,env,buddyModel:input.buddyModel,deterministicOnly,signal,fetcher});
  if(!plan.queries.length)return emptyPacket('The search planner could not form an eligible public biomedical query.');
  const packet=await runLiteratureSearch({terms:args.terms,queries:plan.queries,assets,signal,fetcher,reserve:host=>providerBudget(env,host,90)});
- if(plan.planner==='deterministic')packet.evidence_gaps.push('Search used public keywords and indexed terms because the model planner was unavailable.');
+ if(plan.planner==='deterministic')packet.evidence_gaps.push(plan.reason==='explicit_browser_model'?
+  'Search used public keywords and indexed terms without an AI planner for the selected Browser model.':
+  'Search used public keywords and indexed terms because the model planner was unavailable.');
  if(!args.personal&&['deepseek','groq','workers-ai'].includes(plan.planner)&&packet.retrieved_sources.length){
   packetCache.set(key,{packet,time:Date.now()});while(packetCache.size>30)packetCache.delete(packetCache.keys().next().value);
  }
