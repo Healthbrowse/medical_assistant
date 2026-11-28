@@ -86,9 +86,15 @@ export function retrievalTerms(question,{topic='',context=false}={}){
 export function renderClarification(container,clarification,onChoose,onEdit){
  container.replaceChildren();const panel=document.createElement('section');panel.className='query-clarification';panel.setAttribute('aria-label',clarification.title);
  const heading=document.createElement('h3');heading.textContent=clarification.title;const text=document.createElement('p');text.textContent=clarification.text;panel.append(heading,text);
+ if(clarification.kind==='clinical'&&Array.isArray(clarification.questions)){
+  if(typeof clarification.caseQuestion==='string'){const question=document.createElement('p');question.className='answer-question';question.textContent=clarification.caseQuestion;panel.append(question)}
+  const list=document.createElement('ol');
+  for(const question of clarification.questions.slice(0,3)){const item=document.createElement('li');item.textContent=question;list.append(item)}
+  panel.append(list);
+ }
  const options=document.createElement('div');options.className='clarification-options';
  for(const choice of clarification.choices||[]){const b=document.createElement('button');b.type='button';b.className='act';b.textContent=choice.label;b.onclick=()=>choice.query?onChoose(choice.query):onEdit(choice.draft||'');options.append(b)}
- const edit=document.createElement('button');edit.type='button';edit.className='act';edit.textContent='Write my own question';edit.onclick=()=>onEdit();options.append(edit);panel.append(options);container.append(panel);
+ const edit=document.createElement('button');edit.type='button';edit.className='act';edit.textContent=clarification.kind==='clinical'?'Answer these questions':'Write my own question';edit.onclick=()=>onEdit();options.append(edit);panel.append(options);container.append(panel);
 }
 
 // Keep a knowledge subject itself; a disease-page alias is only a possible source.

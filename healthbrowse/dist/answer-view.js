@@ -2,6 +2,7 @@ import {insufficientClinicalContext} from './medical-contract.js';
 import {clinicalSections} from './clinical-sections.js';
 import {renderRetry} from './retry-control.js';
 import {isDocumentReference} from './document-policy.js';
+import {renderClinicalResponseExtras} from './clinical-response-extras.js';
 const element=(tag,text,cls)=>Object.assign(document.createElement(tag),{textContent:text||'',className:cls||''});
 function sourceLink(cite,label){
  if(isDocumentReference(cite)){const b=element('button',label,'document-citation');b.type='button';b.onclick=()=>document.dispatchEvent(new CustomEvent('healthbrowse-document-source',{detail:cite}));return b}
@@ -86,5 +87,6 @@ export function renderClinicalSynthesis(parent, answer = {}, renderCheck, onRetr
  }
  renderFollowUps(report,answer.followUpQuestions);
  renderAnswerFooter(report,answer,onRetry);
+ if(answer.clinicalInteraction)renderClinicalResponseExtras(report,answer);
  parent.append(report);
 }

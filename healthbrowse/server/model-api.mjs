@@ -22,6 +22,7 @@ import {CompletionError,deepseekPayload,readDeepSeekResult as readStructuredResu
 import {compactGeneration,compactReviews,ContextLimit} from './model-context.mjs';
 import {documentEvidence} from './document-evidence.mjs';
 import {validateDocuments} from '../dist/document-policy.js';
+import {validateClinicalContext,inferClinicalContext,clinicalQuestionForTurn,clinicalClarification} from '../dist/clinical-interaction.js';
 import {groundedEvidence,prepareGrounded,decodeGrounded,groundedReview,groundedReviewPasses,presentGrounded} from './model-grounded.mjs';
 const headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'};
 const reply=(body,status=200)=>Response.json(body,{status,headers:{...headers,...(body.retryAfterSeconds!==undefined?{'Retry-After':String(body.retryAfterSeconds)}:{})}});
@@ -123,7 +124,7 @@ export async function modelAPI(request,env,assets){
   if(request.headers.get('origin')&&request.headers.get('origin')!==url.origin)fail(403,'origin','Cross-origin requests are not supported.');
   if(!request.headers.get('content-type')?.startsWith('application/json'))fail(415,'body','Use JSON.');
   let b;try{b=await boundedJSON(request.body,450000)}catch{fail(400,'body','Invalid or oversized question or document.')}
-  if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['topic','question','role','mode','deck','history','searchQuery','browserContext','attachments','buddyModel','browserModel'].includes(k)))fail(400,'body','Unexpected input.');
+  if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['topic','question','role','mode','deck','history','searchQuery','browserContext','attachments','buddyModel','browserModel','clinicalContext'].includes(k)))fail(400,'body','Unexpected input.');
   const supportedBuddyModels=offersWorkersModels(env)?['deepseek','groq','workers-ai']:['deepseek','groq'];
   if(b.buddyModel!==undefined&&(b.mode!=='chat'||!supportedBuddyModels.includes(b.buddyModel)))
    fail(400,'body','Choose a supported model for Buddy chat.');
@@ -143,9 +144,15 @@ export async function modelAPI(request,env,assets){
   if(b.history!==undefined&&(!Array.isArray(b.history)||b.history.length>4||b.history.some(q=>typeof q!=='string'||q.length>1600)))fail(400,'body','Invalid follow-up context.');
   if(b.searchQuery!==undefined&&(typeof b.searchQuery!=='string'||b.searchQuery.length>1600))fail(400,'body','Invalid browser context.');
   if(b.browserContext!==undefined&&(typeof b.browserContext!=='string'||b.browserContext.length>1200))fail(400,'body','Invalid browser summary.');
+  if(b.clinicalContext!==undefined&&(b.mode!=='chat'||normalizeReadingRole(b.role)!=='Medical professional'))fail(400,'body','Clinician workflow context is available in clinician chat.');
+  try{if(b.clinicalContext!==undefined)b.clinicalContext=validateClinicalContext(b.clinicalContext)}catch(error){fail(400,'body',error.message)}
+  if(normalizeReadingRole(b.role)==='Medical professional'){
+   b.clinicalContext=inferClinicalContext(b.question,b.clinicalContext||{});
+   b.question=clinicalQuestionForTurn(b.question,b.clinicalContext);
+  }
   const context=[b.topic,b.searchQuery||'',...(b.history||[])].join(' ');
   const screened=assessSafety(b.question,context);
-  const inputs=[b.question,b.topic,b.searchQuery||'',b.browserContext||'',...(b.history||[])];
+  const inputs=[b.question,b.topic,b.searchQuery||'',b.browserContext||'',...(b.history||[]),...Object.values(b.clinicalContext||{}).filter(v=>typeof v==='string')];
   const expanded=inputs.flatMap(securityVariants);
   const clinicalDecision=screened.action!=='allow'?screened:expanded.map(text=>assessSafety(text,context)).find(result=>result.action!=='allow');
   const buddyDecision=inputs.map(assessBuddySafety).find(result=>result.action!=='allow');
@@ -165,6 +172,8 @@ export async function modelAPI(request,env,assets){
   }
   if(clarification&&!evidenceOnly)return reply({status:'clarification',clarification,decks:[]});
   b.persona=medicalPersona(b.role);b.role=normalizeReadingRole(b.role);
+  const clinicianQuestion=evidenceOnly?null:clinicalClarification(b);
+  if(clinicianQuestion){phase='authentication';await identity(request,env);return reply({status:'clarification',clarification:clinicianQuestion,decks:[]})}
   const help=b.mode==='chat'&&!documentMode?buddyHelpAnswer(b.question):null;
   if(help){phase='authentication';await identity(request,env);return reply({status:'platform',answer:help,decks:[]})}
   const route=b.role==='Medical professional'?'professional':'general';

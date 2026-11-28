@@ -20,6 +20,7 @@ import {requestSynthesis} from './model-client.js';
 import {renderAnswer,renderClinicalSynthesis} from './answer-view.js';
 import {frameworkVersion,domains,domainTitle,roleLabel} from './disease-framework.js';
 import {renderCheck} from './research-session.js';
+import {clinicalClarification,clinicalPreferences,resolveClinicalTurn,complexClinicalQuestion} from './clinical-interaction.js';
 export const deckNames=domains.map(d=>d.title);
 const $=id=>document.getElementById(id);
 const node=(tag,text)=>Object.assign(document.createElement(tag),{textContent:text});
@@ -42,9 +43,10 @@ export function setupCopilot(browserContext,actions={}){
   return attachments.length?{...browser,attachments,attachmentVersion:attachmentKey()}:browser;
  }
  let sequence=0,active=1,history=[],identity='',publicTurns=[],busy=false,modelRequest=null,privateConversation=false,conversationTopic='',learningTopic='',generalConversation=null;
+ let pendingClinical=null,clinicalCase='',clinicianPreferences={};
  const deckViews=new WeakMap();
  const expandedInvitations=new WeakSet();
- document.addEventListener('healthbrowse-session-cleared',()=>{sequence++;modelRequest?.abort();busy=false});
+ document.addEventListener('healthbrowse-session-cleared',()=>{sequence++;modelRequest?.abort();busy=false;pendingClinical=null;clinicalCase='';clinicianPreferences={}});
  const questions=c=>c?.deckQuestions?.length===6?c.deckQuestions.map((label,i)=>({deck:i+1,label,prompt:label})):roleQuestions(c?.role);
  const controls=[$('deckSelect'),$('question'),$('ask').querySelector('button[type=submit]')];
  controls.forEach(control=>control.disabled=true);
@@ -88,7 +90,7 @@ export function setupCopilot(browserContext,actions={}){
   const browser=getContext();if(!browser)return;
   let c=browser;
   const scope=frameworkVersion+'|audience-v2|'+(c.responseMode||'medical')+'|'+c.topic+'|'+c.role+'|'+(c.attachmentVersion||'');
-  if(identity!==scope){generalConversation=null;learningTopic='';conversationTopic=c.topic;modelRequest?.abort();history=[];publicTurns=[];privateConversation=false;busy=false;++sequence;$('scopeQuestion').replaceChildren();const last=readSession('hb-context',{});active=last.scope===scope&&Number.isInteger(last.deck)?Math.max(1,Math.min(last.deck,6)):1;if(last.scope===scope){history=publicTurns=readSession('hb-transcript',[]);conversationTopic=history.at(-1)?.topic||c.topic}identity=scope}
+  if(identity!==scope){pendingClinical=null;clinicalCase='';clinicianPreferences={};generalConversation=null;learningTopic='';conversationTopic=c.topic;modelRequest?.abort();history=[];publicTurns=[];privateConversation=false;busy=false;++sequence;$('scopeQuestion').replaceChildren();const last=readSession('hb-context',{});active=last.scope===scope&&Number.isInteger(last.deck)?Math.max(1,Math.min(last.deck,6)):1;if(last.scope===scope){history=publicTurns=readSession('hb-transcript',[]);conversationTopic=history.at(-1)?.topic||c.topic}identity=scope}
   c=conversationContext(browser);
   controls.forEach(control=>control.disabled=busy);
   $('buddyStop').hidden=!busy;
@@ -135,6 +137,10 @@ export function setupCopilot(browserContext,actions={}){
   const browser=getContext();if(!browser||!q.trim())return;
   const buddyModel=$('buddyModel')?.value;
   let c=conversationContext(browser);
+  const enteredQuestion=q,clinician=readingProfile(c.role).index===1;
+  const clinicalTurn=clinician?resolveClinicalTurn(q,{pending:pendingClinical,caseQuestion:clinicalCase,preferences:clinicianPreferences}):null;
+  if(clinicalTurn){q=clinicalTurn.question;c={...c,clinicalContext:clinicalTurn.context};}
+  const clinicalFocused=clinician&&(complexClinicalQuestion(q)||!!clinicalTurn?.caseQuestion);
   const fileMode=!!c.attachments?.length;
   const audit=!fileMode&&c.directAnswer&&isBrowserAuditQuestion(q);
   const queryMode=actions.classify?.(q,c)??classifyResponseMode(q,{topic:c.topic,previousMode:c.responseMode||'medical'});
@@ -143,7 +149,7 @@ export function setupCopilot(browserContext,actions={}){
   const routine=namedRoutine || (!fileMode && c.deckQuestions===pressureSections &&
    ((intent.explicit&&!intent.topic) || (guidedDeck>0&&q===pressureSections[guidedDeck-1])));
   const sectionFollowUp=c.topic&&c.responseMode!=='general'&&isMedicalSectionFollowUp(q);
-  const general=!routine&&!fileMode&&!guidedDeck&&(audit?c.responseMode==='general':queryMode==='general'&&!intent.overview&&!sectionFollowUp);
+  const general=!clinicalFocused&&!routine&&!fileMode&&!guidedDeck&&(audit?c.responseMode==='general':queryMode==='general'&&!intent.overview&&!sectionFollowUp);
   const prepared=(fileMode||general||audit)?{...screenGeneralQuery(q,[c.topic,history.at(-1)?.question].filter(Boolean).join(' ')),query:q}:prepareQuery(q,[c.topic,c.query,history.at(-1)?.question].filter(Boolean).join(' ')),status=prepared.status;q=prepared.query;$('question').value='';$('scopeQuestion').replaceChildren();
   if(status!=='ok')notifySafety({status,safety:prepared.safety?.safety});
   if(status==='ok'&&(prepared.ephemeral||!canSaveResearchQuestion(q,c.query)))privateConversation=true;
@@ -157,6 +163,13 @@ export function setupCopilot(browserContext,actions={}){
   }:null;
   const clarification=status==='ok'&&!fileMode&&!guidedDeck&&missingDeckTopic?missingDeckTopic:narrativeTopic===''?missingSymptomTopic:status==='ok'&&!general&&!audit&&!guidedDeck&&!fileMode?clarifyQuery(q,{topic:c.topic,context:true}):null;
   if(clarification){renderClarification($('scopeQuestion'),clarification,query=>void ask(query),draft=>{if(draft!==undefined)$('question').value=draft;$('question').focus()});return;}
+  const clinicalQuestionPrompt=status==='ok'&&clinician&&!general&&!audit&&!guidedDeck
+   ?clinicalClarification({question:q,role:'Medical professional',mode:'chat',clinicalContext:c.clinicalContext}):null;
+  if(clinicalQuestionPrompt){
+   pendingClinical=clinicalQuestionPrompt;clinicianPreferences=clinicalPreferences(clinicalQuestionPrompt.clinicalContext);
+   renderClarification($('scopeQuestion'),clinicalQuestionPrompt,query=>void ask(query),()=>{$('question').focus()});return;
+  }
+  if(status==='ok'&&clinicalTurn){pendingClinical=null;clinicalCase=clinicalTurn.caseQuestion;clinicianPreferences=clinicalPreferences(clinicalTurn.context);}
   const choices=narrativeTopic==null&&status==='ok'&&!general&&!audit&&!fileMode&&!guidedDeck?actions.scopeChoice?.(q)||[]:[];
   const previousTopic=c.topic;
   const namedQuestion=/^(?:what (?:is|are)|what about|explain|describe|tell me about|how does)\b/i.test(q);
@@ -179,7 +192,7 @@ export function setupCopilot(browserContext,actions={}){
   const newSubject=!!c.topic&&(!history.length||previousTopic!==c.topic);
   const asksForBrief=/\b(?:brief(?:ly)?|short answer|one sentence|just the answer|only|(?:no|without|skip|omit|avoid|do not|don.t)\b[^.!?]{0,35}\bdecks?)\b/i.test(q);
   const fullTopic=intent.explicit||(!asksForBrief&&(routine||intent.overview||newSubject&&!isRecordListing(q)));
-  const report=status==='ok'&&fullTopic&&!help&&!general&&!audit&&!fileMode&&!guidedDeck&&!prepared.ephemeral&&canSaveResearchQuestion(q);
+  const report=status==='ok'&&fullTopic&&(!clinician||intent.explicit)&&!help&&!general&&!audit&&!fileMode&&!guidedDeck&&!prepared.ephemeral&&canSaveResearchQuestion(q);
   const localQuestion=report&&intent.explicit?c.topic:q;
   const careDecks=status==='ok'&&routine?pressureDecks():null;
   let answer;
@@ -187,7 +200,7 @@ export function setupCopilot(browserContext,actions={}){
   else if(help)answer={...help,deck:active};
   else if(careDecks)answer=pressureAnswer(careDecks,guidedDeck);
   else if(audit)answer=auditBrowserAnswer(c,q);
-  else if(fileMode||general)answer={text:'Checking the sources…',blocks:[],citations:[]};
+  else if(fileMode||general||clinicalFocused)answer={text:'Checking the sources…',blocks:[],citations:[]};
   else answer=guidedDeck?domainAnswer(c,guidedDeck):searchAnswer(c,localQuestion,{detail:true,activeDeck:active});
   if(!answer)return;
   if(status==='ok'&&c.attachments?.length&&!help)answer={text:'Reading the attached documents…',blocks:[],citations:[],checks:[],deck:active};
@@ -197,7 +210,7 @@ export function setupCopilot(browserContext,actions={}){
   if(clinicalQuestion&&!report&&!answer.safety&&answer.blocks?.length)answer={...answer,clinicalSynthesis:true};
   // Give the visitor the source-backed response now; optional remote services
   // can enrich this same turn without holding the conversation blank.
-  const turn={...answer,...(careDecks?{pressureRoutine:true}:{}),frameworkVersion,topic:c.topic,question:status==='ok'?q:'Input withheld',overview:report||isOverviewQuestion(c,q)};
+  const turn={...answer,...(careDecks?{pressureRoutine:true}:{}),frameworkVersion,topic:c.topic,question:status==='ok'?(clinicalTurn?enteredQuestion:q):'Input withheld',overview:report||isOverviewQuestion(c,q)};
   if(status==='ok'){active=answer.deck||active;if(!help&&!audit&&!general&&!fileMode)turn.modelNotice='Checking for additional evidence. You can read the cited response below.'}
   history=[...history.slice(-9),turn];if(fromSuggestion&&saveable)publicTurns=[...publicTurns.slice(-9),turn];
   sync();$('thread').lastElementChild?.scrollIntoView({block:'nearest'});
@@ -246,10 +259,14 @@ export function setupCopilot(browserContext,actions={}){
   }else if(status==='ok'&&!help&&!audit&&!catalogAnswer){
    modelRequest?.abort();modelRequest=new AbortController();
    const modelQuestion=presetDeck && !fileMode ? c.topic + ' — ' + q : q;
-   const result=await requestSynthesis(c,modelQuestion,{mode:'chat',buddyModel,deck:report?0:guidedDeck||active,history:history.slice(0,-1).filter(turn=>turn.topic===c.topic&&!turn.healthGuide),signal:modelRequest.signal});
+   const synthesisContext=clinicalTurn?{...c,clinicalContext:clinicalTurn.context}:c;
+   const result=await requestSynthesis(synthesisContext,clinicalTurn?.context.caseQuestion?enteredQuestion:modelQuestion,{mode:'chat',buddyModel,deck:report?0:guidedDeck||active,history:history.slice(0,-1).filter(turn=>turn.topic===c.topic&&!turn.healthGuide),signal:modelRequest.signal});
    if(run!==sequence||identity!==scope)return;
    if(result.status==='blocked')notifySafety({status:'blocked',safety:result.answer?.safety});
-   if(result.status==='clarification'){renderClarification($('scopeQuestion'),result.clarification,query=>void ask(query),draft=>{if(draft!==undefined)$('question').value=draft;$('question').focus()});answer={text:result.clarification.text,blocks:[],citations:[],checks:[],supported:false};}
+   if(result.status==='clarification'){
+    if(result.clarification.kind==='clinical'){pendingClinical=result.clarification;clinicianPreferences=clinicalPreferences(result.clarification.clinicalContext);}
+    renderClarification($('scopeQuestion'),result.clarification,query=>void ask(query),draft=>{if(draft!==undefined)$('question').value=draft;$('question').focus()});answer={text:result.clarification.text,blocks:[],citations:[],checks:[],supported:false};
+   }
    else if(['generated','sourced','blocked','platform'].includes(result.status)){
     const grounded=['sourced','generated'].includes(result.status);
     if(grounded&&!general&&!fileMode&&result.learningMode)learningTopic=c.topic;
@@ -268,7 +285,7 @@ export function setupCopilot(browserContext,actions={}){
   // so an enriched answer cannot inherit an obsolete coverage-gap message.
   for(const key of Object.keys(turn))delete turn[key];
   const finalTopic=general&&!audit?answer.topic:c.topic;
-  Object.assign(turn,answer,{...(careDecks?{pressureRoutine:true}:{}),frameworkVersion,topic:finalTopic||c.topic,question:status==='ok'?q:'Input withheld',overview:report||isOverviewQuestion(c,q)});
+  Object.assign(turn,answer,{...(careDecks?{pressureRoutine:true}:{}),frameworkVersion,topic:finalTopic||c.topic,question:status==='ok'?(clinicalTurn?enteredQuestion:q):'Input withheld',overview:report||isOverviewQuestion(c,q)});
   if(status==='ok'&&!privateConversation&&!prepared.symptom&&!help&&!audit&&!guidedDeck&&!fileMode)
    turn.inviteTopic=invitationTopic(answer,finalTopic,q);
   if(status==='ok'&&saveable){void actions.onChat?.(c,active);try{void actions.onTurn?.(turn)}catch{}}
@@ -296,7 +313,7 @@ export function setupCopilot(browserContext,actions={}){
  $('deckSelect').onchange=()=>{active=Number($('deckSelect').value);sync()};
  $('ask').onsubmit=e=>{e.preventDefault();ask($('question').value)};
   $('buddyStop').onclick=()=>{sequence++;modelRequest?.abort();busy=false;if(history.at(-1))history.at(-1).modelNotice='Additional lookup stopped. The available cited response is shown below.';sync()};
-  $('clearChat').onclick=()=>{sequence++;modelRequest?.abort();busy=false;$('scopeQuestion').replaceChildren();history=[];publicTurns=[];privateConversation=false;generalConversation=null;conversationTopic=getContext()?.topic||'';sync()};
+  $('clearChat').onclick=()=>{sequence++;modelRequest?.abort();busy=false;$('scopeQuestion').replaceChildren();history=[];publicTurns=[];privateConversation=false;generalConversation=null;pendingClinical=null;clinicalCase='';clinicianPreferences={};conversationTopic=getContext()?.topic||'';sync()};
  document.addEventListener('healthbrowse-documents-changed',sync);
  $('buddyDialog').addEventListener('buddy-opened',sync);
  function showHealthGuide(task,question){
@@ -324,7 +341,8 @@ export function setupCopilot(browserContext,actions={}){
   const turn={...result,question:prompt,frameworkVersion,topic:c.topic,deck:active};
   history=[...history.slice(-9),turn];
   sync();$('thread').lastElementChild?.scrollIntoView({block:'nearest'})
- },askDomain(n){const choice=questions(conversationContext(getContext()))[n-1];if(choice)void ask(choice.prompt,true,n)},clear(){sequence++;modelRequest?.abort();busy=false;history=[];publicTurns=[];privateConversation=false;generalConversation=null;conversationTopic=getContext()?.topic||'';$('scopeQuestion').replaceChildren();save('hb-transcript',[]);sync()},restore(turns){
+ },askDomain(n){const choice=questions(conversationContext(getContext()))[n-1];if(choice)void ask(choice.prompt,true,n)},clear(){sequence++;modelRequest?.abort();busy=false;history=[];publicTurns=[];privateConversation=false;generalConversation=null;pendingClinical=null;clinicalCase='';clinicianPreferences={};conversationTopic=getContext()?.topic||'';$('scopeQuestion').replaceChildren();save('hb-transcript',[]);sync()},restore(turns){
+  pendingClinical=null;clinicalCase='';clinicianPreferences={};
   sequence++;modelRequest?.abort();busy=false;publicTurns=[];generalConversation=null;
   privateConversation=turns.some(t=>!canSaveResearchQuestion(t.question));
   history=turns.map(t=>t.buddyDecks&&!privateConversation?{...t,inviteTopic:invitationTopic(t,t.topic,t.question)}:t);
