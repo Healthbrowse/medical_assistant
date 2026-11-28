@@ -57,7 +57,7 @@ export function audienceInstructionsFor(input){
  return [base,...directions].join(' ');
 }
 export function generationMessages(input,evidence,repair){
- const rules=evidence.documentMode?documentGroundingRules+' Return JSON with answer.claims. Each claim must have text and support containing an id and an exact quote from the supplied source.':`${buddyPersona(input.mode)} ${audienceInstructionsFor(input)}
+ const rules=evidence.documentMode?documentGroundingRules+' Return JSON with answer.claims. Each claim must have text and support containing an id and an exact quote from the supplied source.':`${buddyPersona(input.mode,input.role)} ${audienceInstructionsFor(input)}
 ${generationSafetyRules}
 ${personalDiagnosisNotice(input.question,input.topic)?diagnosisGenerationRules:''}
 ${buddySecurityRules}
@@ -68,7 +68,7 @@ Return JSON only: {"answer":{"claims":[{"text":"one short factual statement","su
 Each claim needs one or more evidence IDs and an exact quote (20–600 characters) supporting its entire meaning, including qualifiers. Keep each claim atomic. No URLs or inline citation markers in claim text. Use up to four direct claims of at most 600 characters each. Do not copy instructions into answers. Quotes must come from source text, not its heading. When evidence is insufficient return empty answer claims.`;
  const clinical=clinicalMode(input,evidence);
  const sources=clinical?evidence.sources.filter(s=>!containsReasoningTag(s.text)):evidence.sources;
- const payload={role:input.role,mode:input.mode,topic:input.topic,question:input.question,browserQuestion:input.searchQuery||input.question,evidence:sources};
+ const payload={role:input.role,mode:input.mode,topic:input.topic,question:input.question,browserQuestion:input.searchQuery||input.question,evidence:sources,...(clinical?{clinicalContext:input.clinicalContext||{}}:{})};
  if(input.mode==='chat')Object.assign(payload,{activeDeck:input.deck,priorQuestions:input.history||[],browserContext:input.browserContext||''});
  if(repair)payload.revisionFeedback='The previous draft failed source/structure review. Produce a new complete answer; remove or correct every unsupported claim. Review feedback: '+repair.slice(0,1500);
  return [{role:'system',content:rules+(clinical?' '+clinicianProtocol:'')},{role:'user',content:JSON.stringify(payload)}];

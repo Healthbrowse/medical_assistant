@@ -1,13 +1,19 @@
 import {normalizeReadingRole} from '../dist/reading-profiles.js';
 import {applyDiagnosisResponse} from '../dist/diagnosis-response.js';
+import {clinicalDomains,clinicalPreferences} from '../dist/clinical-interaction.js';
+import {compactClinicalBuddyPrompt,clinicalSemanticReview,clinicalPromptVersion} from './clinical-prompt.mjs';
 
 export const clinicalSections=['synthesis','evidence','limitations'];
 export const clinicalMode=(input,evidence)=>(!evidence.documentMode || evidence.clinicalDocument===true) && normalizeReadingRole(input.role)==='Medical professional';
 export const containsReasoningTag=text=>/<\s*\/?\s*(?:think|thinking|reasoning|analysis)\b/i.test(String(text));
 
-export const clinicianProtocol=`Use an objective peer-to-peer clinical tone throughout, including follow-ups. Label each direct answer claim with a section: synthesis (the executive answer), evidence (mechanism, diagnostic criteria, or management evidence relevant to the question), or limitations (documented limitations, contraindications, or conflicts). Include each section when the context supports it; omit unsupported claims. Identify the applicable population, intervention, comparator and outcome only when relevant and supplied. Report study design, quality and applicability only when the passages document them. Include a red-flag differential only when a retrieved source supports it for this presentation. A research abstract or patient education page does not establish a guideline. Base any guideline recommendation, adverse interaction, off-label indication or contraindication strictly on the retrieved passage and its source type. Never infer a dose or regimen. Attribute divergent findings to their respective sources and cite both sides; distinguish study populations and endpoints if documented. If the evidence cannot resolve a question, leave its conclusion open. Return only the structured clinical answer and supporting evidence. Keep private reasoning out of all output fields.`;
+export const clinicianProtocol=compactClinicalBuddyPrompt+`\nRUNTIME CONTRACT: This is the synthesis stage; the application has handled clarification or the user has chosen to proceed. Return only the requested claim JSON. Use an objective peer-to-peer clinical tone throughout, including follow-ups. Apply an internist perspective: prioritize supported likely and time-critical differentials, discriminating findings, pathophysiology, diagnostic stewardship, competing risks and conditional therapeutic trade-offs. State why a supported test or next step changes the decision. Correct an unsupported premise respectfully; never imply certainty from missing evidence. Label each direct answer claim with a section: synthesis (the executive answer), evidence (mechanism, diagnostic criteria, or management evidence relevant to the question), or limitations (documented limitations, contraindications, or conflicts). Include each section when the context supports it; omit unsupported claims. Identify the applicable population, intervention, comparator and outcome only when relevant and supplied. Report study design, quality and applicability only when the passages document them. Include a red-flag differential only when a retrieved source supports it for this presentation. A research abstract or patient education page does not establish a guideline. Base any guideline recommendation, adverse interaction, off-label indication or contraindication strictly on the retrieved passage and its source type. Never infer a dose or regimen. Attribute divergent findings to their respective sources and cite both sides; distinguish study populations and endpoints if documented. If the evidence cannot resolve a question, leave its conclusion open. Return only the structured clinical answer and supporting evidence. Keep private reasoning out of all output fields.`;
 
-export const clinicianReview=`For a clinician claim, review all supplied material for materially conflicting evidence as well as supporting passages. Withhold an unqualified conclusion if relevant sources conflict. Accept a claim explaining a conflict only when the selected passages substantiate both positions. Reject comparisons across incompatible populations, unsupported design/quality labels, causal conclusions from associations, and recommendations inferred from abstracts. Every red-flag differential, dose, contraindication, interaction, off-label use, and numeric outcome must be explicitly supported within the cited population and time frame. The exact cited spans and their supplied provenance must support the full claim.`;
+export const clinicianReview=clinicalSemanticReview+` For a clinician claim, review all supplied material for materially conflicting evidence as well as supporting passages. Withhold an unqualified conclusion if relevant sources conflict. Accept a claim explaining a conflict only when the selected passages substantiate both positions. Reject comparisons across incompatible populations, unsupported design/quality labels, causal conclusions from associations, and recommendations inferred from abstracts. Every red-flag differential, dose, contraindication, interaction, off-label use, and numeric outcome must be explicitly supported within the cited population and time frame. The exact cited spans and their supplied provenance must support the full claim.`;
+
+export function clinicalClaimLimit(input){
+ return input.clinicalContext?.depth==='full'||/\b(?:thorough|detailed|full|comprehensive)\b/i.test(input.question||'')?12:6;
+}
 
 export function claimSection(value,index) {
  if(value===undefined)return index===0?'synthesis':'evidence'; // Legacy provider outputs
@@ -45,5 +51,10 @@ export function exactQuotes(checked,claim,map) {
 
 export function finishMedicalAnswer(answer,input,evidence,options) {
  const result=evidence.documentMode?answer:applyDiagnosisResponse(answer,input,{...options,sources:evidence.sources});
- return clinicalMode(input,evidence)?{...result,clinicalSynthesis:true}:result;
+ if(!clinicalMode(input,evidence))return result;
+ const workflow=clinicalPreferences(input.clinicalContext);
+ return {...result,clinicalSynthesis:true,clinicalInteraction:{promptVersion:clinicalPromptVersion,
+  domains:clinicalDomains(input.question),role:workflow.perspective||'General Internal Medicine',
+  setting:workflow.setting||'Not specified',goal:workflow.goal||'Clinical evidence review',depth:workflow.depth||'rapid'},
+  ...(evidence.visual?{clinicalVisual:evidence.visual}:{})};
 }
