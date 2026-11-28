@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:26-bookworm-slim@sha256:bc0a2afd3b74ce12222fc8bab99271e66257f021078f5f4a5d687a77d280c1d9 AS base
+FROM node:26-bookworm-slim@sha256:0042e17d232a87a2cd485be1da7900fca4d10a4ad11b29e9285da1d2e54798c9 AS base
 # Bootstrap HTTPS trust from Node's bundled roots, then install Debian security fixes.
 RUN mkdir -p /etc/ssl/certs \
     && node -e "require('node:fs').writeFileSync('/etc/ssl/certs/ca-certificates.crt', require('node:tls').rootCertificates.join('\\n'))" \
