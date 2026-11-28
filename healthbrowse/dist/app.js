@@ -1,6 +1,6 @@
 import {healthQuestions,buddyHealthTask} from './health-questions.js';
 import {heartIntent,heartParagraphs} from './heart-visual.js';
-import {enrichResult} from './result-enrichment.js';
+import {enrichResult,readingList,suggestedArticles} from './result-enrichment.js';
 import {classifyResponseMode,screenGeneralQuery} from './response-mode.js';
 import {educationalSubject,clarifyQuery,renderClarification,retrievalTerms,studyFollowUp} from './query-understanding.js';
 import {setupAttachments,clearAttachments} from './attachments.js';
@@ -125,9 +125,10 @@ function switchPrompt(container,input,target,continueSearch){
   prompt.append(button('Switch topic',()=>{container.replaceChildren();continueSearch()}),button('Stay on '+topic,()=>{container.replaceChildren();$('notice').textContent='Continuing with '+topic+'.'}));container.append(prompt);prompt.scrollIntoView({block:'nearest'});
 }
 const buddy=setupBuddy(currentContext);
+$('railBuddy')?.addEventListener('click',event=>buddy.show(event.currentTarget));
 const mobile=setupMobileWorkspace({buddy,verify:openVerification,buddyModels:publicConfig?.buddyModels});
 setupAttachments();
-const resourceGuide=el('details',undefined,'source-directory research-resource-guide');resourceGuide.append(el('summary','Research sources & dataset guide'),el('p','Live evidence, research datasets and model candidates have different purposes. Reviewed 17 November 2026.'));
+const resourceGuide=el('details',undefined,'source-directory research-resource-guide');resourceGuide.id='readingLibrary';resourceGuide.append(el('summary','Research sources & dataset guide'),el('p','Live evidence, research datasets and model candidates have different purposes. Reviewed 17 November 2026.'));
 for(const r of researchResources){const row=el('section');row.append(el('strong',r.status));reference(row,r.name,r.url);row.append(el('p',r.use));resourceGuide.append(row)}
 $('clinicalNotice').after(resourceGuide);
 document.addEventListener('healthbrowse-session-cleared',()=>{
@@ -214,7 +215,7 @@ function renderCodes(body){
 function render(){
   mobile.setModelRole(roles[role]);
   for(const input of $('readingMode').querySelectorAll('input'))input.checked=input.value===roles[role];
-  $('deskTitle').textContent='HealthBrowse research desk';$('deskIntro').textContent='Search medical topics, research, and enterprise documentation.';
+  $('deskIntro').textContent=role===1?'Search clinical questions, compare published evidence, and review cited passages with Buddy.':'Ask a health question, explore the evidence, or discuss a source with Buddy.';
   $('roleHint').textContent=readingProfile(role).guide;
   if(responseMode==='general'){renderGeneral();return;}
   $('clinicalNotice').hidden=false;$('buddyResearch').hidden=false;
@@ -273,10 +274,15 @@ function render(){
     }catch{copyStatus.textContent='Clipboard unavailable. Select the answer text to copy it.'}}),copyStatus);
     card.append(citations);
     displayedEvidence=answerHandoff(direct,refs);
+    const record=medicalRecord(topic);
+    const articleContext={topic,query:activeQuery,aliases:record?.aliases||[],role:roles[role],mode:'medical',answer:direct,
+      articles:[...(live?.records||[]),...refs,...(catalog[topic]||[]).filter(row=>['core','guideline'].includes(row.kind)),
+        ...(record?.url?[{title:record.title,url:record.url,publisher:'MedlinePlus'}]:[]),...Object.values(record?.links||{}).flat()]};
     if(!direct.safety && direct.kind!=='platform' && (direct.supported||direct.blocks?.length||direct.generation)){
-      enrichResult(header.querySelector('.primary-medical-response'),{readingParent:card,mode:'medical',topic,query:activeQuery,role:roles[role],answer:direct,
-        articles:[...(live?.records||[]),...refs,...Object.values(medicalRecord(topic)?.links||{}).flat()],visual:synthesis?.key===synthesisKey(currentContext())?synthesis.visual:null,allowLookup:canSaveResearchQuestion(activeQuery),signal:imageView?.signal});
+      enrichResult(header.querySelector('.primary-medical-response'),{readingParent:card,...articleContext,visual:synthesis?.key===synthesisKey(currentContext())?synthesis.visual:null,allowLookup:canSaveResearchQuestion(activeQuery),signal:imageView?.signal});
       card.append(verificationCallout());
+    }else if(!direct.safety&&direct.kind!=='platform'&&aiRequested){
+      readingList(card,suggestedArticles(articleContext));
     }
     card.append(researchResourcesPanel(openResources));
   }else if(codes)renderCodes(card);
@@ -477,7 +483,6 @@ async function performSearch(input,chosenTopic,confirmed=false){
 }
 async function runLive(){controller?.abort();const c=new AbortController();controller=c;live={message:'Searching Europe PMC…'};render();const timer=setTimeout(()=>c.abort(),15000);try{const result=await searchEvidence(topic,c.signal,!Object.hasOwn(catalog,topic));if(controller!==c)return;live={...result,message:result.records.length+' qualifying records · metadata retrieved '+result.queriedAt+' · clinical appraisal pending.'}}catch{if(controller!==c)return;live={message:'The live search could not be completed. The cataloged reading list remains available. Retry the search or open the publisher directly.'}}finally{clearTimeout(timer)}render()}
 function download(){const url=URL.createObjectURL(new Blob([JSON.stringify({topic,source:'Europe PMC',...live},null,2)],{type:'application/json'}));const a=el('a');a.href=url;a.download='healthbrowse-evidence.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-for(let i=0;i<20;i++){let p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d','M 0 '+(95-i*2)+' C 42 '+(125-i*4)+' 62 '+(8+i)+' 100 '+(18+i*3)+' S 159 '+(145-i*3)+' 210 '+(80-i*2));$('waves').append(p)}
 try{
   const files=['catalog.json','taxonomy.json','clinical-passages.json','topic-list.json','medline-topics.json'];
   const loaded=await Promise.allSettled(files.map(file=>fetchJSON(file)));
@@ -488,6 +493,21 @@ try{
   medlineLookup=medlineIndex(feed);
   for(const item of feed.topics)if(!allowedTopics.has(item.title.toLowerCase()))allowedTopics.set(item.title.toLowerCase(),item.title);
   lookupIndex=topicIndex([...feed.topics.map(t=>({name:t.title,aliases:(t.aliases||[]).filter(a=>medlineLookup.find(a)===t)})),...taxonomy.entities],allowedTopics.values());
+  const prompts=el('section',undefined,'desk-prompts');
+  prompts.setAttribute('aria-label','Suggested health questions');
+  prompts.append(el('h2','Try asking'));
+  const promptGrid=el('div',undefined,'desk-prompt-grid');
+  for(const [label,question] of [
+    ['Signs and symptoms','What are the symptoms of dengue?'],
+    ['Everyday health','How can I improve my heart health?'],
+    ['Understanding a condition','What is type 2 diabetes?'],
+    ['Daily management','How do I manage high blood pressure day to day?']
+  ]){
+    const choice=button('',()=>searchUI.send(question),'desk-prompt');
+    choice.type='button';choice.append(el('small',label),el('span',question));
+    promptGrid.append(choice);
+  }
+  prompts.append(promptGrid);document.querySelector('.searchbox').after(prompts);
   const examples=el('details',undefined,'focus-directory health-question-examples');
   examples.append(el('summary','Try a health question'));
   const exampleList=el('div');

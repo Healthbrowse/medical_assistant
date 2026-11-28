@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {suggestedArticles,supportNodes} from '../dist/result-enrichment.js';
+import {suggestedArticles,readingList,supportNodes} from '../dist/result-enrichment.js';
 import {publicFigureResponse} from '../server/public-figure.mjs';
 import {medicalFigureResponse} from '../server/education-visuals.mjs';
 
@@ -12,6 +12,96 @@ test('suggestions use real publication metadata, distinct HTTPS links and up to 
  assert.equal(result[0].date,'2025-02-10');assert.equal(result[0].publisher,'A journal');assert.match(result[0].takeaway,/review/);
  const [unknown]=suggestedArticles({mode:'medical',topic:'Sore throat',answer:{citations:[{url:'https://medlineplus.gov/sorethroat.html',title:'Sore throat',date:'2026-11-19'}]}});
  assert.equal(unknown.date,'','retrieval metadata cannot serve as a publication date');
+});
+
+test('article suggestions match aliases and decision intent while excluding unrelated subjects and other leukemia subtypes',()=>{
+ const rows=suggestedArticles({mode:'medical',topic:'Acute myeloid leukemia',aliases:['AML'],query:'Which tests diagnose AML?',articles:[
+  {title:'AML treatment review',url:'https://journal.example/treatment'},
+  {title:'Tests for AML diagnosis',url:'https://journal.example/diagnosis'},
+  {title:'Acute lymphoblastic leukemia diagnosis',url:'https://journal.example/other-subtype',pmid:'123',date:'2026'},
+  {title:'Asthma diagnostic tests',url:'https://journal.example/unrelated',takeaway:'A diagnostic overview.'}
+ ]});
+ assert.deepEqual(rows.map(row=>row.url),['https://journal.example/diagnosis','https://journal.example/treatment']);
+ assert.equal(rows[0].reason,'Matches your question');
+ const short=suggestedArticles({topic:'Rheumatoid arthritis',aliases:['RA'],query:'RA treatment options',articles:[{title:'RA treatment options',url:'https://journal.example/ra'}]});
+ assert.equal(short.length,1);assert.equal(short[0].reason,'Matches your question');
+});
+
+test('role ranking uses supplied article type, never a broad institutional domain or a negated guideline label',()=>{
+ const articles=[
+  {title:'Sore throat',url:'https://www.nih.gov/research/sore-throat',sourceType:'indexed research abstract · not a clinical guideline'},
+  {title:'Sore throat',url:'https://research.example/review',publicationTypes:['Journal Article','Systematic Review']},
+  {title:'Sore throat',url:'https://care.example/patient-guide',sourceType:'patient education · health-topic summary'}
+ ];
+ const general=suggestedArticles({mode:'medical',topic:'Sore throat',role:'General reader',articles});
+ assert.equal(general[0].url,articles[2].url);assert.equal(general[0].reason,'Patient education');
+ for(const role of ['Medical professional','Clinicians',1]){
+  const clinical=suggestedArticles({mode:'medical',topic:'Sore throat',role,articles});
+  assert.equal(clinical[0].url,articles[1].url);assert.equal(clinical[0].reason,'Systematic Review');
+  assert.equal(clinical.find(row=>row.url===articles[0].url).reason,'Topic match');
+ }
+ assert.equal(general.find(row=>row.url===articles[0].url).reason,'Topic match');
+});
+
+test('canonical tracking/hash variants inherit citation status and keep the cited anchor and explicit publication metadata',()=>{
+ const source={title:'Clinical handbook',url:'https://publisher.example/handbook?id=7&utm_source=feed#top',publisher:'Book Press',publicationDate:'2024-06-01'};
+ const reference={title:'Reference chapter',url:'https://publisher.example/handbook?utm_medium=email&id=7#chapter-five',date:'2026-11-19'};
+ const answer={blocks:[{text:'A source-backed explanation.',references:[reference]}]},before=JSON.stringify(answer);
+ const rows=suggestedArticles({topic:'Pituitary gland',articles:[source],answer});
+ assert.equal(rows.length,1);assert.equal(rows[0].reason,'Cited in this answer');
+ assert.equal(rows[0].url,'https://publisher.example/handbook?id=7#chapter-five');
+ assert.equal(rows[0].publisher,'Book Press');assert.equal(rows[0].date,'2024-06-01');
+ assert.equal(JSON.stringify(answer),before);assert.equal(supportNodes(answer,[source])[0].ref,reference);
+});
+
+test('citation snapshots duplicated into the article list cannot become publication dates, including canonical variants',()=>{
+ const citation={title:'Pituitary gland',url:'https://reference.example/pituitary#function',date:'2026-11-19'};
+ const article={...citation,url:'https://reference.example/pituitary?utm_source=feed'};
+ const rows=suggestedArticles({topic:'Pituitary gland',articles:[article,citation],answer:{citations:[citation]}});
+ assert.equal(rows.length,1);assert.equal(rows[0].date,'');
+ const published=suggestedArticles({topic:'Pituitary gland',articles:[{...article,published:'2023-05-06'}],answer:{citations:[citation]}});
+ assert.equal(published[0].date,'2023-05-06');
+});
+
+test('search pages, unsafe links and flagged retractions are excluded while genuine articles about searching remain eligible',()=>{
+ const article=(url,extra={})=>({title:'Leukemia diagnosis',url,...extra});
+ const rows=suggestedArticles({topic:'Leukemia',articles:[
+  article('https://journal.example/search.html'),article('https://journal.example/search-results/'),
+  article('https://pubmed.ncbi.nlm.nih.gov/?TERM=leukemia'),article('https://clinicaltrials.gov/search'),
+  article('http://journal.example/insecure'),article('https://name:password@journal.example/private'),
+  article('https://journal.example/retracted',{title:'[Retracted] Leukemia diagnosis'}),
+  article('https://journal.example/withdrawn',{title:'Withdrawn: Leukemia diagnosis'}),
+  article('https://journal.example/flagged',{isRetracted:'Y'}),
+  article('https://journal.example/publication-type',{publicationTypes:['Retracted Publication']}),
+  article('https://journal.example/articles/search-for-markers',{title:'Searching for leukemia markers'})
+ ]});
+ assert.deepEqual(rows.map(row=>row.url),['https://journal.example/articles/search-for-markers']);
+});
+
+test('publication dates break ties chronologically and curated organelle reading is preserved',()=>{
+ const rows=suggestedArticles({topic:'Leukemia',articles:[
+  {title:'Leukemia review',url:'https://journal.example/older',publicationDate:'December 31, 2025'},
+  {title:'Leukemia review',url:'https://journal.example/newer',publicationDate:'2026-01-02'}
+ ]});
+ assert.equal(rows[0].url,'https://journal.example/newer');assert.equal(rows[1].date,'December 31, 2025');
+ const organelle=suggestedArticles({mode:'medical',topic:'Mitochondria'});
+ assert.ok(organelle.some(row=>row.title==='Eukaryotic Cells'&&row.reason==='Topic reading'));
+});
+
+test('empty selections stay empty and the exported reading list renders reasons without claiming verification',t=>{
+ assert.deepEqual(suggestedArticles(),[]);
+ assert.deepEqual(suggestedArticles({topic:'Leukemia',articles:[null,{title:'Asthma',url:'https://journal.example/asthma'}]}),[]);
+ const node=tag=>({tag,children:[],append(...children){this.children.push(...children)}});
+ const previous=globalThis.document;globalThis.document={createElement:node};
+ t.after(()=>{if(previous===undefined)delete globalThis.document;else globalThis.document=previous});
+ const empty=node('div');readingList(empty,[]);
+ assert.equal(empty.children[0].children[0].textContent,'Suggested Articles');
+ assert.equal(empty.children[0].children[1].textContent,'No matching articles were available for this answer.');
+ const parent=node('div');readingList(parent,[{title:'Example article',url:'https://journal.example/article',publisher:'Journal',reason:'Matches your question',date:'2025',takeaway:'An exact supplied takeaway.'}]);
+ const item=parent.children[0].children[1].children[0];
+ assert.equal(item.children[0].href,'https://journal.example/article');assert.equal(item.children[0].rel,'noopener noreferrer');
+ assert.equal(item.children[1].textContent,'Matches your question · Journal · 2025');
+ assert.equal(item.children[2].textContent,'An exact supplied takeaway.');
 });
 
 test('visual claim nodes refer to the correct source and exclude unsupported text',()=>{

@@ -54,7 +54,7 @@ function takeawayFor(s, topic, isCitation) {
   if (s.takeaway) return s.takeaway;
   if (s.passage?.text) return s.passage.text;
   if (s.studyDesign || s.category) {
-    return 'Read this ' + String(s.studyDesign || s.category).toLowerCase() + ' for published research on ' + topic + '.';
+    return 'Read this ' + String(s.studyDesign || s.category).toLowerCase() + ' for information relevant to ' + topic + '.';
   }
   const subject = [s.title, s.heading].filter(Boolean).join(' ');
   if (/prevent|vaccin|risk factor/i.test(subject)) return 'Read about prevention and risk factors relevant to ' + topic + '.';
@@ -65,40 +65,87 @@ function takeawayFor(s, topic, isCitation) {
   return 'Explore the publisher’s discussion of ' + s.title.replace(/[.!?]$/, '') + '.';
 }
 
-export function suggestedArticles({topic = '', query = '', answer = {}, articles = [], mode}) {
-  const blocks = answer?.blocks || [];
-  const cited = [...blocks.flatMap(b => citedBy(b, articles)), ...(answer?.citations || [])];
-  const extra = mode === 'medical' && orgTopic(topic) ? organelleReading : [];
-  const rows = new Map();
-  function add(s, group, isCitation = false) {
-    const url = httpsUrl(s?.url);
-    if (!url || !s.title || /(?:^|\/)(?:search|searchresults)\b|clinicaltrials\.gov\/search/i.test(new URL(url).pathname) || /[?&](?:term|query|search|q)=/.test(url)) return;
-    const key = new URL(url);
-    key.hash = '';
-    const publisher = s.publisher || s.journal || s.publication || key.hostname.replace(/^www\./,'');
-    const date = dateLabel(s, isCitation);
-    const score = group + Math.min(6, titleMatch(s.title, topic) + titleMatch(s.title, query)) + (date ? 1 : 0);
-    const entry = {title:s.title, url, publisher, date, takeaway:takeawayFor(s, topic, isCitation), score};
-    if (!rows.has(key.href) || score > rows.get(key.href).score) rows.set(key.href, entry);
+const intentTerms=[
+ /\b(?:diagnos\w*|screen\w*|tests?|testing|detect\w*)\b/, /\b(?:symptoms?|warning signs?|signs)\b/,
+ /\b(?:treat\w*|therap\w*|manag\w*|medicat\w*)\b/, /\b(?:prevent\w*|protect\w*|vaccin\w*)\b/,
+ /\b(?:risks?|causes?|etiolog\w*)\b/, /\b(?:mechanisms?|physiolog\w*|functions?)\b/
+];
+function phrase(text){return ' '+words(text).join(' ')+' ';}
+function articleUrl(value){
+  const safe=httpsUrl(value);if(!safe)return null;
+  const url=new URL(safe);
+  if(/(?:^|\/)(?:search|search[-_]?results)(?:\/|\.[a-z]+$|$)/i.test(url.pathname)||
+    [...url.searchParams.keys()].some(key=>['q','query','term','search'].includes(key.toLowerCase())))return null;
+  for(const key of [...url.searchParams.keys()])if(/^utm_|^(?:gclid|fbclid)$/i.test(key))url.searchParams.delete(key);
+  url.searchParams.sort();
+  const href=url.href;url.hash='';
+  return {key:url.href,href,hostname:url.hostname};
+}
+function sourceLabels(source){
+  return [source.studyDesign,source.category,source.sourceType,...(Array.isArray(source.publicationTypes)?source.publicationTypes:[])].filter(label=>typeof label==='string');
+}
+function withdrawn(source){
+  const notice=/^(?:\[\s*)?(?:retract(?:ed|ion)|withdrawn|expression of concern|erratum|correction to)\b/i;
+  return source.retracted===true||source.isRetracted===true||source.isRetracted==='Y'||
+    notice.test(source.title.trim())||sourceLabels(source).some(label=>notice.test(label.trim())||/^published erratum$/i.test(label.trim()));
+}
+export function suggestedArticles({topic='',aliases=[],query='',answer={},articles=[],mode,role}={}){
+  const sourceList=Array.isArray(articles)?articles.filter(Boolean):[];
+  const blocks=Array.isArray(answer?.blocks)?answer.blocks.filter(Boolean):[];
+  const cited=[...blocks.flatMap(block=>citedBy(block,sourceList)),...(Array.isArray(answer?.citations)?answer.citations:[])];
+  const citationUrls=new Map();
+  for(const source of cited){const url=articleUrl(source?.url);if(url) citationUrls.set(url.key,url.href)}
+  const rows=new Map();
+  const subjectTerms=[topic,...(Array.isArray(aliases)?aliases:[])].filter(term=>typeof term==='string'&&term.trim().length>=2).map(phrase);
+  const topicWords=new Set(words(topic).filter(word=>word.length>2&&!stop.has(word)));
+  const intents=intentTerms.filter(pattern=>pattern.test(String(query||'').toLowerCase()));
+  const clinical=roleIndex(role)===1;
+  function add(source,fromCitation=false,curated=false){
+    const url=articleUrl(source?.url);
+    if(!url||typeof source.title!=='string'||!source.title.trim()||withdrawn(source))return;
+    const isCitation=fromCitation||citationUrls.has(url.key);
+    const title=phrase(source.title),heading=phrase(source.heading);
+    const subject=subjectTerms.some(term=>title.includes(term));
+    const summary=phrase([source.takeaway,source.passage?.text,source.quote].filter(value=>typeof value==='string').join(' '));
+    const inSummary=subjectTerms.some(term=>summary.includes(term));
+    const matchedWords=titleMatch(source.title,topic);
+    // Reordered multiword subjects must retain every meaningful topic word;
+    // shared words such as "acute" and "leukemia" do not establish a subtype.
+    if(!curated&&!isCitation&&!subject&&!inSummary&&!(matchedWords>=2&&matchedWords===topicWords.size))return;
+    const matchedIntent=intents.some(pattern=>pattern.test(title+heading));
+    const labels=sourceLabels(source);
+    // These labels describe supplied source metadata, never quality inferred
+    // from a publisher's domain. NIH also hosts research and policy material.
+    const guidance=labels.find(label=>/^(?:(?:clinical |practice |clinical practice )?guidelines?|systematic review(?: and meta.analysis)?|meta.analysis)$/i.test(label.trim()));
+    const education=labels.some(label=>/^patient(?: and family)? (?:education|information)\b/i.test(label.trim()));
+    const score=(subject?12:0)+(curated?10:0)+(matchedIntent?9:0)+(isCitation?4:0)+
+      Math.min(4,titleMatch(source.title,query))+(clinical&&guidance?6:!clinical&&education?6:0);
+    const date=dateLabel(source,isCitation);
+    const reason=matchedIntent?'Matches your question':curated?'Topic reading':clinical&&guidance?guidance:
+      isCitation?'Cited in this answer':education?'Patient education':'Topic match';
+    const old=rows.get(url.key);
+    if(!old||old.score<score)rows.set(url.key,{title:source.title,url:citationUrls.get(url.key)||url.href,
+      publisher:source.publisher||source.journal||source.publication||old?.publisher||url.hostname.replace(/^www\./,''),
+      date:date||old?.date||'',takeaway:takeawayFor(source,topic,isCitation),reason,score});
   }
-  for (const s of articles) add(s, s.takeaway || s.pmid ? 14 : 5);
-  for (const s of extra) add(s, 19);
-  for (const s of cited) add(s, 6, true);
-  return [...rows.values()].sort((a,b) => b.score-a.score).slice(0,5);
+  for(const source of sourceList)add(source);
+  if(mode==='medical'&&orgTopic(topic))for(const source of organelleReading)add(source,false,true);
+  for(const source of cited)add(source,true);
+  return [...rows.values()].sort((a,b)=>b.score-a.score||((Date.parse(b.date)||0)-(Date.parse(a.date)||0))).slice(0,5);
 }
 
-function readingList(parent, articles) {
+export function readingList(parent, articles) {
   const section = element('section','','suggested-articles');
   section.append(element('h3','Suggested Articles'));
   if (articles.length) {
     const list=element('ul');
     for (const s of articles) {
       const item=element('li');
-      item.append(link(s.title,s.url),element('small',s.publisher+' · '+(s.date || 'Publication date unavailable')),element('p',s.takeaway));
+      item.append(link(s.title,s.url),element('small',[s.reason,s.publisher,s.date].filter(Boolean).join(' · ')),element('p',s.takeaway));
       list.append(item);
     }
     section.append(list);
-  } else section.append(element('p','No relevant articles with verified links were available for this answer.','meta'));
+  } else section.append(element('p','No matching articles were available for this answer.','meta'));
   parent.append(section);
 }
 
@@ -205,10 +252,10 @@ export function visualLookupEndpoint({mode, topic, query, articles = [], illustr
   return '/api/browser/public-figure?' + (/^[1-9]\d{0,9}$/.test(String(pageId)) ? 'id=' + pageId : params);
 }
 
-export function enrichResult(visualParent, {readingParent = visualParent, mode, topic = '', query = '',
+export function enrichResult(visualParent, {readingParent = visualParent, mode, topic = '', aliases = [], query = '',
   answer = {}, articles = [], visual, role, allowLookup = true, signal, illustrationPageId} = {}) {
   const normalizedArticles = Array.isArray(articles) ? articles.filter(Boolean) : [];
-  const reading = suggestedArticles({mode, topic, query, answer, articles: normalizedArticles});
+  const reading = suggestedArticles({mode, topic, aliases, query, role, answer, articles: normalizedArticles});
   const slot = element('section', '', 'result-visual');
   slot.setAttribute('aria-label', 'Images for ' + topic);
   visualParent.append(slot);

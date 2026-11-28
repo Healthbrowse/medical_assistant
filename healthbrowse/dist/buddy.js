@@ -24,7 +24,7 @@ export function setupBuddy(getContext){
  $('buddyDismiss').onclick=$('buddyLater').onclick=()=>{intro.dismiss();launcher.focus({preventScroll:true})};
  welcome.addEventListener('keydown',event=>{if(event.key==='Escape'){intro.dismiss();launcher.focus({preventScroll:true})}});
  launcher.onclick=()=>show();$('buddyClose').onclick=close;
- dialog.addEventListener('close',()=>{launcher.setAttribute('aria-expanded','false');document.body.classList.remove('buddy-open');(returnFocus?.isConnected?returnFocus:launcher).focus({preventScroll:true})});
+ dialog.addEventListener('close',()=>{launcher.setAttribute('aria-expanded','false');document.body.classList.remove('buddy-open');(returnFocus?.isConnected&&returnFocus.getClientRects().length?returnFocus:launcher).focus({preventScroll:true})});
  dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)close()}});
  return {show,close,sync(_mode,ready){
   launcher.disabled=false;launcher.hidden=false;$('buddyClose').hidden=false;panel.hidden=false;

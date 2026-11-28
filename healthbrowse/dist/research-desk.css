@@ -1,0 +1,52 @@
+:root:not([data-theme=dark]) {
+  --paper:#f5f8fd; --surface:#fff; --elevated:#fff; --ink:#142946; --dim:#475d74;
+  --link:#1256ad; --action:#145ecb; --on-action:#fff; --action-hover:#114da9;
+  --line:#dce5ef; --tag:#e7f0fe; --panel:#f2f7fd; --hover:#eaf2fc;
+  --wash:#edf4fc; --accent:#1658ad; --muted-green:#465d77; --focus:#075ed1
+}
+body:has(.desk-shell) {background:var(--paper);font-family:Inter,"Segoe UI",system-ui,sans-serif}
+body:has(.desk-shell) .site-header {max-width:none;background:var(--surface)}
+.desk-shell {display:grid;grid-template-columns:12.25rem minmax(0,1fr);gap:clamp(1.25rem,3vw,3rem);max-width:1550px;margin:auto;padding:1.5rem clamp(1rem,3vw,3rem) 2rem}
+.desk-shell main {min-width:0;max-width:none;width:100%;margin:0;padding:0}
+.desk-rail {display:flex;flex-direction:column;align-self:start;align-items:stretch;gap:.35rem;position:sticky;top:1rem;border-right:1px solid var(--line);padding:0 1.2rem 1rem 0}
+.desk-rail a,.rail-primary {font:600 .95rem/1.4 Inter,"Segoe UI",system-ui,sans-serif;text-align:left;border-radius:.65rem;padding:.78rem .9rem;text-decoration:none;color:var(--ink)}
+.desk-rail a:hover,.desk-rail a:focus-visible {background:var(--tag);color:var(--link)}
+.rail-primary {background:var(--action);color:var(--on-action);border:0;margin:0 0 .7rem;min-height:44px;font-weight:650}
+.desk-shell .desk-hero {display:flex;align-items:center;justify-content:space-between;gap:1.2rem;padding:0 0 0 clamp(1.35rem,3vw,3rem);background:linear-gradient(108deg,#edf8ff,#d7edfd);overflow:hidden;border:1px solid #cfe4f4;border-radius:1.2rem;margin:0 0 1.05rem;color:#102e54;min-height:185px}
+.desk-hero .intro {padding:1.5rem 0;flex:1}
+.desk-shell .desk-hero h1 {font:730 clamp(2rem,3.7vw,3.7rem)/1.06 Inter,"Segoe UI",system-ui,sans-serif;letter-spacing:-.055em;margin:0 0 .7rem;color:inherit}
+.desk-shell .desk-hero p {color:#325273;max-width:36rem;font-size:1.05rem;margin:0}
+.desk-hero img {align-self:stretch;width:36%;max-height:220px;object-fit:cover;object-position:center 38%;mask-image:linear-gradient(to right,transparent,#000 16%)}
+.desk-shell .searchbox, .desk-shell .primary-medical-response, .desk-shell .suggested-articles {background:var(--surface);border:1px solid var(--line);border-radius:1rem;padding:clamp(1rem,2vw,1.6rem);box-shadow:0 5px 18px #14345c08}
+.desk-shell .searchbox {margin:0}.desk-shell .field {background:var(--surface);border-radius:.8rem}
+.desk-prompts {margin:1.25rem 0 1.6rem}.desk-prompts h2,.desk-shell .suggested-articles h3 {font:680 1.1rem/1.35 Inter,"Segoe UI",system-ui,sans-serif;margin:0 0 .65rem;letter-spacing:-.015em}
+.desk-prompt-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem}
+.desk-prompt {display:grid;align-content:start;gap:.45rem;padding:.85rem;text-align:left;border:1px solid var(--line);border-radius:.85rem;background:var(--surface);color:var(--ink);font:550 .95rem/1.4 Inter,"Segoe UI",system-ui,sans-serif}
+.desk-prompt small {color:var(--link);font-size:.875rem;font-weight:700}.desk-prompt:hover {border-color:var(--link)}
+.desk-shell .suggested-articles {margin:0 0 1rem;align-self:start}.suggested-articles li>a {display:block}
+.desk-shell .suggested-articles li>p {font-size:.89rem;line-height:1.45}
+.desk-shell .cardhead {min-width:0}.desk-shell .overview-note {overflow-wrap:anywhere}
+@media(min-width:1220px){.desk-shell #card:has(>.suggested-articles) {display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,28%);gap:1rem;align-items:start}.desk-shell #card:has(>.suggested-articles)>* {grid-column:1}.desk-shell #card>.suggested-articles {grid-column:2!important;grid-row:1;position:sticky;top:1rem}}
+#buddyDialog .turn {border:1px solid var(--line);background:var(--surface);border-radius:1rem;padding:1rem}
+#buddyDialog .turn .user-question,#buddyDialog .turn .user {background:var(--tag);border-radius:1rem;padding:.65rem 1rem}
+/* The dark desk opens directly onto the search workspace. */
+:root[data-theme=dark] .desk-shell .desk-hero {
+  background:transparent; border:0; border-radius:0; color:var(--ink);
+  display:block; min-height:0; overflow:visible; margin:0 0 1.25rem; padding:0;
+}
+:root[data-theme=dark] .desk-hero img {display:none}
+:root[data-theme=dark] .desk-hero .intro {padding:.5rem 0 0}
+:root[data-theme=dark] .desk-shell .desk-hero h1 {
+  font-size:clamp(1.85rem,3vw,2.75rem); letter-spacing:-.045em; margin:0 0 .4rem;
+}
+:root[data-theme=dark] .desk-shell .desk-hero p {color:var(--dim); max-width:74ch; text-wrap:balance; margin:0}
+:root[data-theme=dark] .desk-shell :is(.searchbox,.primary-medical-response,.suggested-articles) {box-shadow:none}
+:root[data-theme=dark] .desk-shell .field {background:var(--paper)}
+:root[data-theme=dark] .desk-shell .desk-prompt {border-color:var(--line)}
+:root[data-theme=dark] .desk-shell .desk-prompt:hover {background:var(--elevated);border-color:var(--accent)}
+@media(max-width:1000px){.desk-shell {display:block}.desk-rail {display:none}.desk-prompt-grid {grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.desk-shell {padding:.8rem .8rem 5rem}.desk-shell .desk-hero {min-height:135px;gap:.25rem}.desk-shell .desk-hero h1 {font-size:1.85rem}.desk-shell .desk-hero p {font-size:.9rem}.desk-hero img {width:32%;max-height:155px}.desk-prompt {padding:.7rem}.desk-shell .suggested-articles {margin:.9rem 0}}
+#buddyDialog .turn .buddy-user-message {background:var(--tag);border-color:var(--line);padding:.75rem 1rem}
+#buddyDialog .turn .buddy-response {background:var(--panel);border-radius:1rem;padding:1rem 1.2rem}
+#buddyDialog .buddy-composer #ask {background:var(--surface)}
+@media(max-width:760px){.desk-shell {padding-bottom:calc(164px + env(safe-area-inset-bottom))}}

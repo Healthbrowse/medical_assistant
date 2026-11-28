@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {setupBuddyLayout,resizeBuddyInput} from '../dist/buddy-layout.js';
+import {setupBuddy} from '../dist/buddy.js';
 import {createDictation} from '../dist/mobile-voice.js';
 import {buddyModelNames} from '../server/public-config.mjs';
 
@@ -52,6 +53,36 @@ test('Buddy preserves existing form and new-chat controls when moving tools out 
  explore.onclick();f.dialog.dispatchEvent({type:'close'});assert.equal(f.inner.hidden,false);assert.equal(explore.getAttribute('aria-expanded'),'false');
  f.document.dispatchEvent({type:'healthbrowse-chat-updated',detail:{count:1}});assert.equal(f.inner.querySelector('.buddy-empty').hidden,true);
  f.document.dispatchEvent({type:'healthbrowse-chat-updated',detail:{count:0}});assert.equal(f.inner.querySelector('.buddy-empty').hidden,false);
+});
+
+test('closing Buddy restores its visible opener and falls back when the rail is hidden or removed',async t=>{
+ const {document,dialog}=fixture(t),focus=[];
+ const add=(parent,tag,id)=>{const node=Object.assign(new Element(tag),{id});parent.append(node);return node};
+ const classes=()=>{const values=new Set();return {add:value=>values.add(value),remove:value=>values.delete(value)}};
+ document.body=document;document.classList=classes();
+ const launcher=add(document,'button','buddyLauncher');launcher.classList=classes();launcher.focus=options=>focus.push({id:launcher.id,options});
+ const rail=add(document,'aside','researchRail'),opener=add(rail,'button','railBuddy');
+ Object.defineProperty(opener,'isConnected',{get:()=>document.all().includes(opener)});
+ opener.getClientRects=()=>rail.hidden?[]:[{width:120,height:44}];
+ opener.focus=options=>focus.push({id:opener.id,options});
+ const welcome=add(document,'aside','buddyNudge');
+ for(const id of ['buddyMeet','buddyDismiss','buddyLater'])add(welcome,'button',id);
+ const close=document.getElementById('buddyClose');close.before=node=>close.parent.insertBefore(node,close);
+ dialog.open=false;dialog.showModal=()=>{dialog.open=true};dialog.close=()=>{dialog.open=false;dialog.dispatchEvent(new Event('close'))};
+ const priorLocation=globalThis.location;globalThis.location={origin:'https://example.test'};
+ t.after(()=>{if(priorLocation===undefined)delete globalThis.location;else globalThis.location=priorLocation});
+ // Welcome tracking has no account service in this DOM-only regression.
+ t.mock.method(globalThis,'fetch',async()=>new Response(null,{status:503}));
+ const buddy=setupBuddy(()=>null);
+
+ buddy.show(opener);assert.equal(launcher.getAttribute('aria-expanded'),'true');buddy.close();
+ assert.deepEqual(focus.pop(),{id:'railBuddy',options:{preventScroll:true}});
+ buddy.show(opener);rail.hidden=true;buddy.close();
+ assert.deepEqual(focus.pop(),{id:'buddyLauncher',options:{preventScroll:true}});
+ rail.hidden=false;buddy.show(opener);opener.remove();buddy.close();
+ assert.deepEqual(focus.pop(),{id:'buddyLauncher',options:{preventScroll:true}});
+ assert.equal(launcher.getAttribute('aria-expanded'),'false');
+ await new Promise(resolve=>setImmediate(resolve));
 });
 
 test('the picker shows the role-specific model ID and keeps the selected provider on role changes',t=>{
